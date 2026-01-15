@@ -1,20 +1,13 @@
-项目概览
+项目说明
 
-后端：Spring Boot（Java 21），位于 `station-management` 目录。
-前端：Vite + Vue，位于 `web` 目录。
+这是一个“校园驿站管理系统”项目，包含后端与前端两个部分：
+- 后端在 `station-management` 目录，用于提供业务接口与数据存储；
+- 前端在 `web` 目录，用于提供页面与交互。
 
-快速启动
-- 后端：进入 `station-management`，执行 `mvn spring-boot:run`，访问 `http://localhost:8899/`。
-- 前端：进入 `web`，执行 `npm install`，再运行 `npm run dev`。
+项目目标
+- 面向校园驿站的日常管理与业务处理；
+- 支持用户注册/登录、包裹/站点等基础功能的扩展；
+- 便于后续迭代与模块化完善。
 
-环境要求
-- JDK `21`（后端）
-- Node.js `18+`（前端）
-
-说明
-- 当前后端未配置数据库，已禁用数据源自动配置，便于无数据库启动。
-- 后续如需接入数据库，请在 `station-management/src/main/resources/application.yaml` 中添加配置。
-
-目录结构（简要）
-- `station-management/`：后端代码与构建输出
-- `web/`：前端工程与静态资源
+更多关于后端的技术栈与启动方法，请查看 `station-management/README.md`。
+更多关于前端的开发说明，可查看 `web/README.md`（如果需要将来补充）。
