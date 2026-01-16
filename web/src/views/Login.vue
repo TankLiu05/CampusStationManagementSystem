@@ -138,7 +138,7 @@
           
       <!-- 顶部主标题和副标题 -->
       <div class="hero-content">
-        <h1 class="hero-title">随时随地<br>掉控您的包裹</h1>
+        <h1 class="hero-title">随时随地<br>掌控您的包裹</h1>
         <p class="hero-subtitle">轻松追踪您的快递包裹状态,随时随地查询取件码,享受便捷的校园物流体验</p>
       </div>
           

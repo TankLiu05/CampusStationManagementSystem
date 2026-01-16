@@ -1,23 +1,7 @@
 <template>
   <div class="user-home">
     <!-- 顶部导航栏 -->
-    <header class="header">
-      <div class="header-content">
-        <div class="logo">
-          <h2>校园驿站管理系统</h2>
-        </div>
-        <nav class="nav">
-          <span class="nav-item active">首页</span>
-          <span class="nav-item">我的包裹</span>
-          <span class="nav-item">公告信息</span>
-          <span class="nav-item">个人中心</span>
-        </nav>
-        <div class="user-info">
-          <span class="username">{{ currentUser?.username || '用户' }}</span>
-          <button class="logout-btn" @click="handleLogout">退出登录</button>
-        </div>
-      </div>
-    </header>
+    <Navbar :username="currentUser?.username" @logout="handleLogout" />
 
     <!-- 主要内容区域 -->
     <main class="main-content">
@@ -72,6 +56,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentUser, logout } from '@/api/sysUser'
 import type { SysUser } from '@/api/sysUser'
+import Navbar from '@/components/user/Navbar.vue'
 
 const router = useRouter()
 const currentUser = ref<SysUser | null>(null)
@@ -102,93 +87,9 @@ const handleLogout = async () => {
 </script>
 
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 .user-home {
   min-height: 100vh;
   background: #f5f7fa;
-}
-
-/* 顶部导航栏 */
-.header {
-  background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 40px;
-  height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.logo h2 {
-  font-size: 22px;
-  font-weight: 600;
-  color: #10b981;
-}
-
-.nav {
-  display: flex;
-  gap: 40px;
-}
-
-.nav-item {
-  font-size: 16px;
-  color: #666;
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.nav-item:hover {
-  background: #f0f0f0;
-  color: #10b981;
-}
-
-.nav-item.active {
-  color: #10b981;
-  font-weight: 600;
-  background: #e6f7f1;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.username {
-  font-size: 16px;
-  color: #333;
-  font-weight: 500;
-}
-
-.logout-btn {
-  padding: 8px 20px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: white;
-  color: #666;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
 }
 
 /* 主要内容区域 */
@@ -287,21 +188,7 @@ const handleLogout = async () => {
 }
 
 /* 响应式设计 */
-@media (max-width: 1200px) {
-  .function-cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 768px) {
-  .header-content {
-    padding: 0 20px;
-  }
-
-  .nav {
-    display: none;
-  }
-
   .function-cards {
     grid-template-columns: 1fr;
   }
