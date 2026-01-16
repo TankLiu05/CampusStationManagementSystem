@@ -1,10 +1,5 @@
 <template>
-  <div class="user-home">
-    <!-- 顶部导航栏 -->
-    <Navbar :username="currentUser?.username" @logout="handleLogout" />
-
-    <!-- 主要内容区域 -->
-    <main class="main-content">
+  <UserLayout>
       <div class="welcome-section">
         <h1>欢迎回来，{{ currentUser?.username }}！</h1>
         <p>您可以在这里查看和管理您的快递包裹</p>
@@ -13,30 +8,31 @@
       <!-- 快捷功能卡片 -->
       <div class="function-cards">
         <div class="card">
-          <div class="card-icon">📦</div>
+          <img src="@/assets/icons/2.png" alt="我的包裹" class="card-icon" />
           <h3>我的包裹</h3>
           <p>查看待取包裹</p>
           <div class="card-count">0 件</div>
         </div>
 
         <div class="card">
-          <div class="card-icon">✅</div>
+          <img src="@/assets/icons/3.png" alt="已签收" class="card-icon" />
           <h3>已签收</h3>
           <p>历史签收记录</p>
           <div class="card-count">0 件</div>
         </div>
 
         <div class="card">
-          <div class="card-icon">📢</div>
+          <img src="@/assets/icons/4.png" alt="公告通知" class="card-icon" />
           <h3>公告通知</h3>
           <p>最新公告信息</p>
           <div class="card-count">0 条</div>
         </div>
 
         <div class="card">
-          <div class="card-icon">👤</div>
+          <img src="@/assets/icons/1.png" alt="个人信息" class="card-icon" />
           <h3>个人信息</h3>
           <p>查看和编辑资料</p>
+          <div class="card-count">0 条</div>
         </div>
       </div>
 
@@ -47,8 +43,7 @@
           <p>暂无包裹信息</p>
         </div>
       </div>
-    </main>
-  </div>
+  </UserLayout>
 </template>
 
 <script setup lang="ts">
@@ -56,7 +51,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentUser, logout } from '@/api/sysUser'
 import type { SysUser } from '@/api/sysUser'
-import Navbar from '@/components/user/Navbar.vue'
+import UserLayout from '@/layouts/UserLayout.vue'
 
 const router = useRouter()
 const currentUser = ref<SysUser | null>(null)
@@ -65,7 +60,7 @@ onMounted(async () => {
   try {
     currentUser.value = await getCurrentUser()
     
-    // 权限检查：如果是管理员，跳转到管理员首页
+    // 权限检查:如果是管理员,跳转到管理员首页
     if (currentUser.value.role === 'ADMIN') {
       router.replace('/admin/home')
       return
@@ -75,31 +70,11 @@ onMounted(async () => {
     router.replace('/login')
   }
 })
-
-const handleLogout = async () => {
-  try {
-    await logout()
-    router.replace('/login')
-  } catch (err) {
-    console.error('退出登录失败:', err)
-  }
-}
 </script>
 
 <style scoped>
-.user-home {
-  min-height: 100vh;
-  background: #f5f7fa;
-}
-
-/* 主要内容区域 */
-.main-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 40px;
-}
-
 .welcome-section {
+
   margin-bottom: 40px;
 }
 
@@ -129,18 +104,18 @@ const handleLogout = async () => {
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   cursor: pointer;
-  transition: all 0.3s;
   text-align: center;
-}
-
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
 }
 
 .card-icon {
   font-size: 48px;
   margin-bottom: 16px;
+}
+
+.card-icon[src] {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
 }
 
 .card h3 {

@@ -1,16 +1,9 @@
 <template>
   <header class="header">
     <div class="header-content">
-      <div class="logo">
-        <h2>🛡️ 管理员后台</h2>
+      <div class="page-title">
+        <h2>{{ currentPageName }}</h2>
       </div>
-      <nav class="nav">
-        <span class="nav-item active">工作台</span>
-        <span class="nav-item">用户管理</span>
-        <span class="nav-item">包裹管理</span>
-        <span class="nav-item">公告管理</span>
-        <span class="nav-item">系统设置</span>
-      </nav>
       <div class="user-info">
         <span class="admin-badge">管理员</span>
         <span class="username">{{ username }}</span>
@@ -23,10 +16,12 @@
 <script setup lang="ts">
 interface Props {
   username?: string
+  currentPageName?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  username: 'Admin'
+  username: 'Admin',
+  currentPageName: '工作台'
 })
 
 const emit = defineEmits<{
@@ -40,8 +35,7 @@ const handleLogout = () => {
 
 <style scoped>
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  background: white;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -57,35 +51,10 @@ const handleLogout = () => {
   justify-content: space-between;
 }
 
-.logo h2 {
-  font-size: 22px;
+.page-title h2 {
+  font-size: 20px;
   font-weight: 600;
-  color: white;
-}
-
-.nav {
-  display: flex;
-  gap: 30px;
-}
-
-.nav-item {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.9);
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-}
-
-.nav-item.active {
-  color: white;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.25);
+  color: #333;
 }
 
 .user-info {
@@ -96,8 +65,8 @@ const handleLogout = () => {
 
 .admin-badge {
   font-size: 12px;
-  color: white;
-  background: rgba(255, 255, 255, 0.3);
+  color: #666;
+  background: #f5f5f5;
   padding: 4px 12px;
   border-radius: 12px;
   font-weight: 500;
@@ -105,24 +74,25 @@ const handleLogout = () => {
 
 .username {
   font-size: 16px;
-  color: white;
+  color: #333;
   font-weight: 500;
 }
 
 .logout-btn {
   padding: 8px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: white;
+  color: #666;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
 }
 
 .logout-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: white;
+  background: #f5f5f5;
+  border-color: #999;
+  color: #333;
 }
 
 /* 响应式设计 */
@@ -131,7 +101,11 @@ const handleLogout = () => {
     padding: 0 20px;
   }
 
-  .nav {
+  .page-title h2 {
+    font-size: 16px;
+  }
+
+  .admin-badge {
     display: none;
   }
 }

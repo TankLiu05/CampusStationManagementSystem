@@ -58,14 +58,14 @@
         <!-- 注册表单 -->
         <form v-else @submit.prevent="handleRegister">
           <div class="form-group">
-            <label for="reg-username">用户名</label>
+            <label for="reg-username">账号</label>
             <div class="input-wrapper">
               <span class="input-icon"><img src="@/assets/icons/user.png" alt="用户" /></span>
               <input
                 type="text"
                 id="reg-username"
                 v-model="registerForm.username"
-                placeholder="输入用户名"
+                placeholder="输入账号"
                 required
               />
             </div>
@@ -92,7 +92,7 @@
           <div class="form-group">
             <label for="reg-phone">手机号（可选）</label>
             <div class="input-wrapper">
-              <span class="input-icon">📱</span>
+              <span class="input-icon"><img src="@/assets/icons/phone.png" alt="手机" /></span>
               <input
                 type="tel"
                 id="reg-phone"
@@ -105,7 +105,7 @@
           <div class="form-group">
             <label for="reg-email">邮箱（可选）</label>
             <div class="input-wrapper">
-              <span class="input-icon">✉️</span>
+              <span class="input-icon"><img src="@/assets/icons/email.png" alt="邮箱" /></span>
               <input
                 type="email"
                 id="reg-email"
@@ -121,13 +121,11 @@
         </form>
         
         <div class="footer-info">
-          <span>帮助中心</span>
           <span>•</span>
           <span class="toggle-mode" @click="isRegister = !isRegister">
             {{ isRegister ? '返回登录' : '注册账号' }}
           </span>
           <span>•</span>
-          <span>联系客服</span>
         </div>
       </div>
     </div>

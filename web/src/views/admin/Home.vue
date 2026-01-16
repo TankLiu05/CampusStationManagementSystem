@@ -1,10 +1,5 @@
 <template>
-  <div class="admin-home">
-    <!-- 顶部导航栏 -->
-    <Navbar :username="currentUser?.username" @logout="handleLogout" />
-
-    <!-- 主要内容区域 -->
-    <main class="main-content">
+  <AdminLayout>
       <div class="welcome-section">
         <h1>管理员工作台</h1>
         <p>欢迎，{{ currentUser?.username }}！系统运行正常</p>
@@ -13,7 +8,9 @@
       <!-- 数据统计卡片 -->
       <div class="stats-cards">
         <div class="stat-card">
-          <div class="stat-icon" style="background: #e6f7ff;">👥</div>
+          <div class="stat-icon" style="background: #e6f7ff;">
+            <img src="@/assets/icons/1.png" alt="用户管理" />
+          </div>
           <div class="stat-content">
             <h3>用户总数</h3>
             <div class="stat-number">0</div>
@@ -22,7 +19,9 @@
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon" style="background: #fff7e6;">📦</div>
+          <div class="stat-icon" style="background: #fff7e6;">
+            <img src="@/assets/icons/2.png" alt="包裹管理" />
+          </div>
           <div class="stat-content">
             <h3>包裹总数</h3>
             <div class="stat-number">0</div>
@@ -31,7 +30,9 @@
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon" style="background: #f0f5ff;">✅</div>
+          <div class="stat-icon" style="background: #f0f5ff;">
+            <img src="@/assets/icons/3.png" alt="今日签收" />
+          </div>
           <div class="stat-content">
             <h3>今日签收</h3>
             <div class="stat-number">0</div>
@@ -40,7 +41,9 @@
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon" style="background: #e6fffb;">📢</div>
+          <div class="stat-icon" style="background: #e6fffb;">
+            <img src="@/assets/icons/4.png" alt="公告管理" />
+          </div>
           <div class="stat-content">
             <h3>公告数量</h3>
             <div class="stat-number">0</div>
@@ -54,21 +57,14 @@
         <div class="section">
           <h2>快捷操作</h2>
           <div class="action-buttons">
-            <button class="action-btn primary">
-              <span class="btn-icon">➕</span>
+            <button class="action-btn" @click="handleNavigate('/admin/packages')">
               <span>录入包裹</span>
             </button>
-            <button class="action-btn">
-              <span class="btn-icon">📢</span>
+            <button class="action-btn" @click="handleNavigate('/admin/announcements')">
               <span>发布公告</span>
             </button>
-            <button class="action-btn">
-              <span class="btn-icon">👥</span>
+            <button class="action-btn" @click="handleNavigate('/admin/users')">
               <span>用户管理</span>
-            </button>
-            <button class="action-btn">
-              <span class="btn-icon">📊</span>
-              <span>数据报表</span>
             </button>
           </div>
         </div>
@@ -91,8 +87,7 @@
           </div>
         </div>
       </div>
-    </main>
-  </div>
+  </AdminLayout>
 </template>
 
 <script setup lang="ts">
@@ -100,16 +95,21 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentUser, logout } from '@/api/sysUser'
 import type { SysUser } from '@/api/sysUser'
-import Navbar from '@/components/admin/Navbar.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
 const router = useRouter()
 const currentUser = ref<SysUser | null>(null)
+
+// 导航处理函数
+const handleNavigate = (path: string) => {
+  router.push(path)
+}
 
 onMounted(async () => {
   try {
     currentUser.value = await getCurrentUser()
     
-    // 权限检查：如果不是管理员，跳转到用户首页
+    // 权限检查:如果不是管理员,跳转到用户首页
     if (currentUser.value.role !== 'ADMIN') {
       router.replace('/user/home')
       return
@@ -119,31 +119,11 @@ onMounted(async () => {
     router.replace('/login')
   }
 })
-
-const handleLogout = async () => {
-  try {
-    await logout()
-    router.replace('/login')
-  } catch (err) {
-    console.error('退出登录失败:', err)
-  }
-}
 </script>
 
 <style scoped>
-.admin-home {
-  min-height: 100vh;
-  background: #f0f2f5;
-}
-
-/* 主要内容区域 */
-.main-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 40px;
-}
-
 .welcome-section {
+
   margin-bottom: 40px;
 }
 
@@ -175,12 +155,6 @@ const handleLogout = async () => {
   display: flex;
   align-items: center;
   gap: 20px;
-  transition: all 0.3s;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
 }
 
 .stat-icon {
@@ -191,6 +165,12 @@ const handleLogout = async () => {
   align-items: center;
   justify-content: center;
   border-radius: 12px;
+}
+
+.stat-icon img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .stat-content h3 {
@@ -250,27 +230,10 @@ const handleLogout = async () => {
   gap: 12px;
   font-size: 16px;
   color: #333;
-  transition: all 0.2s;
 }
 
-.action-btn:hover {
-  border-color: #667eea;
-  background: #f5f7ff;
-  color: #667eea;
-}
-
-.action-btn.primary {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
-}
-
-.action-btn.primary:hover {
-  background: #5568d3;
-}
-
-.btn-icon {
-  font-size: 24px;
+.action-btn:active {
+  border-color: #999;
 }
 
 .system-status {

@@ -1,15 +1,9 @@
 <template>
   <header class="header">
     <div class="header-content">
-      <div class="logo">
-        <h2>校园驿站管理系统</h2>
+      <div class="page-title">
+        <h2>{{ currentPageName }}</h2>
       </div>
-      <nav class="nav">
-        <span class="nav-item active">首页</span>
-        <span class="nav-item">我的包裹</span>
-        <span class="nav-item">公告信息</span>
-        <span class="nav-item">个人中心</span>
-      </nav>
       <div class="user-info">
         <span class="username">{{ username }}</span>
         <button class="logout-btn" @click="handleLogout">退出登录</button>
@@ -21,10 +15,12 @@
 <script setup lang="ts">
 interface Props {
   username?: string
+  currentPageName?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  username: '用户'
+  username: '用户',
+  currentPageName: '首页'
 })
 
 const emit = defineEmits<{
@@ -39,7 +35,6 @@ const handleLogout = () => {
 <style scoped>
 .header {
   background: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -55,35 +50,10 @@ const handleLogout = () => {
   justify-content: space-between;
 }
 
-.logo h2 {
-  font-size: 22px;
+.page-title h2 {
+  font-size: 20px;
   font-weight: 600;
-  color: #10b981;
-}
-
-.nav {
-  display: flex;
-  gap: 40px;
-}
-
-.nav-item {
-  font-size: 16px;
-  color: #666;
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.nav-item:hover {
-  background: #f0f0f0;
-  color: #10b981;
-}
-
-.nav-item.active {
-  color: #10b981;
-  font-weight: 600;
-  background: #e6f7f1;
+  color: #333;
 }
 
 .user-info {
@@ -110,8 +80,8 @@ const handleLogout = () => {
 }
 
 .logout-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #999;
+  color: #333;
 }
 
 /* 响应式设计 */
@@ -120,8 +90,8 @@ const handleLogout = () => {
     padding: 0 20px;
   }
 
-  .nav {
-    display: none;
+  .page-title h2 {
+    font-size: 16px;
   }
 }
 </style>
