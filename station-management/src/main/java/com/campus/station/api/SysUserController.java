@@ -2,6 +2,8 @@ package com.campus.station.api;
 
 import com.campus.station.model.SysUser;
 import com.campus.station.service.SysUserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
+@Tag(name = "SysUser", description = "用户与管理员相关接口")
 @RequestMapping("/api/sysUser")
 public class SysUserController {
 
@@ -19,6 +22,7 @@ public class SysUserController {
     }
 
     @PostMapping("/admin")
+    @Operation(summary = "创建管理员用户")
     public ResponseEntity<?> createAdmin(@RequestBody SysUser req) {
         // 管理员创建接口：强制角色为 ADMIN
         req.setRole("ADMIN");
@@ -35,6 +39,7 @@ public class SysUserController {
     }
 
     @PostMapping("/loginByPhone")
+    @Operation(summary = "手机号登录")
     public ResponseEntity<?> loginByPhone(@RequestBody Map<String, String> body) {
         String phone = body.get("phone");
         String password = body.get("password");
@@ -56,6 +61,7 @@ public class SysUserController {
     }
 
     @PostMapping
+    @Operation(summary = "创建普通用户")
     public ResponseEntity<?> create(@RequestBody SysUser req) {
         // 仅允许创建普通用户
         if (req.getRole() != null && !"USER".equalsIgnoreCase(req.getRole())) {
@@ -80,6 +86,7 @@ public class SysUserController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "按 ID 查询用户")
     public ResponseEntity<?> get(@PathVariable Long id) {
         return service.getById(id)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
@@ -87,6 +94,7 @@ public class SysUserController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "按 ID 更新用户信息")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody SysUser req) {
         try {
             SysUser updated = service.update(id, req);
@@ -101,12 +109,14 @@ public class SysUserController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "按 ID 删除用户")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping
+    @Operation(summary = "分页查询用户列表")
     public ResponseEntity<Page<SysUser>> list(@RequestParam(defaultValue = "0") int page,
                                               @RequestParam(defaultValue = "10") int size) {
         Page<SysUser> result = service.list(PageRequest.of(page, size));
@@ -114,6 +124,7 @@ public class SysUserController {
     }
 
     @PatchMapping("/{id}/status")
+    @Operation(summary = "修改用户状态")
     public ResponseEntity<?> changeStatus(@PathVariable Long id, @RequestParam byte status) {
         try {
             SysUser updated = service.changeStatus(id, status);

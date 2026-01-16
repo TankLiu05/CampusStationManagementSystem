@@ -1,22 +1,23 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Admin_Login from '../views/Admin_Login.vue'
-import User_Login from '../views/User_Login.vue'
-
+import AdminLogin from '../views/adminLogin.vue'
+import UserLogin from '../views/userLogin.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    // 在这里添加你的路由配置
-   
     {
-      path: '/AdminLogin',
+      path: '/adminLogin',
       name: 'AdminLogin',
-      component: Admin_Login
+      component: AdminLogin
     },
     {
-      path: '/UserLogin',
+      path: '/userLogin',
       name: 'UserLogin',
-      component: User_Login
+      component: UserLogin
+    },
+    {
+      path: '/',
+      redirect: '/userLogin'
     }
   ],
 })

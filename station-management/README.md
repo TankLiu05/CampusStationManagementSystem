@@ -47,3 +47,14 @@
 注意事项
 - 当前密码未加密，仅用于开发验证；如需安全加固可接入 `BCrypt`/`JWT` 等。
 - 若修改端口/库名，请同步更新 `application.yml` 与前端代理配置。
+
+Swagger / OpenAPI 接口文档
+- 依赖：已在 `pom.xml` 中集成 `springdoc-openapi-starter-webmvc-ui`（版本 `3.0.1`），随应用自动生效。
+- 启动方式：与正常后端启动一致（参考上文“本地启动”）。
+- 文档访问地址：
+  - Swagger UI：`http://localhost:8899/swagger-ui/index.html`
+  - OpenAPI JSON：`http://localhost:8899/v3/api-docs`
+- 使用说明：
+  - 打开 Swagger UI 后，可在左侧找到 `SysUser` 分组，展开查看各接口；
+  - 点击某个接口中的 “Try it out” 按钮，填写请求参数即可在线调试；
+  - 前端联调时，可以 Swagger UI 展示为参考，确认 URL、方法与请求体结构。

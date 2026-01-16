@@ -89,16 +89,16 @@
 
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
+import { loginByPhone } from '@/api/sysUser'
 
 const loginForm = reactive({
   username: '',
   password: '',
-  remember: false
+  remember: false,
 })
 
 const showPassword = ref(false)
 
-// 获取当前日期，格式：2026年01月15日
 const currentDate = computed(() => {
   const now = new Date()
   const year = now.getFullYear()
@@ -107,9 +107,18 @@ const currentDate = computed(() => {
   return `${year}年${month}月${day}日`
 })
 
-const handleLogin = () => {
-  console.log('登录信息:', loginForm)
-  // TODO: 实现登录逻辑
+const handleLogin = async () => {
+  try {
+    const user = await loginByPhone(loginForm.username, loginForm.password)
+    if (user.role !== 'ADMIN') {
+      window.alert('该账号不是管理员，请使用管理员账号登录')
+      return
+    }
+    console.log('管理员登录成功:', user)
+  } catch (err) {
+    console.error('管理员登录失败:', err)
+    window.alert('登录失败，请检查账号或密码')
+  }
 }
 </script>
 

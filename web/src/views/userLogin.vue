@@ -14,7 +14,7 @@
                 type="text"
                 id="username"
                 v-model="loginForm.username"
-                placeholder="输入学号"
+                placeholder="输入学号/手机号"
                 required
               />
             </div>
@@ -93,19 +93,24 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { loginByPhone } from '@/api/sysUser'
 
 const loginForm = reactive({
   username: '',
   password: '',
-  remember: false
+  remember: false,
 })
 
+const showPassword = ref(false)
 
-
-
-const handleLogin = () => {
-  console.log('登录信息:', loginForm)
-  // TODO: 实现登录逻辑
+const handleLogin = async () => {
+  try {
+    const user = await loginByPhone(loginForm.username, loginForm.password)
+    console.log('用户登录成功:', user)
+  } catch (err) {
+    console.error('用户登录失败:', err)
+    window.alert('登录失败，请检查账号或密码')
+  }
 }
 </script>
 
