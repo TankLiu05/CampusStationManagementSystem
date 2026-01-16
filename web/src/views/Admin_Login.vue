@@ -138,7 +138,7 @@ const handleLogin = () => {
   align-items: center;
   overflow: hidden;
   border-radius: 20px;
-  margin: 20px 10px 20px 20px;
+  margin: 20px 0 20px 20px;
   position: relative;
 }
 
@@ -204,9 +204,9 @@ const handleLogin = () => {
   justify-content: center;
   align-items: center;
   padding: 40px;
-  background: white;
+  background: #f5f5f5;
   border-radius: 20px;
-  margin: 20px 20px 20px 10px;
+  margin: 20px 20px 20px 0;
 }
 
 .form-wrapper {
