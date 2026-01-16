@@ -1,0 +1,20 @@
+package com.campus.station.service;
+
+import com.campus.station.model.Parcel;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.Optional;
+
+public interface ParcelService {
+    Parcel create(Parcel parcel);
+    Optional<Parcel> getById(Long id);
+    Optional<Parcel> getByTrackingNumber(String trackingNumber);
+    Page<Parcel> list(Pageable pageable);
+    Parcel update(Long id, Parcel update);
+    void delete(Long id);
+    Parcel changeStatus(Long id, Integer status);
+    Parcel markSigned(Long id);
+    Page<Parcel> listByReceiver(Long receiverId, Pageable pageable);
+    Optional<Parcel> getByTrackingNumberAndReceiverId(String trackingNumber, Long receiverId);
+}
