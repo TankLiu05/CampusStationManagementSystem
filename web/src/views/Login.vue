@@ -2,19 +2,22 @@
   <div class="user-login">
     <div class="form-section">
       <div class="form-wrapper">
-        <h1 class="title">欢迎回来</h1>
-        <p class="subtitle">登录后即可签收快递并查看最新公告信息</p>
+        <h1 class="title">{{ isRegister ? '创建账号' : '欢迎回来' }}</h1>
+        <p class="subtitle">
+          {{ isRegister ? '注册后即可开始使用校园驿站系统' : '登录后即可签收快递并查看最新公告信息' }}
+        </p>
         
-        <form @submit.prevent="handleLogin">
+        <!-- 登录表单 -->
+        <form v-if="!isRegister" @submit.prevent="handleLogin">
           <div class="form-group">
-            <label for="username">学号</label>
+            <label for="username">账号</label>
             <div class="input-wrapper">
-              <span class="input-icon"><img src="@/components/icons/user.png" alt="用户" /></span>
+              <span class="input-icon"><img src="@/assets/icons/user.png" alt="用户" /></span>
               <input
                 type="text"
                 id="username"
                 v-model="loginForm.username"
-                placeholder="输入学号/手机号"
+                placeholder="输入账号"
                 required
               />
             </div>
@@ -26,7 +29,7 @@
               <a href="#" class="forgot-link">忘记密码?</a>
             </div>
             <div class="input-wrapper">
-              <span class="input-icon"><img src="@/components/icons/password.png" alt="密码" /></span>
+              <span class="input-icon"><img src="@/assets/icons/password.png" alt="密码" /></span>
               <input
                 :type="showPassword ? 'text' : 'password'"
                 id="password"
@@ -52,10 +55,77 @@
           </button>
         </form>
         
+        <!-- 注册表单 -->
+        <form v-else @submit.prevent="handleRegister">
+          <div class="form-group">
+            <label for="reg-username">用户名</label>
+            <div class="input-wrapper">
+              <span class="input-icon"><img src="@/assets/icons/user.png" alt="用户" /></span>
+              <input
+                type="text"
+                id="reg-username"
+                v-model="registerForm.username"
+                placeholder="输入用户名"
+                required
+              />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="reg-password">密码</label>
+            <div class="input-wrapper">
+              <span class="input-icon"><img src="@/assets/icons/password.png" alt="密码" /></span>
+              <input
+                :type="showPassword ? 'text' : 'password'"
+                id="reg-password"
+                v-model="registerForm.password"
+                placeholder="设置密码（6位以上）"
+                required
+                minlength="6"
+              />
+              <span class="toggle-password" @click="showPassword = !showPassword">
+                {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+              </span>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="reg-phone">手机号（可选）</label>
+            <div class="input-wrapper">
+              <span class="input-icon">📱</span>
+              <input
+                type="tel"
+                id="reg-phone"
+                v-model="registerForm.phone"
+                placeholder="输入手机号"
+              />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="reg-email">邮箱（可选）</label>
+            <div class="input-wrapper">
+              <span class="input-icon">✉️</span>
+              <input
+                type="email"
+                id="reg-email"
+                v-model="registerForm.email"
+                placeholder="输入邮箱地址"
+              />
+            </div>
+          </div>
+          
+          <button type="submit" class="login-btn">
+            立即注册
+          </button>
+        </form>
+        
         <div class="footer-info">
           <span>帮助中心</span>
           <span>•</span>
-          <span>注册账号</span>
+          <span class="toggle-mode" @click="isRegister = !isRegister">
+            {{ isRegister ? '返回登录' : '注册账号' }}
+          </span>
           <span>•</span>
           <span>联系客服</span>
         </div>
@@ -64,28 +134,28 @@
     
     <!-- 右侧图片区域 (50%) -->
     <div class="image-section">
-      <img src="@/components/icons/users.png" alt="用户登录" />
-      
+      <img src="@/assets/icons/users.png" alt="用户登录" />
+          
       <!-- 顶部主标题和副标题 -->
       <div class="hero-content">
-        <h1 class="hero-title">随时随地<br>掌控您的包裹</h1>
+        <h1 class="hero-title">随时随地<br>掉控您的包裹</h1>
         <p class="hero-subtitle">轻松追踪您的快递包裹状态,随时随地查询取件码,享受便捷的校园物流体验</p>
       </div>
-      
+          
       <!-- 中心图片 -->
       <div class="center-image">
-        <img src="@/components/icons/photo.png" alt="物流配送" />
+        <img src="@/assets/icons/photo.png" alt="物流配送" />
       </div>
-      
+          
       <!-- 右下角功能展示 -->
       <div class="feature-status">
-        <span class="status-icon"><img src="@/components/icons/car.png" alt="物流" /></span>
+        <span class="status-icon"><img src="@/assets/icons/car.png" alt="物流" /></span>
         <span class="status-text">全链路追踪.为您提供最快的物流服务</span>
       </div>
-      
+          
       <!-- 右下角人物图片 -->
       <div class="corner-man">
-        <img src="@/components/icons/man.png" alt="人物" />
+        <img src="@/assets/icons/man.png" alt="人物" />
       </div>
     </div>
   </div>
@@ -93,7 +163,11 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { loginByPhone } from '@/api/sysUser'
+import { useRouter } from 'vue-router'
+import { login, register } from '@/api/sysUser'
+
+const router = useRouter()
+const isRegister = ref(false)
 
 const loginForm = reactive({
   username: '',
@@ -101,15 +175,47 @@ const loginForm = reactive({
   remember: false,
 })
 
+const registerForm = reactive({
+  username: '',
+  password: '',
+  phone: '',
+  email: '',
+})
+
 const showPassword = ref(false)
 
 const handleLogin = async () => {
   try {
-    const user = await loginByPhone(loginForm.username, loginForm.password)
+    const user = await login(loginForm.username, loginForm.password)
     console.log('用户登录成功:', user)
+    
+    // 根据用户角色跳转到对应首页
+    if (user.role === 'ADMIN') {
+      router.push('/admin/home')
+    } else {
+      router.push('/user/home')
+    }
   } catch (err) {
     console.error('用户登录失败:', err)
     window.alert('登录失败，请检查账号或密码')
+  }
+}
+
+const handleRegister = async () => {
+  try {
+    const user = await register(registerForm)
+    console.log('用户注册成功:', user)
+    window.alert('注册成功！请登录')
+    // 注册成功后切换到登录界面
+    isRegister.value = false
+    // 清空注册表单
+    registerForm.username = ''
+    registerForm.password = ''
+    registerForm.phone = ''
+    registerForm.email = ''
+  } catch (err) {
+    console.error('用户注册失败:', err)
+    window.alert('注册失败，请检查信息或稍后再试')
   }
 }
 </script>
@@ -379,6 +485,16 @@ const handleLogin = async () => {
   justify-content: center;
   align-items: center;
   gap: 20px;
+}
+
+.footer-info .toggle-mode {
+  color: #667eea;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.footer-info .toggle-mode:hover {
+  text-decoration: underline;
 }
 
 /* 右下角功能展示 */
