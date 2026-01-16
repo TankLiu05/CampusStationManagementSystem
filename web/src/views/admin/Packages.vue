@@ -51,14 +51,14 @@
       <div class="stat-card">
         <img src="@/assets/icons/2.png" alt="待取包裹" class="stat-icon" />
         <div class="stat-content">
-          <div class="stat-value">0</div>
+          <div class="stat-value">{{ stats.pending }}</div>
           <div class="stat-label">待取包裹</div>
         </div>
       </div>
       <div class="stat-card">
         <img src="@/assets/icons/3.png" alt="今日取件" class="stat-icon" />
         <div class="stat-content">
-          <div class="stat-value">0</div>
+          <div class="stat-value">{{ stats.todayPicked }}</div>
           <div class="stat-label">今日取件</div>
         </div>
       </div>
@@ -67,14 +67,14 @@
             <img src="@/assets/icons/9.png" alt="即将过期" class="stat-icon" />
         </div>
         <div class="stat-content">
-          <div class="stat-value">0</div>
+          <div class="stat-value">{{ stats.expiringSoon }}</div>
           <div class="stat-label">即将过期</div>
         </div>
       </div>
       <div class="stat-card">
         <img src="@/assets/icons/6.png" alt="统计" class="stat-icon" />
         <div class="stat-content">
-          <div class="stat-value">0</div>
+          <div class="stat-value">{{ total }}</div>
           <div class="stat-label">累计包裹</div>
         </div>
       </div>
@@ -263,8 +263,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { parcelApi, type Parcel, type ParcelRequest } from '@/api/parcel'
 
 interface Package {
   id: number
@@ -297,12 +298,22 @@ const endDate = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
 const total = ref(0)
+const pageSize = ref(10)
 
 const packageList = ref<Package[]>([])
 const showAddPackage = ref(false)
 const showEditPackage = ref(false)
 const showPackageDetail = ref(false)
 const currentPackage = ref<Package | null>(null)
+const editingPackageId = ref<number | null>(null)
+
+// 统计数据
+const stats = reactive({
+  pending: 0,
+  todayPicked: 0,
+  expiringSoon: 0,
+  total: 0
+})
 
 const packageForm = reactive<PackageForm>({
   trackingNumber: '',
@@ -313,6 +324,72 @@ const packageForm = reactive<PackageForm>({
   pickupCode: '',
   remark: ''
 })
+
+// 后端状态映射到前端状态
+const mapBackendStatusToUI = (status: number, isSigned: number): string => {
+  if (isSigned === 1) return 'PICKED' // 已签收
+  if (status === 3) return 'EXPIRED' // 退回/异常
+  if (status === 2) return 'PENDING' // 已入库待取件
+  return 'PENDING'
+}
+
+// 前端状态映射到后端状态
+const mapUIStatusToBackend = (uiStatus: string): number => {
+  switch (uiStatus) {
+    case 'PICKED': return 2 // 已入库
+    case 'EXPIRED': return 3 // 退回/异常
+    case 'PENDING': return 2 // 已入库
+    default: return 0
+  }
+}
+
+// 后端数据转换为前端格式
+const convertBackendToUI = (parcel: Parcel): Package => {
+  return {
+    id: parcel.id,
+    trackingNumber: parcel.trackingNumber,
+    company: parcel.company,
+    receiverName: parcel.receiverName,
+    receiverPhone: parcel.receiverPhone,
+    location: '', // 后端暂无此字段
+    pickupCode: '', // 后端暂无此字段
+    status: mapBackendStatusToUI(parcel.status, parcel.isSigned),
+    arrivalTime: new Date(parcel.createTime).toLocaleString('zh-CN'),
+    remark: ''
+  }
+}
+
+// 加载包裹列表
+const loadPackages = async () => {
+  try {
+    const response = await parcelApi.list(currentPage.value - 1, pageSize.value)
+    packageList.value = response.content.map(convertBackendToUI)
+    total.value = response.totalElements
+    totalPages.value = response.totalPages
+    
+    // 更新统计数据
+    updateStats(response.content)
+  } catch (error) {
+    console.error('加载包裹列表失败:', error)
+    alert('加载包裹列表失败，请重试')
+  }
+}
+
+// 更新统计数据
+const updateStats = (parcels: Parcel[]) => {
+  stats.total = parcels.length
+  stats.pending = parcels.filter(p => p.isSigned === 0 && p.status === 2).length
+  stats.todayPicked = parcels.filter(p => {
+    const today = new Date().toDateString()
+    return p.isSigned === 1 && new Date(p.updateTime).toDateString() === today
+  }).length
+  // 即将过期：假设超过3天未取为即将过期
+  stats.expiringSoon = parcels.filter(p => {
+    if (p.isSigned === 1) return false
+    const daysDiff = (Date.now() - new Date(p.createTime).getTime()) / (1000 * 60 * 60 * 24)
+    return daysDiff >= 3
+  }).length
+}
 
 const getStatusLabel = (status?: string) => {
   const labels: Record<string, string> = {
@@ -325,17 +402,18 @@ const getStatusLabel = (status?: string) => {
 
 const searchPackages = () => {
   console.log('搜索包裹:', searchKeyword.value)
-  // TODO: 实现搜索功能
+  // TODO: 后端暂不支持搜索，待扩展
+  alert('搜索功能待后端接口扩展')
 }
 
 const batchImport = () => {
   console.log('批量导入包裹')
-  // TODO: 实现批量导入功能
+  alert('批量导入功能待开发')
 }
 
 const exportPackages = () => {
   console.log('导出包裹数据')
-  // TODO: 实现导出功能
+  alert('导出功能待开发')
 }
 
 const resetFilters = () => {
@@ -343,34 +421,90 @@ const resetFilters = () => {
   companyFilter.value = ''
   startDate.value = ''
   endDate.value = ''
+  searchKeyword.value = ''
+  currentPage.value = 1
+  loadPackages()
 }
 
-const viewPackage = (pkg: Package) => {
-  currentPackage.value = pkg
-  showPackageDetail.value = true
-}
-
-const editPackage = (pkg: Package) => {
-  Object.assign(packageForm, pkg)
-  showEditPackage.value = true
-}
-
-const deletePackage = (id: number) => {
-  if (confirm('确定要删除该包裹吗？')) {
-    console.log('删除包裹:', id)
-    // TODO: 调用API删除包裹
+const viewPackage = async (pkg: Package) => {
+  try {
+    // 从后端获取最新详情
+    const parcel = await parcelApi.getById(pkg.id)
+    currentPackage.value = convertBackendToUI(parcel)
+    showPackageDetail.value = true
+  } catch (error) {
+    console.error('获取包裹详情失败:', error)
+    alert('获取包裹详情失败，请重试')
   }
 }
 
-const submitPackage = () => {
-  console.log('提交包裹信息:', packageForm)
-  // TODO: 调用API保存包裹
-  closeModal()
+const editPackage = (pkg: Package) => {
+  editingPackageId.value = pkg.id
+  Object.assign(packageForm, {
+    trackingNumber: pkg.trackingNumber,
+    company: pkg.company,
+    receiverName: pkg.receiverName,
+    receiverPhone: pkg.receiverPhone,
+    location: pkg.location,
+    pickupCode: pkg.pickupCode,
+    remark: pkg.remark || ''
+  })
+  showEditPackage.value = true
+}
+
+const deletePackage = async (id: number) => {
+  if (!confirm('确定要删除该包裹吗？')) {
+    return
+  }
+  
+  try {
+    await parcelApi.delete(id)
+    alert('删除成功')
+    loadPackages()
+  } catch (error) {
+    console.error('删除包裹失败:', error)
+    alert('删除包裹失败，请重试')
+  }
+}
+
+const submitPackage = async () => {
+  // 表单验证
+  if (!packageForm.trackingNumber || !packageForm.company || 
+      !packageForm.receiverName || !packageForm.receiverPhone) {
+    alert('请填写所有必填项')
+    return
+  }
+  
+  try {
+    const data: ParcelRequest = {
+      trackingNumber: packageForm.trackingNumber,
+      company: packageForm.company,
+      receiverName: packageForm.receiverName,
+      receiverPhone: packageForm.receiverPhone
+    }
+    
+    if (showEditPackage.value && editingPackageId.value) {
+      // 更新包裹
+      await parcelApi.update(editingPackageId.value, data)
+      alert('更新成功')
+    } else {
+      // 创建包裹
+      await parcelApi.create(data)
+      alert('创建成功')
+    }
+    
+    closeModal()
+    loadPackages()
+  } catch (error) {
+    console.error('提交包裹失败:', error)
+    alert('提交包裹失败，请重试')
+  }
 }
 
 const closeModal = () => {
   showAddPackage.value = false
   showEditPackage.value = false
+  editingPackageId.value = null
   Object.assign(packageForm, {
     trackingNumber: '',
     company: '',
@@ -381,6 +515,16 @@ const closeModal = () => {
     remark: ''
   })
 }
+
+// 监听分页变化
+watch(currentPage, () => {
+  loadPackages()
+})
+
+// 组件挂载时加载数据
+onMounted(() => {
+  loadPackages()
+})
 </script>
 
 <style scoped>
