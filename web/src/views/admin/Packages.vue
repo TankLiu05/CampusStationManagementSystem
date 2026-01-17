@@ -85,6 +85,13 @@
       <table>
         <thead>
           <tr>
+            <th>
+              <input
+                type="checkbox"
+                :checked="packageList.length > 0 && selectedIds.length === packageList.length"
+                @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
+              >
+            </th>
             <th>包裹ID</th>
             <th>快递单号</th>
             <th>快递公司</th>
@@ -99,9 +106,12 @@
         </thead>
         <tbody>
           <tr v-if="packageList.length === 0">
-            <td colspan="10" class="empty-row">暂无包裹数据</td>
+            <td colspan="11" class="empty-row">暂无包裹数据</td>
           </tr>
           <tr v-for="pkg in packageList" :key="pkg.id">
+            <td>
+              <input type="checkbox" v-model="selectedIds" :value="pkg.id">
+            </td>
             <td>{{ pkg.id }}</td>
             <td>{{ pkg.trackingNumber }}</td>
             <td>{{ pkg.company }}</td>
@@ -317,6 +327,7 @@ const total = ref(0)
 const pageSize = ref(10)
 
 const packageList = ref<Package[]>([])
+const selectedIds = ref<number[]>([])
 const showAddPackage = ref(false)
 const showEditPackage = ref(false)
 const showPackageDetail = ref(false)
@@ -349,17 +360,6 @@ const mapBackendStatusToUI = (status: number): string => {
     case 2: return 'STORED' // 已入库
     case 3: return 'RETURNED' // 退回/异常
     default: return 'PENDING_SHIP'
-  }
-}
-
-// 前端状态映射到后端状态
-const mapUIStatusToBackend = (uiStatus: string): number => {
-  switch (uiStatus) {
-    case 'PENDING_SHIP': return 0 // 待发货
-    case 'SHIPPED': return 1 // 已发货
-    case 'STORED': return 2 // 已入库
-    case 'RETURNED': return 3 // 退回/异常
-    default: return 0
   }
 }
 
@@ -422,9 +422,33 @@ const searchPackages = () => {
   alert('搜索功能待后端接口扩展')
 }
 
-const batchDelete = () => {
-  console.log('批量删除包裹')
-  alert('批量删除功能待开发')
+const toggleSelectAll = (checked: boolean) => {
+  if (checked) {
+    selectedIds.value = packageList.value.map(pkg => pkg.id)
+  } else {
+    selectedIds.value = []
+  }
+}
+
+const batchDelete = async () => {
+  if (selectedIds.value.length === 0) {
+    alert('请先勾选要删除的包裹')
+    return
+  }
+
+  if (!confirm(`确定要删除选中的 ${selectedIds.value.length} 个包裹吗？`)) {
+    return
+  }
+
+  try {
+    await parcelApi.deleteBatch(selectedIds.value)
+    alert('批量删除成功')
+    selectedIds.value = []
+    loadPackages()
+  } catch (error) {
+    console.error('批量删除包裹失败:', error)
+    alert('批量删除失败，请重试')
+  }
 }
 
 const resetFilters = () => {

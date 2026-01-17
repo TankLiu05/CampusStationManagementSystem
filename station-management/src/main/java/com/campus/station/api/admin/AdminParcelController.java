@@ -100,6 +100,8 @@ public class AdminParcelController {
                     Parcel update = new Parcel();
                     update.setLocation(location);
                     update.setPickupCode(pickupCode);
+                    update.setStatus(null);
+                    update.setIsSigned(null);
                     Parcel updated = service.update(id, update);
                     return ResponseEntity.ok(updated);
                 })
@@ -146,6 +148,13 @@ public class AdminParcelController {
     @Operation(summary = "删除快递")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping
+    @Operation(summary = "批量删除快递")
+    public ResponseEntity<Void> deleteBatch(@RequestBody Iterable<Long> ids) {
+        service.deleteBatch(ids);
         return ResponseEntity.noContent().build();
     }
 

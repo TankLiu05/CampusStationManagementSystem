@@ -133,6 +133,17 @@ export const parcelApi = {
   },
 
   /**
+   * 批量删除包裹
+   * @param ids 包裹ID数组
+   */
+  deleteBatch(ids: number[]) {
+    return request<void>('/api/admin/parcel', {
+      method: 'DELETE',
+      body: JSON.stringify(ids)
+    })
+  },
+
+  /**
    * 修改包裹状态
    * @param id 包裹ID
    * @param status 状态值 (0: 待发货, 1: 已发货, 2: 已入库, 3: 退回/异常)
