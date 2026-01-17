@@ -18,7 +18,7 @@
           <img src="@/assets/icons/3.png" alt="已签收" class="card-icon" />
           <h3>已签收</h3>
           <p>历史签收记录</p>
-          <div class="card-count">0 件</div>
+          <div class="card-count">{{ signedParcelCount }} 件</div>
         </div>
 
         <div class="card">
@@ -53,10 +53,13 @@ import { getCurrentUser, logout } from '@/api/sysUser'
 import type { SysUser } from '@/api/sysUser'
 import UserLayout from '@/layouts/UserLayout.vue'
 import { listNotices } from '@/api/user/notice'
+import { listMyParcels } from '@/api/user/parcel'
 
 const router = useRouter()
 const currentUser = ref<SysUser | null>(null)
 const noticeCount = ref(0)
+const pendingParcelCount = ref(0) // 待取包裹数量（未签收）
+const signedParcelCount = ref(0) // 已签收包裹数量
 
 onMounted(async () => {
   try {
@@ -70,6 +73,8 @@ onMounted(async () => {
     
     // 加载公告数量
     loadNoticeCount()
+    // 加载包裹数量
+    loadParcelCounts()
   } catch (err) {
     console.error('获取用户信息失败:', err)
     router.replace('/login')
@@ -84,6 +89,27 @@ const loadNoticeCount = async () => {
   } catch (error) {
     console.error('加载公告数量失败:', error)
     noticeCount.value = 0
+  }
+}
+
+// 加载包裹数量
+const loadParcelCounts = async () => {
+  try {
+    // 加载所有包裹以统计数量（使用较大的size值获取所有数据）
+    const response = await listMyParcels(0, 1000)
+    const parcels = response.content
+    
+    // 统计待取包裹：已入库且未签收（status=2 且 isSigned=0）
+    pendingParcelCount.value = parcels.filter(
+      (p) => p.status === 2 && p.isSigned === 0
+    ).length
+    
+    // 统计已签收包裹：isSigned=1
+    signedParcelCount.value = parcels.filter((p) => p.isSigned === 1).length
+  } catch (error) {
+    console.error('加载包裹数量失败:', error)
+    pendingParcelCount.value = 0
+    signedParcelCount.value = 0
   }
 }
 </script>
