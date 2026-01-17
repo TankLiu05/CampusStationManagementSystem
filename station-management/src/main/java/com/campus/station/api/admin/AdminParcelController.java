@@ -1,5 +1,6 @@
 package com.campus.station.api.admin;
 
+import com.campus.station.common.PickupCodeUtil;
 import com.campus.station.model.Parcel;
 import com.campus.station.model.SysUser;
 import com.campus.station.service.ParcelService;
@@ -10,7 +11,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Tag(name = "AdminParcel", description = "管理员快递管理接口")
@@ -23,6 +30,18 @@ public class AdminParcelController {
     public AdminParcelController(ParcelService service, SysUserService sysUserService) {
         this.service = service;
         this.sysUserService = sysUserService;
+    }
+
+    public static class AdminParcelPickupRequest {
+        private String location;
+
+        public String getLocation() {
+            return location;
+        }
+
+        public void setLocation(String location) {
+            this.location = location;
+        }
     }
 
     @PostMapping
@@ -54,6 +73,45 @@ public class AdminParcelController {
 
         Parcel created = service.create(parcel);
         return ResponseEntity.ok(created);
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "根据快递单号查询快递")
+    public ResponseEntity<?> getByTrackingNumber(@RequestParam String trackingNumber) {
+        return service.getByTrackingNumber(trackingNumber)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(404).body("未找到对应快递"));
+    }
+
+    @PostMapping("/{id}/pickup")
+    @Operation(summary = "为快递创建存放位置和取件码")
+    public ResponseEntity<?> createPickupInfo(@PathVariable Long id, @RequestBody AdminParcelPickupRequest req) {
+        if (req.getLocation() == null || req.getLocation().isBlank()) {
+            return ResponseEntity.badRequest().body("存放位置为必填项");
+        }
+        return service.getById(id)
+                .map(parcel -> {
+                    if (parcel.getStatus() == null || parcel.getStatus() != 2) {
+                        return ResponseEntity.status(400).body("快递未入库，不能创建取件信息");
+                    }
+                    if (parcel.getIsSigned() != null && parcel.getIsSigned() == 1) {
+                        return ResponseEntity.status(400).body("快递已签收，不能创建取件信息");
+                    }
+                    if (parcel.getPickupCode() != null && !parcel.getPickupCode().isBlank()) {
+                        return ResponseEntity.status(409).body("该快递已经存在取件码");
+                    }
+                    String pickupCode;
+                    do {
+                        pickupCode = PickupCodeUtil.generate();
+                    } while (service.findActiveByPickupCode(pickupCode).isPresent());
+
+                    Parcel update = new Parcel();
+                    update.setLocation(req.getLocation());
+                    update.setPickupCode(pickupCode);
+                    Parcel updated = service.update(id, update);
+                    return ResponseEntity.ok(updated);
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}")

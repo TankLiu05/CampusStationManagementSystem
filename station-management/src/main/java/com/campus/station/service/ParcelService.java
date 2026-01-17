@@ -19,4 +19,5 @@ public interface ParcelService {
     Page<Parcel> listByReceiver(Long receiverId, Pageable pageable);
     Optional<Parcel> getByTrackingNumberAndReceiverId(String trackingNumber, Long receiverId);
     Page<Parcel> listByReceiverAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable);
+    Optional<Parcel> findActiveByPickupCode(String pickupCode);
 }
