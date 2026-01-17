@@ -1,7 +1,9 @@
 package com.campus.station.api.admin;
 
 import com.campus.station.model.Parcel;
+import com.campus.station.model.SysUser;
 import com.campus.station.service.ParcelService;
+import com.campus.station.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -16,15 +18,41 @@ import org.springframework.web.bind.annotation.*;
 public class AdminParcelController {
 
     private final ParcelService service;
+    private final SysUserService sysUserService;
 
-    public AdminParcelController(ParcelService service) {
+    public AdminParcelController(ParcelService service, SysUserService sysUserService) {
         this.service = service;
+        this.sysUserService = sysUserService;
     }
 
     @PostMapping
     @Operation(summary = "创建快递（发货）")
-    public ResponseEntity<Parcel> create(@RequestBody Parcel req) {
-        Parcel created = service.create(req);
+    public ResponseEntity<?> create(@RequestBody AdminParcelCreateRequest req) {
+        SysUser receiver = null;
+        if (req.getReceiverUsername() != null && !req.getReceiverUsername().isBlank()) {
+            receiver = sysUserService.getByUsername(req.getReceiverUsername()).orElse(null);
+        }
+        if (receiver == null && req.getReceiverPhone() != null && !req.getReceiverPhone().isBlank()) {
+            receiver = sysUserService.getByPhone(req.getReceiverPhone()).orElse(null);
+        }
+        if (receiver == null) {
+            return ResponseEntity.status(404).body("收件人用户不存在");
+        }
+
+        Parcel parcel = new Parcel();
+        parcel.setTrackingNumber(req.getTrackingNumber());
+        parcel.setCompany(req.getCompany());
+        parcel.setReceiverId(receiver.getId());
+        parcel.setReceiverName(req.getReceiverName() != null ? req.getReceiverName() : receiver.getUsername());
+        parcel.setReceiverPhone(req.getReceiverPhone() != null ? req.getReceiverPhone() : receiver.getPhone());
+        if (req.getStatus() != null) {
+            parcel.setStatus(req.getStatus());
+        }
+        if (req.getIsSigned() != null) {
+            parcel.setIsSigned(req.getIsSigned());
+        }
+
+        Parcel created = service.create(parcel);
         return ResponseEntity.ok(created);
     }
 
@@ -64,4 +92,5 @@ public class AdminParcelController {
         Parcel updated = service.changeStatus(id, status);
         return ResponseEntity.ok(updated);
     }
+
 }

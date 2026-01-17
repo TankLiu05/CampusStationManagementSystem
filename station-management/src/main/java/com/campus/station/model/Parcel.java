@@ -28,17 +28,9 @@ public class Parcel {
     @Column(name = "receiver_phone", length = 20)
     private String receiverPhone;
 
-    /**
-     * 快递状态
-     * 0: 待发货, 1: 已发货, 2: 已入库, 3: 退回/异常
-     */
     @Column(name = "status")
     private Integer status = 0;
 
-    /**
-     * 是否签收
-     * 0: 未签收, 1: 已签收
-     */
     @Column(name = "is_signed")
     private Integer isSigned = 0;
 
