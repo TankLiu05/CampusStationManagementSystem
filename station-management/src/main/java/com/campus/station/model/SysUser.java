@@ -29,10 +29,10 @@ public class SysUser {
     private String avatar;
 
     @Column(name = "role", nullable = false, length = 50)
-    private String role = "USER";
+    private String role;
 
     @Column(name = "status", nullable = false)
-    private Byte status = 1;
+    private Byte status;
 
     @CreationTimestamp
     @Column(name = "create_time", nullable = false, updatable = false)

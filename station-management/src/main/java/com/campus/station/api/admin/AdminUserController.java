@@ -59,45 +59,24 @@ public class AdminUserController {
         return ResponseEntity.ok(result);
     }
 
-    @PostMapping
-    @Operation(summary = "管理员创建用户")
-    public ResponseEntity<?> create(@RequestBody SysUser req) {
-        requireAdmin();
-        if (req.getRole() == null || req.getRole().isBlank()) {
-            req.setRole("USER");
-        }
-        if (req.getStatus() == null) {
-            req.setStatus((byte) 1);
-        }
-
-        try {
-            SysUser created = service.create(req);
-            return ResponseEntity.ok(created);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(409).body(ex.getMessage());
-        }
-    }
-
-    @PutMapping("/{id}")
-    @Operation(summary = "管理员修改用户信息")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody SysUser req) {
-        requireAdmin();
-        try {
-            SysUser updated = service.update(id, req);
-            parcelService.updateReceiverInfo(updated.getId(), updated.getUsername(), updated.getPhone());
-            noticeService.updateCreatorNameByUser(updated.getId(), updated.getUsername());
-            return ResponseEntity.ok(updated);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(409).body(ex.getMessage());
-        }
-    }
-
     @PostMapping("/{id}/status")
     @Operation(summary = "管理员修改用户状态")
     public ResponseEntity<?> changeStatus(@PathVariable Long id, @RequestParam byte status) {
         requireAdmin();
         SysUser updated = service.changeStatus(id, status);
         return ResponseEntity.ok(updated);
+    }
+
+    @PostMapping("/{id}/password")
+    @Operation(summary = "管理员重置用户密码")
+    public ResponseEntity<?> resetPassword(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        requireAdmin();
+        String newPassword = body.get("newPassword");
+        if (newPassword == null || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body("新密码不能为空");
+        }
+        service.updatePassword(id, newPassword);
+        return ResponseEntity.ok("密码重置成功");
     }
 
     @DeleteMapping("/{id}")
