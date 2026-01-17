@@ -90,6 +90,12 @@ public class ParcelServiceImpl implements ParcelService {
 
     @Override
     @Transactional
+    public void deleteBatch(Iterable<Long> ids) {
+        repository.deleteAllById(ids);
+    }
+
+    @Override
+    @Transactional
     public Parcel changeStatus(Long id, Integer status) {
         Parcel existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("快递不存在"));
