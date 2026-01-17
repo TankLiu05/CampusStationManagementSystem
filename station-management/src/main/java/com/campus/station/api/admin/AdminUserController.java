@@ -60,6 +60,26 @@ public class AdminUserController {
         return ResponseEntity.ok(views);
     }
 
+    @GetMapping("/byUsername")
+    @Operation(summary = "根据用户名查询用户")
+    public ResponseEntity<?> getByUsername(@RequestParam String username) {
+        requireAdmin();
+        return service.getByUsername(username)
+                .map(AdminUserController::toView)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在"));
+    }
+
+    @GetMapping("/byPhone")
+    @Operation(summary = "根据手机号查询用户")
+    public ResponseEntity<?> getByPhone(@RequestParam String phone) {
+        requireAdmin();
+        return service.getByPhone(phone)
+                .map(AdminUserController::toView)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在"));
+    }
+
     @PostMapping("/{id}/status")
     @Operation(summary = "管理员修改用户状态")
     public ResponseEntity<?> changeStatus(@PathVariable Long id, @RequestParam byte status) {
