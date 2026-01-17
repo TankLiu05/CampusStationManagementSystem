@@ -246,7 +246,7 @@ function transformParcel(parcel: Parcel): Package {
     trackingNumber: parcel.trackingNumber,
     location: parcel.location || '校园驿站',
     arrivalTime: new Date(parcel.createTime).toLocaleString('zh-CN'),
-    canPickup: parcel.isSigned === 0 && parcel.status === 2,
+    canPickup: parcel.isSigned === 0 && parcel.status === 2 && !!(parcel.location && parcel.pickupCode),
     rawData: parcel
   }
 }

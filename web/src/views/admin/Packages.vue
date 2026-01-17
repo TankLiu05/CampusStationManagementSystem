@@ -86,7 +86,7 @@
       <table>
         <thead>
           <tr>
-            <th>
+            <th v-if="showCheckboxes">
               <input
                 type="checkbox"
                 :checked="packageList.length > 0 && selectedIds.length === packageList.length"
@@ -107,10 +107,10 @@
         </thead>
         <tbody>
           <tr v-if="packageList.length === 0">
-            <td colspan="11" class="empty-row">暂无包裹数据</td>
+            <td :colspan="showCheckboxes ? 11 : 10" class="empty-row">暂无包裹数据</td>
           </tr>
           <tr v-for="pkg in packageList" :key="pkg.id">
-            <td>
+            <td v-if="showCheckboxes">
               <input type="checkbox" v-model="selectedIds" :value="pkg.id">
             </td>
             <td>{{ pkg.id }}</td>
@@ -320,6 +320,7 @@ const showEditPackage = ref(false)
 const showPackageDetail = ref(false)
 const currentPackage = ref<Package | null>(null)
 const editingPackageId = ref<number | null>(null)
+const showCheckboxes = ref(false) // 控制勾选框显示状态
 
 // 统计数据
 const stats = reactive({
@@ -444,6 +445,14 @@ const toggleSelectAll = (checked: boolean) => {
 }
 
 const batchDelete = async () => {
+  // 如果勾选框未显示，则显示勾选框并提示用户选择
+  if (!showCheckboxes.value) {
+    showCheckboxes.value = true
+    alert('请勾选要删除的包裹，然后再次点击批量删除按钮')
+    return
+  }
+  
+  // 如果已显示勾选框但未选择任何包裹
   if (selectedIds.value.length === 0) {
     alert('请先勾选要删除的包裹')
     return
@@ -457,6 +466,7 @@ const batchDelete = async () => {
     await parcelApi.deleteBatch(selectedIds.value)
     alert('批量删除成功')
     selectedIds.value = []
+    showCheckboxes.value = false // 删除成功后隐藏勾选框
     loadPackages()
   } catch (error) {
     console.error('批量删除包裹失败:', error)
@@ -471,6 +481,8 @@ const resetFilters = () => {
   endDate.value = ''
   searchKeyword.value = '' // 清空搜索关键词
   currentPage.value = 1
+  showCheckboxes.value = false // 重置时隐藏勾选框
+  selectedIds.value = [] // 清空已选择的项
   loadPackages() // 重新加载完整列表
 }
 
@@ -1202,7 +1214,7 @@ td {
 
 .detail-item .value {
   color: #333;
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 500;
 }
 
