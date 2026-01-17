@@ -28,9 +28,10 @@
     <div class="filter-section">
       <select v-model="statusFilter" class="filter-select">
         <option value="">全部状态</option>
-        <option value="PENDING">待取件</option>
-        <option value="PICKED">已取件</option>
-        <option value="EXPIRED">已过期</option>
+        <option value="0">待发货</option>
+        <option value="1">已发货</option>
+        <option value="2">已入库</option>
+        <option value="3">退回/异常</option>
       </select>
       <select v-model="companyFilter" class="filter-select">
         <option value="">全部快递公司</option>
@@ -49,33 +50,33 @@
     <!-- 统计卡片 -->
     <div class="stats-cards">
       <div class="stat-card">
-        <img src="@/assets/icons/2.png" alt="待取包裹" class="stat-icon" />
+        <img src="@/assets/icons/2.png" alt="待发货" class="stat-icon" />
         <div class="stat-content">
-          <div class="stat-value">{{ stats.pending }}</div>
-          <div class="stat-label">待取包裹</div>
+          <div class="stat-value">{{ stats.pendingShip }}</div>
+          <div class="stat-label">待发货</div>
         </div>
       </div>
       <div class="stat-card">
-        <img src="@/assets/icons/3.png" alt="今日取件" class="stat-icon" />
+        <img src="@/assets/icons/3.png" alt="运输中" class="stat-icon" />
         <div class="stat-content">
-          <div class="stat-value">{{ stats.todayPicked }}</div>
-          <div class="stat-label">今日取件</div>
+          <div class="stat-value">{{ stats.shipping }}</div>
+          <div class="stat-label">运输中</div>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">
-            <img src="@/assets/icons/9.png" alt="即将过期" class="stat-icon" />
+            <img src="@/assets/icons/9.png" alt="已入库" class="stat-icon" />
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ stats.expiringSoon }}</div>
-          <div class="stat-label">即将过期</div>
+          <div class="stat-value">{{ stats.stored }}</div>
+          <div class="stat-label">已入库</div>
         </div>
       </div>
       <div class="stat-card">
-        <img src="@/assets/icons/6.png" alt="统计" class="stat-icon" />
+        <img src="@/assets/icons/6.png" alt="异常" class="stat-icon" />
         <div class="stat-content">
-          <div class="stat-value">{{ total }}</div>
-          <div class="stat-label">累计包裹</div>
+          <div class="stat-value">{{ stats.abnormal }}</div>
+          <div class="stat-label">异常包裹</div>
         </div>
       </div>
     </div>
@@ -121,6 +122,15 @@
               <div class="action-btns">
                 <button class="btn-view" @click="viewPackage(pkg)">详情</button>
                 <button class="btn-edit" @click="editPackage(pkg)">编辑</button>
+                <button 
+                  v-if="pkg.status === 'PENDING_SHIP'" 
+                  class="btn-ship" 
+                  @click="shipPackage(pkg.id)">发货</button>
+                <button 
+                  v-if="pkg.status === 'SHIPPED'" 
+                  class="btn-store" 
+                  @click="storePackage(pkg.id)">入库</button>
+                <button class="btn-status" @click="changePackageStatus(pkg)">改状态</button>
                 <button class="btn-delete" @click="deletePackage(pkg.id)">删除</button>
               </div>
             </td>
@@ -164,12 +174,12 @@
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>收件人 *</label>
-              <input type="text" v-model="packageForm.receiverName" placeholder="请输入收件人姓名">
+              <label>收件人</label>
+              <input type="text" v-model="packageForm.receiverName" placeholder="可选，不填则使用用户名">
             </div>
             <div class="form-group">
               <label>手机号 *</label>
-              <input type="tel" v-model="packageForm.receiverPhone" placeholder="请输入手机号">
+              <input type="tel" v-model="packageForm.receiverPhone" placeholder="通过手机号查找收件人">
             </div>
           </div>
           <div class="form-row">
@@ -265,7 +275,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import { parcelApi, type Parcel, type ParcelRequest } from '@/api/admin/parcel'
+import { parcelApi, type Parcel, type ParcelCreateRequest, type ParcelUpdateRequest } from '@/api/admin/parcel'
 
 interface Package {
   id: number
@@ -275,7 +285,9 @@ interface Package {
   receiverPhone: string
   location: string
   pickupCode: string
-  status: string
+  status: string // 前端状态：PENDING_SHIP, SHIPPED, STORED, RETURNED
+  backendStatus: number // 后端状态：0-待发货, 1-已发货, 2-已入库, 3-退回/异常
+  isSigned: number // 0-未签收, 1-已签收
   arrivalTime: string
   remark?: string
 }
@@ -309,10 +321,10 @@ const editingPackageId = ref<number | null>(null)
 
 // 统计数据
 const stats = reactive({
-  pending: 0,
-  todayPicked: 0,
-  expiringSoon: 0,
-  total: 0
+  pendingShip: 0, // 待发货
+  shipping: 0, // 运输中
+  stored: 0, // 已入库
+  abnormal: 0 // 异常包裹
 })
 
 const packageForm = reactive<PackageForm>({
@@ -325,20 +337,24 @@ const packageForm = reactive<PackageForm>({
   remark: ''
 })
 
-// 后端状态映射到前端状态
-const mapBackendStatusToUI = (status: number, isSigned: number): string => {
-  if (isSigned === 1) return 'PICKED' // 已签收
-  if (status === 3) return 'EXPIRED' // 退回/异常
-  if (status === 2) return 'PENDING' // 已入库待取件
-  return 'PENDING'
+// 后端状态映射到前端状态（物流场景）
+const mapBackendStatusToUI = (status: number): string => {
+  switch (status) {
+    case 0: return 'PENDING_SHIP' // 待发货
+    case 1: return 'SHIPPED' // 已发货/运输中
+    case 2: return 'STORED' // 已入库
+    case 3: return 'RETURNED' // 退回/异常
+    default: return 'PENDING_SHIP'
+  }
 }
 
 // 前端状态映射到后端状态
 const mapUIStatusToBackend = (uiStatus: string): number => {
   switch (uiStatus) {
-    case 'PICKED': return 2 // 已入库
-    case 'EXPIRED': return 3 // 退回/异常
-    case 'PENDING': return 2 // 已入库
+    case 'PENDING_SHIP': return 0 // 待发货
+    case 'SHIPPED': return 1 // 已发货
+    case 'STORED': return 2 // 已入库
+    case 'RETURNED': return 3 // 退回/异常
     default: return 0
   }
 }
@@ -353,7 +369,9 @@ const convertBackendToUI = (parcel: Parcel): Package => {
     receiverPhone: parcel.receiverPhone,
     location: '', // 后端暂无此字段
     pickupCode: '', // 后端暂无此字段
-    status: mapBackendStatusToUI(parcel.status, parcel.isSigned),
+    status: mapBackendStatusToUI(parcel.status),
+    backendStatus: parcel.status,
+    isSigned: parcel.isSigned,
     arrivalTime: new Date(parcel.createTime).toLocaleString('zh-CN'),
     remark: ''
   }
@@ -375,27 +393,20 @@ const loadPackages = async () => {
   }
 }
 
-// 更新统计数据
+// 更新统计数据（物流场景）
 const updateStats = (parcels: Parcel[]) => {
-  stats.total = parcels.length
-  stats.pending = parcels.filter(p => p.isSigned === 0 && p.status === 2).length
-  stats.todayPicked = parcels.filter(p => {
-    const today = new Date().toDateString()
-    return p.isSigned === 1 && new Date(p.updateTime).toDateString() === today
-  }).length
-  // 即将过期：假设超过3天未取为即将过期
-  stats.expiringSoon = parcels.filter(p => {
-    if (p.isSigned === 1) return false
-    const daysDiff = (Date.now() - new Date(p.createTime).getTime()) / (1000 * 60 * 60 * 24)
-    return daysDiff >= 3
-  }).length
+  stats.pendingShip = parcels.filter(p => p.status === 0).length // 待发货
+  stats.shipping = parcels.filter(p => p.status === 1).length // 运输中
+  stats.stored = parcels.filter(p => p.status === 2 && p.isSigned === 0).length // 已入库未签收
+  stats.abnormal = parcels.filter(p => p.status === 3).length // 异常包裹
 }
 
 const getStatusLabel = (status?: string) => {
   const labels: Record<string, string> = {
-    'PENDING': '待取件',
-    'PICKED': '已取件',
-    'EXPIRED': '已过期'
+    'PENDING_SHIP': '待发货',
+    'SHIPPED': '运输中',
+    'STORED': '已入库',
+    'RETURNED': '退回/异常'
   }
   return labels[status || ''] || '未知'
 }
@@ -470,26 +481,33 @@ const deletePackage = async (id: number) => {
 const submitPackage = async () => {
   // 表单验证
   if (!packageForm.trackingNumber || !packageForm.company || 
-      !packageForm.receiverName || !packageForm.receiverPhone) {
-    alert('请填写所有必填项')
+      !packageForm.receiverPhone) {
+    alert('请填写快递单号、快递公司和收件人手机号')
     return
   }
   
   try {
-    const data: ParcelRequest = {
-      trackingNumber: packageForm.trackingNumber,
-      company: packageForm.company,
-      receiverName: packageForm.receiverName,
-      receiverPhone: packageForm.receiverPhone
-    }
-    
     if (showEditPackage.value && editingPackageId.value) {
       // 更新包裹
-      await parcelApi.update(editingPackageId.value, data)
+      const updateData: ParcelUpdateRequest = {
+        trackingNumber: packageForm.trackingNumber,
+        company: packageForm.company,
+        receiverName: packageForm.receiverName || undefined,
+        receiverPhone: packageForm.receiverPhone || undefined
+      }
+      await parcelApi.update(editingPackageId.value, updateData)
       alert('更新成功')
     } else {
-      // 创建包裹
-      await parcelApi.create(data)
+      // 创建包裹 - 使用手机号查找用户
+      const createData: ParcelCreateRequest = {
+        trackingNumber: packageForm.trackingNumber,
+        company: packageForm.company,
+        receiverPhone: packageForm.receiverPhone, // 通过手机号查找用户
+        receiverName: packageForm.receiverName || undefined, // 可选，如果不填则使用用户的username
+        status: 0, // 默认状态：待发货
+        isSigned: 0 // 默认未签收
+      }
+      await parcelApi.create(createData)
       alert('创建成功')
     }
     
@@ -497,7 +515,7 @@ const submitPackage = async () => {
     loadPackages()
   } catch (error) {
     console.error('提交包裹失败:', error)
-    alert('提交包裹失败，请重试')
+    alert('提交包裹失败，请检查收件人信息是否正确')
   }
 }
 
@@ -514,6 +532,75 @@ const closeModal = () => {
     pickupCode: '',
     remark: ''
   })
+}
+
+// 发货功能：将包裹状态从“待发货”改为“运输中”
+const shipPackage = async (id: number) => {
+  if (!confirm('确定要将该包裹标记为已发货吗？')) {
+    return
+  }
+  
+  try {
+    await parcelApi.changeStatus(id, 1) // 状态改为1：已发货/运输中
+    alert('发货成功')
+    loadPackages()
+  } catch (error) {
+    console.error('发货失败:', error)
+    alert('发货失败，请重试')
+  }
+}
+
+// 入库功能：将包裹状态从“运输中”改为“已入库”
+const storePackage = async (id: number) => {
+  if (!confirm('确定该包裹已到达驿站并入库吗？')) {
+    return
+  }
+  
+  try {
+    await parcelApi.changeStatus(id, 2) // 状态改为2：已入库
+    alert('入库成功')
+    loadPackages()
+  } catch (error) {
+    console.error('入库失败:', error)
+    alert('入库失败，请重试')
+  }
+}
+
+// 更改包裹状态：手动选择状态
+const changePackageStatus = async (pkg: Package) => {
+  const statusOptions = [
+    { value: 0, label: '待发货' },
+    { value: 1, label: '运输中' },
+    { value: 2, label: '已入库' },
+    { value: 3, label: '退回/异常' }
+  ]
+  
+  const currentStatus = statusOptions.find(s => s.value === pkg.backendStatus)
+  const message = `当前状态：${currentStatus?.label}
+
+请选择新状态：
+0 - 待发货
+1 - 运输中
+2 - 已入库
+3 - 退回/异常`
+  
+  const input = prompt(message)
+  if (input === null) return // 用户取消
+  
+  const newStatus = parseInt(input)
+  if (isNaN(newStatus) || newStatus < 0 || newStatus > 3) {
+    alert('无效的状态值，请输入0-3的数字')
+    return
+  }
+  
+  try {
+    await parcelApi.changeStatus(pkg.id, newStatus)
+    alert('状态修改成功')
+    loadPackages()
+  } catch (error) {
+    console.error('修改状态失败:', error)
+    alert('修改状态失败，请重试')
+  }
 }
 
 // 监听分页变化
@@ -753,17 +840,22 @@ td {
   font-weight: 500;
 }
 
-.status-badge.PENDING {
+.status-badge.PENDING_SHIP {
   background: #fff7e6;
   color: #fa8c16;
 }
 
-.status-badge.PICKED {
+.status-badge.SHIPPED {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.status-badge.STORED {
   background: #f6ffed;
   color: #52c41a;
 }
 
-.status-badge.EXPIRED {
+.status-badge.RETURNED {
   background: #fff1f0;
   color: #f5222d;
 }
@@ -775,6 +867,9 @@ td {
 
 .btn-view,
 .btn-edit,
+.btn-ship,
+.btn-store,
+.btn-status,
 .btn-delete {
   padding: 6px 12px;
   border-radius: 4px;
@@ -814,6 +909,39 @@ td {
 
 .btn-delete:hover {
   background: #f5222d;
+  color: white;
+}
+
+.btn-ship {
+  background: white;
+  color: #52c41a;
+  border: 1px solid #52c41a;
+}
+
+.btn-ship:hover {
+  background: #52c41a;
+  color: white;
+}
+
+.btn-store {
+  background: white;
+  color: #13c2c2;
+  border: 1px solid #13c2c2;
+}
+
+.btn-store:hover {
+  background: #13c2c2;
+  color: white;
+}
+
+.btn-status {
+  background: white;
+  color: #722ed1;
+  border: 1px solid #722ed1;
+}
+
+.btn-status:hover {
+  background: #722ed1;
   color: white;
 }
 
