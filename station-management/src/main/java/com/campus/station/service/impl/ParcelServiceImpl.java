@@ -66,6 +66,12 @@ public class ParcelServiceImpl implements ParcelService {
         if (update.getReceiverPhone() != null) {
             existing.setReceiverPhone(update.getReceiverPhone());
         }
+        if (update.getLocation() != null) {
+            existing.setLocation(update.getLocation());
+        }
+        if (update.getPickupCode() != null) {
+            existing.setPickupCode(update.getPickupCode());
+        }
         if (update.getStatus() != null) {
             existing.setStatus(update.getStatus());
         }
@@ -114,5 +120,10 @@ public class ParcelServiceImpl implements ParcelService {
     @Override
     public Page<Parcel> listByReceiverAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable) {
         return repository.findByReceiverIdAndIsSigned(receiverId, isSigned, pageable);
+    }
+
+    @Override
+    public Optional<Parcel> findActiveByPickupCode(String pickupCode) {
+        return repository.findByPickupCodeAndIsSigned(pickupCode, 0);
     }
 }

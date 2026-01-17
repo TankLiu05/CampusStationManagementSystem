@@ -2,7 +2,6 @@ package com.campus.station.api.user;
 
 import com.campus.station.common.SessionUtil;
 import com.campus.station.model.Parcel;
-import com.campus.station.service.ParcelStorageService;
 import com.campus.station.service.ParcelService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,11 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserParcelSignController {
 
     private final ParcelService service;
-    private final ParcelStorageService storageService;
 
-    public UserParcelSignController(ParcelService service, ParcelStorageService storageService) {
+    public UserParcelSignController(ParcelService service) {
         this.service = service;
-        this.storageService = storageService;
     }
 
     @PostMapping("/{id}/sign")
@@ -43,10 +40,12 @@ public class UserParcelSignController {
                     if (parcel.getReceiverId() != null && !parcel.getReceiverId().equals(currentUserId)) {
                         return ResponseEntity.status(403).body("无权操作此快递");
                     }
+                    if (parcel.getStatus() == null || parcel.getStatus() != 2) {
+                        return ResponseEntity.status(400).body("快递未入库，不能签收");
+                    }
                     if (parcel.getIsSigned() != null && parcel.getIsSigned() == 1) {
                         return ResponseEntity.status(400).body("快递已签收，无法再次修改");
                     }
-                    storageService.markSignedByParcelId(id);
                     Parcel updated = service.markSigned(id);
                     return ResponseEntity.ok((Object) updated);
                 })
