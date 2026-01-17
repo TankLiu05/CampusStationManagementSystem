@@ -148,8 +148,8 @@ const copyCode = (code: string) => {
 }
 
 .code-card:hover {
-  border-color: #10b981;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+  border-color: #666;
+  box-shadow: 0 4px 12px rgba(102, 102, 102, 0.15);
 }
 
 .code-header {
@@ -181,7 +181,7 @@ const copyCode = (code: string) => {
   justify-content: space-between;
   margin-bottom: 16px;
   padding: 20px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #666 0%, #555 100%);
   border-radius: 10px;
 }
 
@@ -269,9 +269,9 @@ const copyCode = (code: string) => {
 }
 
 .guide-number {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  width: 25px;
+  height: 25px;
+  background: linear-gradient(135deg, #666 0%, #555 100%);
   color: white;
   border-radius: 50%;
   display: flex;

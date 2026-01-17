@@ -25,7 +25,7 @@
           <img src="@/assets/icons/4.png" alt="公告通知" class="card-icon" />
           <h3>公告通知</h3>
           <p>最新公告信息</p>
-          <div class="card-count">0 条</div>
+          <div class="card-count">{{ noticeCount }} 条</div>
         </div>
 
         <div class="card">
@@ -52,9 +52,11 @@ import { useRouter } from 'vue-router'
 import { getCurrentUser, logout } from '@/api/sysUser'
 import type { SysUser } from '@/api/sysUser'
 import UserLayout from '@/layouts/UserLayout.vue'
+import { listNotices } from '@/api/user/notice'
 
 const router = useRouter()
 const currentUser = ref<SysUser | null>(null)
+const noticeCount = ref(0)
 
 onMounted(async () => {
   try {
@@ -65,11 +67,25 @@ onMounted(async () => {
       router.replace('/admin/home')
       return
     }
+    
+    // 加载公告数量
+    loadNoticeCount()
   } catch (err) {
     console.error('获取用户信息失败:', err)
     router.replace('/login')
   }
 })
+
+// 加载公告数量
+const loadNoticeCount = async () => {
+  try {
+    const response = await listNotices(0, 1)
+    noticeCount.value = response.totalElements
+  } catch (error) {
+    console.error('加载公告数量失败:', error)
+    noticeCount.value = 0
+  }
+}
 </script>
 
 <style scoped>
@@ -134,7 +150,7 @@ onMounted(async () => {
 .card-count {
   font-size: 24px;
   font-weight: 700;
-  color: #10b981;
+  color: #666;
 }
 
 /* 最近包裹 */

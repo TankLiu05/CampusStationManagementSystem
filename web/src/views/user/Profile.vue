@@ -144,32 +144,6 @@
         </div>
       </div>
 
-      <!-- 数据统计 -->
-      <div class="stats-card">
-        <div class="card-header">
-          <h2>使用统计</h2>
-        </div>
-        <div class="card-body">
-          <div class="stats-grid">
-            <div class="stat-item">
-              <div class="stat-value">0</div>
-              <div class="stat-label">累计包裹</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">0</div>
-              <div class="stat-label">待取包裹</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">0</div>
-              <div class="stat-label">已取包裹</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-value">0天</div>
-              <div class="stat-label">平均时长</div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- 修改密码弹窗 -->
@@ -305,8 +279,7 @@ const changePassword = () => {
 }
 
 .info-card,
-.security-card,
-.stats-card {
+.security-card {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -486,33 +459,8 @@ const changePassword = () => {
 }
 
 .action-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-
-.stat-item {
-  text-align: center;
-  padding: 20px;
-  background: #f5f7fa;
-  border-radius: 10px;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #10b981;
-  margin-bottom: 8px;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #999;
+  border-color: #666;
+  color: #666;
 }
 
 /* 弹窗样式 */
@@ -617,22 +565,18 @@ const changePassword = () => {
 }
 
 .btn-submit {
-  background: #10b981;
+  background: #666;
   color: white;
   border: none;
 }
 
 .btn-submit:hover {
-  background: #059669;
+  background: #555;
 }
 
 @media (max-width: 768px) {
   .info-grid {
     grid-template-columns: 1fr;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

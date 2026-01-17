@@ -295,9 +295,9 @@ onMounted(() => {
 }
 
 .tab-btn.active {
-  background: #10b981;
+  background: #666;
   color: white;
-  border-color: #10b981;
+  border-color: #666;
 }
 
 .tab-count {
@@ -326,7 +326,7 @@ onMounted(() => {
 
 .search-btn {
   padding: 10px 24px;
-  background: #10b981;
+  background: #666;
   color: white;
   border: none;
   border-radius: 8px;
@@ -336,7 +336,7 @@ onMounted(() => {
 }
 
 .search-btn:hover {
-  background: #059669;
+  background: #555;
 }
 
 .packages-list {
@@ -477,17 +477,17 @@ onMounted(() => {
 }
 
 .action-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #666;
+  color: #666;
 }
 
 .action-btn.primary {
-  background: #10b981;
+  background: #666;
   color: white;
-  border-color: #10b981;
+  border-color: #666;
 }
 
 .action-btn.primary:hover {
-  background: #059669;
+  background: #555;
 }
 </style>

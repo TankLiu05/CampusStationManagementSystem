@@ -45,18 +45,17 @@
 
         <div class="card-footer">
           <div class="footer-left">
-            <span class="info-item">👁️ {{ item.views }} 次查看</span>
-            <span class="info-item">👤 {{ item.author }}</span>
-            <span class="info-item">🕐 {{ item.publishTime }}</span>
+            <span class="info-item">作者：{{ item.author }}</span>
+            <span class="info-item">发布时间：{{ item.publishTime }}</span>
           </div>
         </div>
       </div>
 
       <!-- 分页 -->
       <div class="pagination" v-if="announcementList.length > 0">
-        <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">上一页</button>
+        <button class="page-btn" :disabled="currentPage === 1" @click="prevPage">上一页</button>
         <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">下一页</button>
+        <button class="page-btn" :disabled="currentPage === totalPages" @click="nextPage">下一页</button>
       </div>
     </div>
 
@@ -127,8 +126,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { 
+  listNotices, 
+  createNotice, 
+  updateNotice, 
+  deleteNotice,
+  type Notice 
+} from '@/api/admin/notice'
 
 interface Announcement {
   id: number
@@ -137,12 +143,12 @@ interface Announcement {
   title: string
   content: string
   status: string
-  views: number
   author: string
   publishTime: string
 }
 
 interface AnnouncementForm {
+  id?: number
   type: string
   title: string
   content: string
@@ -150,8 +156,10 @@ interface AnnouncementForm {
 }
 
 const currentPage = ref(1)
+const pageSize = ref(10)
 const totalPages = ref(1)
 const activeMenuId = ref<number | null>(null)
+const loading = ref(false)
 
 const announcementList = ref<Announcement[]>([])
 const showAddAnnouncement = ref(false)
@@ -164,52 +172,170 @@ const announcementForm = reactive<AnnouncementForm>({
   status: 'PUBLISHED'
 })
 
-// TODO: 从后端获取公告列表
+// 格式化日期时间
+const formatDateTime = (dateStr: string) => {
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
+// 获取公告类型标签
+const getTypeLabel = (type: string) => {
+  const typeMap: Record<string, string> = {
+    'important': '重要公告',
+    'notice': '通知公告',
+    'system': '系统公告'
+  }
+  return typeMap[type] || '通知公告'
+}
+
+// 根据标题推测类型
+const getTypeFromTitle = (title: string) => {
+  if (title.includes('重要') || title.includes('紧急')) return 'important'
+  if (title.includes('系统')) return 'system'
+  return 'notice'
+}
+
+// 加载公告列表
+const loadAnnouncements = async () => {
+  loading.value = true
+  try {
+    const response = await listNotices(currentPage.value - 1, pageSize.value)
+    
+    // 转换后端数据为前端格式
+    announcementList.value = response.content.map((notice: Notice) => {
+      const type = getTypeFromTitle(notice.title)
+      return {
+        id: notice.id!,
+        type,
+        typeLabel: getTypeLabel(type),
+        title: notice.title,
+        content: notice.content,
+        status: 'PUBLISHED', // 后端暂无状态字段，默认已发布
+        author: notice.creatorName || '管理员',
+        publishTime: formatDateTime(notice.createTime!)
+      }
+    })
+    
+    totalPages.value = response.totalPages
+  } catch (error) {
+    console.error('加载公告列表失败:', error)
+    alert('加载公告列表失败，请稍后重试')
+    announcementList.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// 上一页
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    loadAnnouncements()
+  }
+}
+
+// 下一页
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    loadAnnouncements()
+  }
+}
 
 const toggleMenu = (id: number) => {
   activeMenuId.value = activeMenuId.value === id ? null : id
 }
 
 const editAnnouncement = (item: Announcement) => {
-  Object.assign(announcementForm, item)
+  announcementForm.id = item.id
+  announcementForm.type = item.type
+  announcementForm.title = item.title
+  announcementForm.content = item.content
+  announcementForm.status = item.status
   showEditAnnouncement.value = true
   activeMenuId.value = null
 }
 
 const toggleStatus = (item: Announcement) => {
   console.log('切换发布状态:', item)
-  // TODO: 调用API切换状态
+  // TODO: 后端暂不支持状态切换，需要后续扩展
+  alert('状态切换功能暂未实现')
   activeMenuId.value = null
 }
 
-const deleteAnnouncement = (id: number) => {
-  if (confirm('确定要删除该公告吗？')) {
-    console.log('删除公告:', id)
-    // TODO: 调用API删除公告
+const deleteAnnouncement = async (id: number) => {
+  if (!confirm('确定要删除该公告吗？')) {
+    activeMenuId.value = null
+    return
+  }
+  
+  try {
+    await deleteNotice(id)
+    alert('删除成功')
+    // 如果当前页删除后为空且不是第一页，返回上一页
+    if (announcementList.value.length === 1 && currentPage.value > 1) {
+      currentPage.value--
+    }
+    await loadAnnouncements()
+  } catch (error) {
+    console.error('删除公告失败:', error)
+    alert('删除失败，请稍后重试')
   }
   activeMenuId.value = null
 }
 
-const submitAnnouncement = () => {
+const submitAnnouncement = async () => {
   if (!announcementForm.type || !announcementForm.title || !announcementForm.content) {
     alert('请填写完整信息')
     return
   }
-  console.log('提交公告:', announcementForm)
-  // TODO: 调用API保存公告
-  closeModal()
+  
+  try {
+    const noticeData: Notice = {
+      title: announcementForm.title,
+      content: announcementForm.content
+    }
+    
+    if (showEditAnnouncement.value && announcementForm.id) {
+      // 编辑模式
+      await updateNotice(announcementForm.id, noticeData)
+      alert('更新成功')
+    } else {
+      // 新增模式
+      await createNotice(noticeData)
+      alert('创建成功')
+      currentPage.value = 1 // 跳转到第一页
+    }
+    
+    closeModal()
+    await loadAnnouncements()
+  } catch (error) {
+    console.error('提交公告失败:', error)
+    alert('操作失败，请稍后重试')
+  }
 }
 
 const closeModal = () => {
   showAddAnnouncement.value = false
   showEditAnnouncement.value = false
   Object.assign(announcementForm, {
+    id: undefined,
     type: '',
     title: '',
     content: '',
     status: 'PUBLISHED'
   })
 }
+
+// 页面加载时获取公告列表
+onMounted(() => {
+  loadAnnouncements()
+})
 </script>
 
 <style scoped>

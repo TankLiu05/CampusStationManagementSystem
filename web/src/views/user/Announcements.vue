@@ -8,7 +8,7 @@
 
     <!-- 重要公告 -->
     <div class="important-section" v-if="importantAnnouncements.length > 0">
-      <h2>📌 重要公告</h2>
+      <h2>重要公告</h2>
       <div class="announcement-card important" v-for="item in importantAnnouncements" :key="item.id">
         <div class="card-header">
           <div class="header-left">
@@ -48,7 +48,6 @@
             <p>{{ item.content }}</p>
           </div>
           <div class="card-footer">
-            <span class="views">👁️ {{ item.views }} 次查看</span>
             <button class="detail-btn" @click="viewDetail(item.id)">查看详情</button>
           </div>
         </div>
@@ -56,9 +55,9 @@
 
       <!-- 分页 -->
       <div class="pagination" v-if="normalAnnouncements.length > 0">
-        <button class="page-btn" :disabled="currentPage === 1">上一页</button>
+        <button class="page-btn" :disabled="currentPage === 1" @click="prevPage">上一页</button>
         <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <button class="page-btn" :disabled="currentPage === totalPages">下一页</button>
+        <button class="page-btn" :disabled="currentPage === totalPages" @click="nextPage">下一页</button>
       </div>
     </div>
     </div>
@@ -66,31 +65,132 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
+import { listNotices, getNoticeById, type Notice } from '@/api/user/notice'
 
 interface Announcement {
-  id: string
+  id: number
   title: string
   content: string
   type: string
   typeLabel: string
   publishTime: string
-  views: number
   isImportant: boolean
 }
 
-const importantAnnouncements = ref<Announcement[]>([])
-const normalAnnouncements = ref<Announcement[]>([])
+const announcements = ref<Announcement[]>([])
 const currentPage = ref(1)
+const pageSize = ref(10)
 const totalPages = ref(1)
+const loading = ref(false)
 
-// TODO: 从后端获取公告数据
+// 计算属性：重要公告
+const importantAnnouncements = computed(() => 
+  announcements.value.filter(item => item.isImportant)
+)
 
-const viewDetail = (id: string) => {
-  console.log('查看公告详情:', id)
-  // TODO: 实现公告详情查看功能
+// 计算属性：普通公告
+const normalAnnouncements = computed(() => 
+  announcements.value.filter(item => !item.isImportant)
+)
+
+// 格式化日期时间
+const formatDateTime = (dateStr: string) => {
+  const date = new Date(dateStr)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
 }
+
+// 判断是否为重要公告（根据标题关键词）
+const isImportantNotice = (title: string) => {
+  const keywords = ['重要', '紧急', '必读', '通知']
+  return keywords.some(keyword => title.includes(keyword))
+}
+
+// 获取公告类型标签
+const getTypeLabel = (title: string) => {
+  if (title.includes('重要') || title.includes('紧急')) return '重要'
+  if (title.includes('系统')) return '系统'
+  return '通知'
+}
+
+// 获取公告类型
+const getType = (title: string) => {
+  if (title.includes('重要') || title.includes('紧急')) return 'important'
+  if (title.includes('系统')) return 'system'
+  return 'notice'
+}
+
+// 加载公告列表
+const loadAnnouncements = async () => {
+  loading.value = true
+  try {
+    const response = await listNotices(currentPage.value - 1, pageSize.value)
+    
+    // 转换后端数据为前端格式
+    announcements.value = response.content.map((notice: Notice) => ({
+      id: notice.id,
+      title: notice.title,
+      content: notice.content,
+      type: getType(notice.title),
+      typeLabel: getTypeLabel(notice.title),
+      publishTime: formatDateTime(notice.createTime),
+      isImportant: isImportantNotice(notice.title)
+    }))
+    
+    totalPages.value = response.totalPages
+  } catch (error) {
+    console.error('加载公告列表失败:', error)
+    announcements.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// 上一页
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    loadAnnouncements()
+  }
+}
+
+// 下一页
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    loadAnnouncements()
+  }
+}
+
+// 查看详情
+const viewDetail = async (id: number) => {
+  try {
+    const notice = await getNoticeById(id)
+    // TODO: 可以使用更好的弹窗组件来显示详情
+    console.log('公告详情:', notice)
+    alert(`公告详情
+
+标题：${notice.title}
+
+内容：${notice.content}
+
+发布时间：${formatDateTime(notice.createTime)}`)
+  } catch (error) {
+    console.error('查看公告详情失败:', error)
+    alert('查看详情失败，请稍后重试')
+  }
+}
+
+// 页面加载时获取公告列表
+onMounted(() => {
+  loadAnnouncements()
+})
 </script>
 
 <style scoped>
@@ -135,14 +235,8 @@ const viewDetail = (id: string) => {
 .announcement-card {
   background: white;
   border-radius: 12px;
-  padding: 24px;
+  padding: 15px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s;
-}
-
-.announcement-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
 }
 
 .announcement-card.important {
@@ -224,16 +318,11 @@ const viewDetail = (id: string) => {
   align-items: center;
 }
 
-.views {
-  font-size: 13px;
-  color: #999;
-}
-
 .detail-btn {
   padding: 6px 20px;
   background: white;
-  color: #10b981;
-  border: 1px solid #10b981;
+  color: #666;
+  border: 1px solid #666;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -241,7 +330,7 @@ const viewDetail = (id: string) => {
 }
 
 .detail-btn:hover {
-  background: #10b981;
+  background: #666;
   color: white;
 }
 
@@ -273,8 +362,8 @@ const viewDetail = (id: string) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
-  margin-top: 30px;
+  gap: 10px;
+  margin-top: 10px;
   padding: 20px;
   background: white;
   border-radius: 12px;
@@ -293,8 +382,8 @@ const viewDetail = (id: string) => {
 }
 
 .page-btn:hover:not(:disabled) {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #666;
+  color: #666;
 }
 
 .page-btn:disabled {

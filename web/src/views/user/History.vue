@@ -245,7 +245,7 @@ const hasMore = ref(false)
 
 .search-btn {
   padding: 8px 16px;
-  background: #10b981;
+  background: #666;
   color: white;
   border: none;
   border-radius: 6px;
@@ -301,9 +301,9 @@ const hasMore = ref(false)
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #10b981;
+  background: #666;
   border: 3px solid white;
-  box-shadow: 0 0 0 2px #10b981;
+  box-shadow: 0 0 0 2px #666;
 }
 
 .timeline-content {
@@ -318,8 +318,8 @@ const hasMore = ref(false)
 }
 
 .record-card:hover {
-  border-color: #10b981;
-  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.15);
+  border-color: #666;
+  box-shadow: 0 2px 12px rgba(102, 102, 102, 0.15);
 }
 
 .record-header {
@@ -411,8 +411,8 @@ const hasMore = ref(false)
 }
 
 .action-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #666;
+  color: #666;
 }
 
 .load-more {
@@ -432,8 +432,8 @@ const hasMore = ref(false)
 }
 
 .load-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #666;
+  color: #666;
 }
 
 @media (max-width: 768px) {
