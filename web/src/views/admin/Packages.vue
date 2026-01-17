@@ -19,8 +19,7 @@
       </div>
       <div class="action-buttons">
         <button class="btn-primary" @click="showAddPackage = true">录入包裹</button>
-        <button class="btn-secondary" @click="batchImport">批量导入</button>
-        <button class="btn-secondary" @click="exportPackages">导出数据</button>
+        <button class="btn-secondary" @click="batchDelete">批量删除</button>
       </div>
     </div>
 
@@ -130,6 +129,10 @@
                   v-if="pkg.status === 'SHIPPED'" 
                   class="btn-store" 
                   @click="storePackage(pkg.id)">入库</button>
+                <button 
+                  v-if="pkg.status === 'STORED' && !pkg.hasStorageInfo" 
+                  class="btn-storage" 
+                  @click="setStorageInfo(pkg)">设置存储</button>
                 <button class="btn-status" @click="changePackageStatus(pkg)">改状态</button>
                 <button class="btn-delete" @click="deletePackage(pkg.id)">删除</button>
               </div>
@@ -268,6 +271,50 @@
         </div>
       </div>
     </div>
+
+    <!-- 设置存储信息弹窗 -->
+    <div class="modal" v-if="showStorageModal" @click="closeStorageModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>设置存储信息</h3>
+          <button class="close-btn" @click="closeStorageModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="info-section">
+            <p class="info-text">
+              <strong>包裹信息：</strong>{{ currentPackage?.trackingNumber }} ({{ currentPackage?.company }})
+            </p>
+            <p class="info-text">
+              <strong>收件人：</strong>{{ currentPackage?.receiverName }} ({{ currentPackage?.receiverPhone }})
+            </p>
+          </div>
+          <div class="form-group">
+            <label>存放位置 *</label>
+            <input 
+              type="text" 
+              v-model="storageForm.location" 
+              placeholder="例如：A区-01货架"
+              class="form-input"
+            >
+          </div>
+          <div class="form-group">
+            <label>取件码 *</label>
+            <input 
+              type="text" 
+              v-model="storageForm.pickupCode" 
+              placeholder="请输入6位取件码"
+              maxlength="6"
+              class="form-input"
+            >
+            <p class="hint-text">取件码为6位数字或字母组合</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="closeStorageModal">取消</button>
+          <button class="btn-submit" @click="submitStorageInfo">确定</button>
+        </div>
+      </div>
+    </div>
     </div>
   </AdminLayout>
 </template>
@@ -290,6 +337,7 @@ interface Package {
   isSigned: number // 0-未签收, 1-已签收
   arrivalTime: string
   remark?: string
+  hasStorageInfo?: boolean // 是否已设置存储信息
 }
 
 interface PackageForm {
@@ -316,6 +364,7 @@ const packageList = ref<Package[]>([])
 const showAddPackage = ref(false)
 const showEditPackage = ref(false)
 const showPackageDetail = ref(false)
+const showStorageModal = ref(false)
 const currentPackage = ref<Package | null>(null)
 const editingPackageId = ref<number | null>(null)
 
@@ -335,6 +384,12 @@ const packageForm = reactive<PackageForm>({
   location: '',
   pickupCode: '',
   remark: ''
+})
+
+// 存储信息表单
+const storageForm = reactive({
+  location: '',
+  pickupCode: ''
 })
 
 // 后端状态映射到前端状态（物流场景）
@@ -367,13 +422,14 @@ const convertBackendToUI = (parcel: Parcel): Package => {
     company: parcel.company,
     receiverName: parcel.receiverName,
     receiverPhone: parcel.receiverPhone,
-    location: '', // 后端暂无此字段
-    pickupCode: '', // 后端暂无此字段
+    location: '', // 后端暂无此字段，需要从关联表获取
+    pickupCode: '', // 后端暂无此字段，需要从关联表获取
     status: mapBackendStatusToUI(parcel.status),
     backendStatus: parcel.status,
     isSigned: parcel.isSigned,
     arrivalTime: new Date(parcel.createTime).toLocaleString('zh-CN'),
-    remark: ''
+    remark: '',
+    hasStorageInfo: false // 默认未设置，后续需要从关联表查询
   }
 }
 
@@ -417,14 +473,9 @@ const searchPackages = () => {
   alert('搜索功能待后端接口扩展')
 }
 
-const batchImport = () => {
-  console.log('批量导入包裹')
-  alert('批量导入功能待开发')
-}
-
-const exportPackages = () => {
-  console.log('导出包裹数据')
-  alert('导出功能待开发')
+const batchDelete = () => {
+  console.log('批量删除包裹')
+  alert('批量删除功能待开发')
 }
 
 const resetFilters = () => {
@@ -601,6 +652,52 @@ const changePackageStatus = async (pkg: Package) => {
     console.error('修改状态失败:', error)
     alert('修改状态失败，请重试')
   }
+}
+
+// 设置存储信息（取件码和存放位置）
+const setStorageInfo = (pkg: Package) => {
+  currentPackage.value = pkg
+  storageForm.location = pkg.location || ''
+  storageForm.pickupCode = pkg.pickupCode || ''
+  showStorageModal.value = true
+}
+
+// 提交存储信息
+const submitStorageInfo = async () => {
+  if (!storageForm.location || !storageForm.pickupCode) {
+    alert('请填写存放位置和取件码')
+    return
+  }
+  
+  try {
+    // TODO: 调用后端API保存存储信息到关联表
+    // await parcelStorageApi.create({
+    //   parcelId: currentPackage.value!.id,
+    //   location: storageForm.location,
+    //   pickupCode: storageForm.pickupCode
+    // })
+    
+    console.log('设置存储信息:', {
+      parcelId: currentPackage.value!.id,
+      location: storageForm.location,
+      pickupCode: storageForm.pickupCode
+    })
+    
+    alert('存储信息设置成功（前端模拟）')
+    closeStorageModal()
+    loadPackages()
+  } catch (error) {
+    console.error('设置存储信息失败:', error)
+    alert('设置存储信息失败，请重试')
+  }
+}
+
+// 关闭存储信息弹窗
+const closeStorageModal = () => {
+  showStorageModal.value = false
+  storageForm.location = ''
+  storageForm.pickupCode = ''
+  currentPackage.value = null
 }
 
 // 监听分页变化
@@ -869,6 +966,7 @@ td {
 .btn-edit,
 .btn-ship,
 .btn-store,
+.btn-storage,
 .btn-status,
 .btn-delete {
   padding: 6px 12px;
@@ -931,6 +1029,17 @@ td {
 
 .btn-store:hover {
   background: #13c2c2;
+  color: white;
+}
+
+.btn-storage {
+  background: white;
+  color: #fa8c16;
+  border: 1px solid #fa8c16;
+}
+
+.btn-storage:hover {
+  background: #fa8c16;
   color: white;
 }
 
@@ -1145,6 +1254,48 @@ td {
   font-family: 'Courier New', monospace;
   color: #808080;
   font-size: 16px;
+}
+
+/* 存储信息弹窗样式 */
+.info-section {
+  background: #f5f7fa;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.info-text {
+  font-size: 14px;
+  color: #333;
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.info-text strong {
+  color: #666;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #808080;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: #999;
+  margin-top: 6px;
+  margin-bottom: 0;
 }
 
 @media (max-width: 1200px) {
