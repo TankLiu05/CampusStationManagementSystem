@@ -265,7 +265,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import { parcelApi, type Parcel, type ParcelRequest } from '@/api/parcel'
+import { parcelApi, type Parcel, type ParcelRequest } from '@/api/admin/parcel'
 
 interface Package {
   id: number
