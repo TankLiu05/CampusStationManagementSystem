@@ -11,4 +11,6 @@ public interface ParcelRepository extends JpaRepository<Parcel, Long> {
     Optional<Parcel> findByTrackingNumber(String trackingNumber);
     Page<Parcel> findByReceiverId(Long receiverId, Pageable pageable);
     Optional<Parcel> findByTrackingNumberAndReceiverId(String trackingNumber, Long receiverId);
+    Page<Parcel> findByStatus(Integer status, Pageable pageable);
+    Page<Parcel> findByReceiverIdAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable);
 }

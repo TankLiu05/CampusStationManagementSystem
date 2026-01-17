@@ -41,6 +41,11 @@ public class ParcelServiceImpl implements ParcelService {
     }
 
     @Override
+    public Page<Parcel> listByStatus(Integer status, Pageable pageable) {
+        return repository.findByStatus(status, pageable);
+    }
+
+    @Override
     @Transactional
     public Parcel update(Long id, Parcel update) {
         Parcel existing = repository.findById(id)
@@ -104,5 +109,10 @@ public class ParcelServiceImpl implements ParcelService {
     @Override
     public Optional<Parcel> getByTrackingNumberAndReceiverId(String trackingNumber, Long receiverId) {
         return repository.findByTrackingNumberAndReceiverId(trackingNumber, receiverId);
+    }
+
+    @Override
+    public Page<Parcel> listByReceiverAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable) {
+        return repository.findByReceiverIdAndIsSigned(receiverId, isSigned, pageable);
     }
 }

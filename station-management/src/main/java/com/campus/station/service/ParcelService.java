@@ -11,10 +11,12 @@ public interface ParcelService {
     Optional<Parcel> getById(Long id);
     Optional<Parcel> getByTrackingNumber(String trackingNumber);
     Page<Parcel> list(Pageable pageable);
+    Page<Parcel> listByStatus(Integer status, Pageable pageable);
     Parcel update(Long id, Parcel update);
     void delete(Long id);
     Parcel changeStatus(Long id, Integer status);
     Parcel markSigned(Long id);
     Page<Parcel> listByReceiver(Long receiverId, Pageable pageable);
     Optional<Parcel> getByTrackingNumberAndReceiverId(String trackingNumber, Long receiverId);
+    Page<Parcel> listByReceiverAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable);
 }

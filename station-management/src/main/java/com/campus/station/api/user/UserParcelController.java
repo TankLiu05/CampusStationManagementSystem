@@ -56,34 +56,10 @@ public class UserParcelController {
         }
         return service.getById(id)
                 .map(parcel -> {
-                    // 简单的权限校验：只能看自己的
                     if (parcel.getReceiverId() != null && !parcel.getReceiverId().equals(currentUserId)) {
                          return ResponseEntity.status(403).body("无权查看此快递");
                     }
                     return ResponseEntity.ok((Object) parcel);
-                })
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @PostMapping("/{id}/sign")
-    @Operation(summary = "签收快递")
-    public ResponseEntity<?> sign(@PathVariable Long id) {
-        Long currentUserId = SessionUtil.getCurrentUserId();
-        if (currentUserId == null) {
-             return ResponseEntity.status(401).body("未登录");
-        }
-        
-        // 先检查是否存在且归属
-        return service.getById(id)
-                .map(parcel -> {
-                    if (parcel.getReceiverId() != null && !parcel.getReceiverId().equals(currentUserId)) {
-                         return ResponseEntity.status(403).body("无权操作此快递");
-                    }
-                    if (parcel.getIsSigned() != null && parcel.getIsSigned() == 1) {
-                         return ResponseEntity.status(400).body("快递已签收，无法再次修改");
-                    }
-                    Parcel updated = service.markSigned(id);
-                    return ResponseEntity.ok((Object) updated);
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
