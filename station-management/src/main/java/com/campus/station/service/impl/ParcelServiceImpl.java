@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -136,5 +137,23 @@ public class ParcelServiceImpl implements ParcelService {
     @Override
     public Optional<Parcel> findActiveByLocation(String location) {
         return repository.findByLocationAndIsSigned(location, 0);
+    }
+
+    @Override
+    @Transactional
+    public void updateReceiverInfo(Long receiverId, String receiverName, String receiverPhone) {
+        List<Parcel> parcels = repository.findByReceiverId(receiverId);
+        if (parcels.isEmpty()) {
+            return;
+        }
+        for (Parcel parcel : parcels) {
+            if (receiverName != null && !receiverName.isBlank()) {
+                parcel.setReceiverName(receiverName);
+            }
+            if (receiverPhone != null && !receiverPhone.isBlank()) {
+                parcel.setReceiverPhone(receiverPhone);
+            }
+        }
+        repository.saveAll(parcels);
     }
 }

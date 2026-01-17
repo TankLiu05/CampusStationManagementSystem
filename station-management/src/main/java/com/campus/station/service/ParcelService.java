@@ -22,4 +22,5 @@ public interface ParcelService {
     Optional<Parcel> findActiveByPickupCode(String pickupCode);
     Optional<Parcel> findActiveByLocation(String location);
     void deleteBatch(Iterable<Long> ids);
+    void updateReceiverInfo(Long receiverId, String receiverName, String receiverPhone);
 }
