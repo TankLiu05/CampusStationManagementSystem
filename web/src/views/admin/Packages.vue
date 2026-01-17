@@ -93,14 +93,13 @@
             <th>存放位置</th>
             <th>取件码</th>
             <th>状态</th>
-            <th>签收状态</th>
             <th>到达时间</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="packageList.length === 0">
-            <td colspan="11" class="empty-row">暂无包裹数据</td>
+            <td colspan="10" class="empty-row">暂无包裹数据</td>
           </tr>
           <tr v-for="pkg in packageList" :key="pkg.id">
             <td>{{ pkg.id }}</td>
@@ -115,11 +114,6 @@
             <td>
               <span :class="['status-badge', pkg.status]">
                 {{ getStatusLabel(pkg.status) }}
-              </span>
-            </td>
-            <td>
-              <span :class="['sign-badge', pkg.isSigned === 1 ? 'signed' : 'unsigned']">
-                {{ pkg.isSigned === 1 ? '已签收' : '未签收' }}
               </span>
             </td>
             <td>{{ pkg.arrivalTime }}</td>
@@ -270,12 +264,6 @@
                 <span class="label">状态：</span>
                 <span :class="['status-badge', currentPackage?.status]">
                   {{ getStatusLabel(currentPackage?.status) }}
-                </span>
-              </div>
-              <div class="detail-item">
-                <span class="label">签收状态：</span>
-                <span :class="['sign-badge', currentPackage?.isSigned === 1 ? 'signed' : 'unsigned']">
-                  {{ currentPackage?.isSigned === 1 ? '已签收' : '未签收' }}
                 </span>
               </div>
             </div>
@@ -886,23 +874,6 @@ td {
 .status-badge.RETURNED {
   background: #fff1f0;
   color: #f5222d;
-}
-
-.sign-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.sign-badge.signed {
-  background: #f6ffed;
-  color: #52c41a;
-}
-
-.sign-badge.unsigned {
-  background: #fff7e6;
-  color: #fa8c16;
 }
 
 .action-btns {
