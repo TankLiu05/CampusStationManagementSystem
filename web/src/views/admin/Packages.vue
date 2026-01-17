@@ -185,20 +185,6 @@
               <input type="tel" v-model="packageForm.receiverPhone" placeholder="通过手机号查找收件人">
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>存放位置 *</label>
-              <input type="text" v-model="packageForm.location" placeholder="例如：A区-01货架">
-            </div>
-            <div class="form-group">
-              <label>取件码</label>
-              <input type="text" v-model="packageForm.pickupCode" placeholder="自动生成" disabled>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>备注</label>
-            <textarea v-model="packageForm.remark" placeholder="选填" rows="3"></textarea>
-          </div>
         </div>
         <div class="modal-footer">
           <button class="btn-cancel" @click="closeModal">取消</button>
