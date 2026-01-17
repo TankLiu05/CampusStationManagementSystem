@@ -13,6 +13,8 @@ export interface Parcel {
   receiverId?: number
   receiverName?: string
   receiverPhone?: string
+  location?: string // 存放位置
+  pickupCode?: string // 取件码
   status: number // 0: 待发货, 1: 已发货, 2: 已入库, 3: 退回/异常
   isSigned: number // 0: 未签收, 1: 已签收
   createTime: string
@@ -73,5 +75,29 @@ export function getParcelById(id: number) {
 export function signParcel(id: number) {
   return request<Parcel>(`/api/user/parcel/${id}/sign`, {
     method: 'POST',
+  })
+}
+
+/**
+ * 查询已签收的快递列表
+ * @param page 页码（从0开始）
+ * @param size 每页大小
+ */
+export function listSignedParcels(page: number = 0, size: number = 10) {
+  return request<PageResponse<Parcel>>('/api/user/parcel/signed', {
+    method: 'GET',
+    params: { page, size },
+  })
+}
+
+/**
+ * 查询未签收的快递列表
+ * @param page 页码（从0开始）
+ * @param size 每页大小
+ */
+export function listUnsignedParcels(page: number = 0, size: number = 10) {
+  return request<PageResponse<Parcel>>('/api/user/parcel/unsigned', {
+    method: 'GET',
+    params: { page, size },
   })
 }
