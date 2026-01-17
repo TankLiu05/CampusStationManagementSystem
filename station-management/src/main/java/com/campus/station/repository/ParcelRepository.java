@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ParcelRepository extends JpaRepository<Parcel, Long> {
@@ -15,4 +16,5 @@ public interface ParcelRepository extends JpaRepository<Parcel, Long> {
     Page<Parcel> findByReceiverIdAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable);
     Optional<Parcel> findByPickupCodeAndIsSigned(String pickupCode, Integer isSigned);
     Optional<Parcel> findByLocationAndIsSigned(String location, Integer isSigned);
+    List<Parcel> findByReceiverId(Long receiverId);
 }

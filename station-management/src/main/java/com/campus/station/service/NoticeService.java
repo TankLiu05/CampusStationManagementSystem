@@ -12,5 +12,5 @@ public interface NoticeService {
     void delete(Long id);
     Optional<Notice> getById(Long id);
     Page<Notice> list(Pageable pageable);
+    void updateCreatorNameByUser(Long creatorId, String creatorName);
 }
-

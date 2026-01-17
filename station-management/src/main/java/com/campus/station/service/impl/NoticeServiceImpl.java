@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -54,5 +55,17 @@ public class NoticeServiceImpl implements NoticeService {
     public Page<Notice> list(Pageable pageable) {
         return repository.findAllByOrderByCreateTimeDesc(pageable);
     }
-}
 
+    @Override
+    @Transactional
+    public void updateCreatorNameByUser(Long creatorId, String creatorName) {
+        List<Notice> notices = repository.findByCreatorId(creatorId);
+        if (notices.isEmpty()) {
+            return;
+        }
+        for (Notice notice : notices) {
+            notice.setCreatorName(creatorName);
+        }
+        repository.saveAll(notices);
+    }
+}
