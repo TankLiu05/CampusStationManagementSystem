@@ -126,4 +126,9 @@ public class ParcelServiceImpl implements ParcelService {
     public Optional<Parcel> findActiveByPickupCode(String pickupCode) {
         return repository.findByPickupCodeAndIsSigned(pickupCode, 0);
     }
+
+    @Override
+    public Optional<Parcel> findActiveByLocation(String location) {
+        return repository.findByLocationAndIsSigned(location, 0);
+    }
 }
