@@ -68,24 +68,6 @@
             </button>
           </div>
         </div>
-
-        <div class="section">
-          <h2>系统状态</h2>
-          <div class="system-status">
-            <div class="status-item">
-              <span class="status-label">系统运行状态</span>
-              <span class="status-value success">正常</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">数据库连接</span>
-              <span class="status-value success">正常</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">服务器负载</span>
-              <span class="status-value">低</span>
-            </div>
-          </div>
-        </div>
       </div>
   </AdminLayout>
 </template>
@@ -98,6 +80,7 @@ import type { SysUser } from '@/api/sysUser'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelApi } from '@/api/admin/parcel'
 import { listNotices } from '@/api/admin/notice'
+import { getUserList } from '@/api/admin/user'
 
 const router = useRouter()
 const currentUser = ref<SysUser | null>(null)
@@ -145,9 +128,9 @@ const loadStatistics = async () => {
     const noticeResponse = await listNotices(0, 1)
     noticeCount.value = noticeResponse.totalElements
     
-    // 用户总数：由于没有用户列表接口，暂时显示0
-    // TODO: 需要后端提供用户统计接口
-    userCount.value = 0
+    // 加载用户总数
+    const userResponse = await getUserList(0, 1)
+    userCount.value = userResponse.totalElements
   } catch (error) {
     console.error('加载统计数据失败:', error)
   }
@@ -228,7 +211,7 @@ const loadStatistics = async () => {
 /* 管理功能区 */
 .admin-sections {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr;
   gap: 24px;
 }
 
@@ -267,39 +250,6 @@ const loadStatistics = async () => {
 
 .action-btn:active {
   border-color: #999;
-}
-
-.system-status {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.status-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.status-item:last-child {
-  border-bottom: none;
-}
-
-.status-label {
-  font-size: 15px;
-  color: #666;
-}
-
-.status-value {
-  font-size: 15px;
-  color: #333;
-  font-weight: 600;
-}
-
-.status-value.success {
-  color: #10b981;
 }
 
 /* 响应式设计 */

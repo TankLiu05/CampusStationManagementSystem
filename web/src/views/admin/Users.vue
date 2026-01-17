@@ -12,20 +12,11 @@
         <input 
           type="text" 
           v-model="searchKeyword" 
-          placeholder="搜索用户名、手机号、学号..."
+          placeholder="搜索用户名、手机号..."
           class="search-input"
         >
         <button class="search-btn" @click="searchUsers">搜索</button>
       </div>
-    </div>
-
-    <!-- 筛选区域 -->
-    <div class="filter-section">
-      <select v-model="roleFilter" class="filter-select">
-        <option value="">全部角色</option>
-        <option value="USER">普通用户</option>
-        <option value="ADMIN">管理员</option>
-      </select>
     </div>
 
     <!-- 用户列表 -->
@@ -101,7 +92,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import { getUserList, deleteUser as deleteUserApi, resetUserPassword, type User } from '@/api/admin/user'
+import { getUserList, deleteUser as deleteUserApi, resetUserPassword, getUserByUsername, getUserByPhone, type User } from '@/api/admin/user'
 
 interface UserForm {
   id?: number
@@ -113,7 +104,6 @@ interface UserForm {
 }
 
 const searchKeyword = ref('')
-const roleFilter = ref('')
 const statusFilter = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
@@ -148,10 +138,48 @@ const loadUsers = async () => {
 }
 
 // 搜索用户
-const searchUsers = () => {
-  console.log('搜索用户:', searchKeyword.value)
-  // TODO: 后端需要支持搜索功能
-  loadUsers()
+const searchUsers = async () => {
+  const keyword = searchKeyword.value.trim()
+  
+  // 如果搜索关键词为空，加载全部用户列表
+  if (!keyword) {
+    currentPage.value = 1
+    loadUsers()
+    return
+  }
+  
+  try {
+    // 尝试按用户名搜索
+    try {
+      const user = await getUserByUsername(keyword)
+      userList.value = [user]
+      total.value = 1
+      totalPages.value = 1
+      return
+    } catch (usernameError) {
+      // 用户名未找到，继续尝试手机号
+    }
+    
+    // 尝试按手机号搜索
+    try {
+      const user = await getUserByPhone(keyword)
+      userList.value = [user]
+      total.value = 1
+      totalPages.value = 1
+      return
+    } catch (phoneError) {
+      // 手机号也未找到
+    }
+    
+    // 都未找到
+    userList.value = []
+    total.value = 0
+    totalPages.value = 0
+    alert('未找到匹配的用户')
+  } catch (error) {
+    console.error('搜索用户失败:', error)
+    alert('搜索失败，请稍后重试')
+  }
 }
 
 
@@ -221,13 +249,6 @@ const closeModal = () => {
 
 // 监听页码变化
 watch(currentPage, () => {
-  loadUsers()
-})
-
-// 监听筛选条件变化
-watch([roleFilter, statusFilter], () => {
-  currentPage.value = 1
-  // TODO: 后端需要支持按角色和状态筛选
   loadUsers()
 })
 
@@ -320,24 +341,6 @@ onMounted(() => {
 
 .btn-primary:hover {
   background: #666666;
-}
-
-.filter-section {
-  background: white;
-  padding: 16px 20px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  display: flex;
-  gap: 12px;
-}
-
-.filter-select {
-  padding: 8px 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
 }
 
 .users-table {

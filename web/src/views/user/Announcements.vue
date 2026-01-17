@@ -229,13 +229,13 @@ onMounted(() => {
 .announcements-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .announcement-card {
   background: white;
-  border-radius: 12px;
-  padding: 15px;
+  border-radius: 10px;
+  padding: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
@@ -364,9 +364,9 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   margin-top: 10px;
-  padding: 20px;
+  padding: 10px;
   background: white;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 

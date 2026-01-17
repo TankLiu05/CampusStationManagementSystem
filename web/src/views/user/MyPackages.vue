@@ -24,7 +24,6 @@
             type="text" 
             placeholder="搜索快递单号、快递公司..." 
             v-model="searchKeyword"
-            @keyup.enter="handleSearch"
           >
           <button class="search-btn" @click="handleSearch" :disabled="loading">搜索</button>
         </div>
@@ -194,24 +193,28 @@ const showDetailDialog = ref(false)
 const selectedPackage = ref<Package | null>(null)
 const signing = ref(false)
 
-// 监听activeTab变化，自动加载对应数据
-watch(activeTab, () => {
-  if (!searchKeyword.value.trim()) {
-    loadParcels()
-  }
+// 存储各个标签的真实计数
+const tabCounts = ref({
+  all: 0,
+  pending: 0,
+  picked: 0,
+  overdue: 0
 })
 
-// 计算标签计数（使用totalElements而非本地数据）
+// 监听activeTab变化，自动加载对应数据
+watch(activeTab, () => {
+  // 切换标签时清空搜索关键词并重新加载数据
+  searchKeyword.value = ''
+  loadParcels()
+})
+
+// 计算标签计数（使用存储的真实计数）
 const tabs = computed<Tab[]>(() => {
-  const allCount = activeTab.value === 'all' ? totalElements.value : allParcels.value.length
-  const pendingCount = activeTab.value === 'pending' ? totalElements.value : allParcels.value.filter(p => p.isSigned === 0).length
-  const pickedCount = activeTab.value === 'picked' ? totalElements.value : allParcels.value.filter(p => p.isSigned === 1).length
-  
   return [
-    { label: '全部', value: 'all', count: allCount },
-    { label: '待取件', value: 'pending', count: pendingCount },
-    { label: '已取件', value: 'picked', count: pickedCount },
-    { label: '已超期', value: 'overdue', count: 0 } // TODO: 需要根据实际业务逻辑判断超期
+    { label: '全部', value: 'all', count: tabCounts.value.all },
+    { label: '待取件', value: 'pending', count: tabCounts.value.pending },
+    { label: '已取件', value: 'picked', count: tabCounts.value.picked },
+    { label: '已超期', value: 'overdue', count: tabCounts.value.overdue }
   ]
 })
 
@@ -253,19 +256,9 @@ function transformParcel(parcel: Parcel): Package {
 
 // 根据当前激活标签和搜索关键词过滤包裹
 const packages = computed<Package[]>(() => {
-  let filtered = allParcels.value.map(transformParcel)
-
-  // 如果有搜索关键词，进行本地筛选
-  if (searchKeyword.value.trim()) {
-    const keyword = searchKeyword.value.trim().toLowerCase()
-    filtered = filtered.filter(p => 
-      p.trackingNumber.toLowerCase().includes(keyword) ||
-      p.company.toLowerCase().includes(keyword)
-    )
-  }
-  // 注意：不需要根据activeTab进行本地筛选，因为后端已经返回了过滤后的数据
-
-  return filtered
+  // 直接返回转换后的包裹列表，不进行本地筛选
+  // 搜索功能由后端接口处理，点击搜索按钮时调用 handleSearch
+  return allParcels.value.map(transformParcel)
 })
 
 // 加载包裹列表（根据activeTab调用不同的后端接口）
@@ -295,6 +288,9 @@ async function loadParcels() {
     
     allParcels.value = response.content
     totalElements.value = response.totalElements
+    
+    // 更新当前标签的计数
+    tabCounts.value[activeTab.value as keyof typeof tabCounts.value] = response.totalElements
   } catch (error) {
     console.error('加载包裹列表失败:', error)
     allParcels.value = []
@@ -348,7 +344,8 @@ async function handleSignFromDialog() {
   try {
     signing.value = true
     await signParcel(selectedPackage.value.id)
-    // 签收成功后重新加载列表
+    // 签收成功后重新加载标签计数和列表
+    await loadAllTabCounts()
     await loadParcels()
     // 关闭对话框
     closeDetailDialog()
@@ -361,9 +358,29 @@ async function handleSignFromDialog() {
   }
 }
 
+// 加载所有标签的计数
+async function loadAllTabCounts() {
+  try {
+    // 并行请求所有标签的第一页数据以获取计数
+    const [allResponse, pendingResponse, pickedResponse] = await Promise.all([
+      listMyParcels(0, 1),
+      listUnsignedParcels(0, 1),
+      listSignedParcels(0, 1)
+    ])
+    
+    tabCounts.value.all = allResponse.totalElements
+    tabCounts.value.pending = pendingResponse.totalElements
+    tabCounts.value.picked = pickedResponse.totalElements
+    tabCounts.value.overdue = 0 // TODO: 如果后端有超期接口，在此更新
+  } catch (error) {
+    console.error('加载标签计数失败:', error)
+  }
+}
+
 // 组件挂载时加载数据
-onMounted(() => {
-  loadParcels()
+onMounted(async () => {
+  await loadAllTabCounts()
+  await loadParcels()
 })
 </script>
 

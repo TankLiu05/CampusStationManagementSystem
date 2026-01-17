@@ -50,6 +50,7 @@
                 v-if="isEditing" 
                 v-model="editForm.email" 
                 type="email"
+                disabled
               >
               <span v-else>{{ adminInfo.email || '未设置' }}</span>
             </div>

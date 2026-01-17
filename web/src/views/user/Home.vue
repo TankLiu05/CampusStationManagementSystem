@@ -11,7 +11,7 @@
           <img src="@/assets/icons/2.png" alt="我的包裹" class="card-icon" />
           <h3>我的包裹</h3>
           <p>查看待取包裹</p>
-          <div class="card-count">0 件</div>
+          <div class="card-count">{{ pendingParcelCount }} 件</div>
         </div>
 
         <div class="card">
@@ -26,21 +26,6 @@
           <h3>公告通知</h3>
           <p>最新公告信息</p>
           <div class="card-count">{{ noticeCount }} 条</div>
-        </div>
-
-        <div class="card">
-          <img src="@/assets/icons/1.png" alt="个人信息" class="card-icon" />
-          <h3>个人信息</h3>
-          <p>查看和编辑资料</p>
-          <div class="card-count">0 条</div>
-        </div>
-      </div>
-
-      <!-- 最近包裹 -->
-      <div class="recent-section">
-        <h2>最近包裹</h2>
-        <div class="empty-state">
-          <p>暂无包裹信息</p>
         </div>
       </div>
   </UserLayout>
@@ -135,7 +120,7 @@ const loadParcelCounts = async () => {
 /* 功能卡片 */
 .function-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   margin-bottom: 40px;
 }
@@ -177,31 +162,6 @@ const loadParcelCounts = async () => {
   font-size: 24px;
   font-weight: 700;
   color: #666;
-}
-
-/* 最近包裹 */
-.recent-section {
-  background: white;
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.recent-section h2 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 20px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 0;
-}
-
-.empty-state p {
-  font-size: 16px;
-  color: #999;
 }
 
 /* 响应式设计 */

@@ -17,34 +17,12 @@
           @keyup.enter="searchPackages"
         >
         <button class="search-btn" @click="searchPackages">搜索</button>
+        <button class="reset-btn" @click="resetFilters">重置筛选</button>
       </div>
       <div class="action-buttons">
         <button class="btn-primary" @click="showAddPackage = true">录入包裹</button>
         <button class="btn-secondary" @click="batchDelete">批量删除</button>
       </div>
-    </div>
-
-    <!-- 筛选区域 -->
-    <div class="filter-section">
-      <select v-model="statusFilter" class="filter-select">
-        <option value="">全部状态</option>
-        <option value="0">待发货</option>
-        <option value="1">已发货</option>
-        <option value="2">已入库</option>
-        <option value="3">退回/异常</option>
-      </select>
-      <select v-model="companyFilter" class="filter-select">
-        <option value="">全部快递公司</option>
-        <option value="顺丰速运">顺丰速运</option>
-        <option value="中通快递">中通快递</option>
-        <option value="圆通速递">圆通速递</option>
-        <option value="申通快递">申通快递</option>
-        <option value="韵达快递">韵达快递</option>
-        <option value="极兔速递">极兔速递</option>
-      </select>
-      <input type="date" v-model="startDate" class="date-input" placeholder="开始日期">
-      <input type="date" v-model="endDate" class="date-input" placeholder="结束日期">
-      <button class="reset-btn" @click="resetFilters">重置筛选</button>
     </div>
 
     <!-- 统计卡片 -->
@@ -304,10 +282,6 @@ interface PackageForm {
 }
 
 const searchKeyword = ref('')
-const statusFilter = ref('')
-const companyFilter = ref('')
-const startDate = ref('')
-const endDate = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
 const total = ref(0)
@@ -475,10 +449,6 @@ const batchDelete = async () => {
 }
 
 const resetFilters = () => {
-  statusFilter.value = ''
-  companyFilter.value = ''
-  startDate.value = ''
-  endDate.value = ''
   searchKeyword.value = '' // 清空搜索关键词
   currentPage.value = 1
   showCheckboxes.value = false // 重置时隐藏勾选框
@@ -787,15 +757,6 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.filter-select,
-.date-input {
-  padding: 8px 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
 }
 
 .reset-btn {

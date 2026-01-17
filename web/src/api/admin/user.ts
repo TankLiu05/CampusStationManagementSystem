@@ -101,3 +101,23 @@ export function deleteUser(id: number) {
     method: 'DELETE',
   })
 }
+
+/**
+ * 根据用户名搜索用户
+ * @param username 用户名
+ */
+export function getUserByUsername(username: string) {
+  return request<User>('/api/admin/user/byUsername', {
+    params: { username },
+  })
+}
+
+/**
+ * 根据手机号搜索用户
+ * @param phone 手机号
+ */
+export function getUserByPhone(phone: string) {
+  return request<User>('/api/admin/user/byPhone', {
+    params: { phone },
+  })
+}
