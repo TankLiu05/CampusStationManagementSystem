@@ -7,6 +7,7 @@ import com.campus.station.service.ParcelService;
 import com.campus.station.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -51,12 +51,13 @@ public class AdminUserController {
 
     @GetMapping
     @Operation(summary = "分页查询用户列表")
-    public ResponseEntity<Page<SysUser>> list(@RequestParam(defaultValue = "0") int page,
-                                              @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Page<AdminUserView>> list(@RequestParam(defaultValue = "0") int page,
+                                                    @RequestParam(defaultValue = "10") int size) {
         requireAdmin();
         Pageable pageable = PageRequest.of(page, size);
         Page<SysUser> result = service.list(pageable);
-        return ResponseEntity.ok(result);
+        Page<AdminUserView> views = result.map(AdminUserController::toView);
+        return ResponseEntity.ok(views);
     }
 
     @PostMapping("/{id}/status")
@@ -85,5 +86,103 @@ public class AdminUserController {
         requireAdmin();
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private static AdminUserView toView(SysUser user) {
+        AdminUserView view = new AdminUserView();
+        view.setId(user.getId());
+        view.setUsername(user.getUsername());
+        view.setPhone(user.getPhone());
+        view.setEmail(user.getEmail());
+        view.setAvatar(user.getAvatar());
+        view.setRole(user.getRole());
+        view.setStatus(user.getStatus());
+        view.setCreateTime(user.getCreateTime());
+        view.setUpdateTime(user.getUpdateTime());
+        return view;
+    }
+
+    public static class AdminUserView {
+        private Long id;
+        private String username;
+        private String phone;
+        private String email;
+        private String avatar;
+        private String role;
+        private Byte status;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
+
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public String getAvatar() {
+            return avatar;
+        }
+
+        public void setAvatar(String avatar) {
+            this.avatar = avatar;
+        }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
+
+        public Byte getStatus() {
+            return status;
+        }
+
+        public void setStatus(Byte status) {
+            this.status = status;
+        }
+
+        public LocalDateTime getCreateTime() {
+            return createTime;
+        }
+
+        public void setCreateTime(LocalDateTime createTime) {
+            this.createTime = createTime;
+        }
+
+        public LocalDateTime getUpdateTime() {
+            return updateTime;
+        }
+
+        public void setUpdateTime(LocalDateTime updateTime) {
+            this.updateTime = updateTime;
+        }
     }
 }

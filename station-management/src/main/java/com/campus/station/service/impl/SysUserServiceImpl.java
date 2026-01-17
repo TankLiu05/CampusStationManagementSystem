@@ -94,4 +94,13 @@ public class SysUserServiceImpl implements SysUserService {
         existing.setStatus(status);
         return repository.save(existing);
     }
+
+    @Override
+    @Transactional
+    public SysUser updatePassword(Long id, String newPassword) {
+        SysUser existing = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        existing.setPassword(newPassword);
+        return repository.save(existing);
+    }
 }

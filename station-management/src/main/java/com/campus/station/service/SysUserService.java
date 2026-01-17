@@ -12,6 +12,7 @@ public interface SysUserService {
     Optional<SysUser> getByUsername(String username);
     Optional<SysUser> getByPhone(String phone);
     SysUser update(Long id, SysUser update);
+     SysUser updatePassword(Long id, String newPassword);
     void delete(Long id);
     Page<SysUser> list(Pageable pageable);
     SysUser changeStatus(Long id, byte status);
