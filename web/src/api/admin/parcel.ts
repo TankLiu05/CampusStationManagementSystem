@@ -49,14 +49,29 @@ export interface PageResponse<T> {
 }
 
 /**
- * 包裹创建/更新请求数据
+ * 包裹创建请求数据（对应后端 AdminParcelCreateRequest）
  */
-export interface ParcelRequest {
+export interface ParcelCreateRequest {
   trackingNumber: string
   company: string
-  receiverName: string
-  receiverPhone: string
+  receiverUsername?: string // 收件人用户名（优先使用）
+  receiverPhone?: string // 收件人手机号（备用查找方式）
+  receiverName?: string // 收件人姓名（可选，默认使用用户的username）
+  status?: number // 快递状态（可选）
+  isSigned?: number // 是否签收（可选）
+}
+
+/**
+ * 包裹更新请求数据
+ */
+export interface ParcelUpdateRequest {
+  trackingNumber?: string
+  company?: string
   receiverId?: number
+  receiverName?: string
+  receiverPhone?: string
+  status?: number
+  isSigned?: number
 }
 
 /**
@@ -86,7 +101,7 @@ export const parcelApi = {
    * 创建包裹
    * @param data 包裹数据
    */
-  create(data: ParcelRequest) {
+  create(data: ParcelCreateRequest) {
     return request<Parcel>('/api/admin/parcel', {
       method: 'POST',
       body: JSON.stringify(data)
@@ -98,7 +113,7 @@ export const parcelApi = {
    * @param id 包裹ID
    * @param data 更新数据
    */
-  update(id: number, data: ParcelRequest) {
+  update(id: number, data: ParcelUpdateRequest) {
     return request<Parcel>(`/api/admin/parcel/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data)
