@@ -23,8 +23,8 @@
     <div class="sidebar-footer">
       <div
         class="nav-item"
+        :class="{ active: activeItem === 'profile' }"
         @click="handleProfile"
-
       >
         <img src="@/assets/icons/5.png" alt="个人中心" class="nav-icon" />
         <span class="nav-label">个人中心</span>
@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 interface MenuItem {
@@ -62,6 +62,20 @@ const menuItems: MenuItem[] = [
   { id: 'myPackages', label: '我的包裹', icon: 'myPackages', route: '/user/packages' },
   { id: 'announcements', label: '公告信息', icon: 'announcements', route: '/user/announcements' },
 ]
+
+// 监听路由变化，自动更新激活状态
+watch(
+  () => route.path,
+  (newPath) => {
+    const item = menuItems.find(item => item.route === newPath)
+    if (item) {
+      activeItem.value = item.id
+    } else if (newPath === '/user/profile') {
+      activeItem.value = 'profile'
+    }
+  },
+  { immediate: true }
+)
 
 const handleNavClick = (item: MenuItem) => {
   activeItem.value = item.id

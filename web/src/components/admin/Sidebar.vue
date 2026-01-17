@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 interface MenuItem {
@@ -52,8 +52,20 @@ const menuItems: MenuItem[] = [
   { id: 'users', label: '用户管理', icon: 'users', route: '/admin/users' },
   { id: 'packages', label: '包裹管理', icon: 'packages', route: '/admin/packages' },
   { id: 'announcements', label: '公告管理', icon: 'announcements', route: '/admin/announcements' },
-  { id: 'settings', label: '系统设置', icon: 'settings', route: '/admin/settings' },
+  { id: 'settings', label: '个人设置', icon: 'settings', route: '/admin/settings' },
 ]
+
+// 监听路由变化，自动更新激活状态
+watch(
+  () => route.path,
+  (newPath) => {
+    const item = menuItems.find(item => item.route === newPath)
+    if (item) {
+      activeItem.value = item.id
+    }
+  },
+  { immediate: true }
+)
 
 const handleNavClick = (item: MenuItem) => {
   activeItem.value = item.id

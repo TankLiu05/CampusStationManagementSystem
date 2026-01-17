@@ -45,11 +45,8 @@
             <th>用户名</th>
             <th>真实姓名</th>
             <th>手机号</th>
-            <th>学号/工号</th>
             <th>角色</th>
-            <th>状态</th>
             <th>注册时间</th>
-            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -65,11 +62,6 @@
             <td>
               <span :class="['role-badge', user.role]">
                 {{ user.role === 'ADMIN' ? '管理员' : '普通用户' }}
-              </span>
-            </td>
-            <td>
-              <span :class="['status-badge', user.status]">
-                {{ user.status === 'ACTIVE' ? '正常' : '禁用' }}
               </span>
             </td>
             <td>{{ user.createTime }}</td>
@@ -108,16 +100,8 @@
             <input type="password" v-model="userForm.password" placeholder="请输入密码">
           </div>
           <div class="form-group">
-            <label>真实姓名</label>
-            <input type="text" v-model="userForm.realName" placeholder="请输入真实姓名">
-          </div>
-          <div class="form-group">
             <label>手机号</label>
             <input type="tel" v-model="userForm.phone" placeholder="请输入手机号">
-          </div>
-          <div class="form-group">
-            <label>学号/工号</label>
-            <input type="text" v-model="userForm.studentId" placeholder="请输入学号或工号">
           </div>
           <div class="form-group">
             <label>角色</label>
@@ -144,18 +128,15 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 interface User {
   id: number
   username: string
-  realName?: string
   phone?: string
   studentId?: string
   role: string
-  status: string
   createTime: string
 }
 
 interface UserForm {
   username: string
   password: string
-  realName: string
   phone: string
   studentId: string
   role: string
@@ -175,7 +156,6 @@ const showEditUser = ref(false)
 const userForm = reactive<UserForm>({
   username: '',
   password: '',
-  realName: '',
   phone: '',
   studentId: '',
   role: 'USER'
@@ -212,7 +192,6 @@ const closeModal = () => {
   Object.assign(userForm, {
     username: '',
     password: '',
-    realName: '',
     phone: '',
     studentId: '',
     role: 'USER'
