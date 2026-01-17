@@ -239,7 +239,7 @@ const changePassword = async () => {
     passwordForm.confirmPassword = ''
     
     showChangePassword.value = false
-    alert('密码修改成功，请重新登录')
+    alert('密码修改成功')
     
     // 可选：跳转到登录页
     // window.location.href = '/login'

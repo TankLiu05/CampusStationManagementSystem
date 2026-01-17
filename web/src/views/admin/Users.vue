@@ -17,9 +17,6 @@
         >
         <button class="search-btn" @click="searchUsers">搜索</button>
       </div>
-      <div class="action-buttons">
-        <button class="btn-primary" @click="showAddUser = true">添加用户</button>
-      </div>
     </div>
 
     <!-- 筛选区域 -->
@@ -28,11 +25,6 @@
         <option value="">全部角色</option>
         <option value="USER">普通用户</option>
         <option value="ADMIN">管理员</option>
-      </select>
-      <select v-model="statusFilter" class="filter-select">
-        <option value="">全部状态</option>
-        <option value="ACTIVE">正常</option>
-        <option value="DISABLED">禁用</option>
       </select>
     </div>
 
@@ -43,32 +35,32 @@
           <tr>
             <th>用户ID</th>
             <th>用户名</th>
-            <th>真实姓名</th>
             <th>手机号</th>
+            <th>邮箱</th>
             <th>角色</th>
             <th>注册时间</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="userList.length === 0">
-            <td colspan="9" class="empty-row">暂无用户数据</td>
+            <td colspan="8" class="empty-row">暂无用户数据</td>
           </tr>
           <tr v-for="user in userList" :key="user.id">
             <td>{{ user.id }}</td>
             <td>{{ user.username }}</td>
-            <td>{{ user.realName || '-' }}</td>
             <td>{{ user.phone || '-' }}</td>
-            <td>{{ user.studentId || '-' }}</td>
+            <td>{{ user.email || '-' }}</td>
             <td>
               <span :class="['role-badge', user.role]">
                 {{ user.role === 'ADMIN' ? '管理员' : '普通用户' }}
               </span>
             </td>
-            <td>{{ user.createTime }}</td>
+            <td>{{ new Date(user.createTime).toLocaleString('zh-CN') }}</td>
             <td>
               <div class="action-btns">
-                <button class="btn-edit" @click="editUser(user)">编辑</button>
-                <button class="btn-delete" @click="deleteUser(user.id)">删除</button>
+                <button class="btn-reset" @click="openResetPassword(user.id)">重置密码</button>
+                <button class="btn-delete" @click="handleDeleteUser(user.id)">删除</button>
               </div>
             </td>
           </tr>
@@ -83,37 +75,22 @@
       </div>
     </div>
 
-    <!-- 添加/编辑用户弹窗 -->
-    <div class="modal" v-if="showAddUser || showEditUser" @click="closeModal">
+    <!-- 重置密码弹窗 -->
+    <div class="modal" v-if="showResetPassword" @click="closeModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>{{ showAddUser ? '添加用户' : '编辑用户' }}</h3>
+          <h3>重置用户密码</h3>
           <button class="close-btn" @click="closeModal">×</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label>用户名 *</label>
-            <input type="text" v-model="userForm.username" placeholder="请输入用户名">
-          </div>
-          <div class="form-group" v-if="showAddUser">
-            <label>密码 *</label>
-            <input type="password" v-model="userForm.password" placeholder="请输入密码">
-          </div>
-          <div class="form-group">
-            <label>手机号</label>
-            <input type="tel" v-model="userForm.phone" placeholder="请输入手机号">
-          </div>
-          <div class="form-group">
-            <label>角色</label>
-            <select v-model="userForm.role">
-              <option value="USER">普通用户</option>
-              <option value="ADMIN">管理员</option>
-            </select>
+            <label>新密码 *</label>
+            <input type="password" v-model="newPassword" placeholder="请输入新密码（至少6位）">
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn-cancel" @click="closeModal">取消</button>
-          <button class="btn-submit" @click="submitUser">确定</button>
+          <button class="btn-submit" @click="submitResetPassword">确定</button>
         </div>
       </div>
     </div>
@@ -122,23 +99,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-
-interface User {
-  id: number
-  username: string
-  phone?: string
-  studentId?: string
-  role: string
-  createTime: string
-}
+import { getUserList, deleteUser as deleteUserApi, resetUserPassword, type User } from '@/api/admin/user'
 
 interface UserForm {
+  id?: number
   username: string
   password: string
   phone: string
-  studentId: string
+  email: string
   role: string
 }
 
@@ -148,55 +118,123 @@ const statusFilter = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
 const total = ref(0)
+const pageSize = ref(10)
 
 const userList = ref<User[]>([])
-const showAddUser = ref(false)
-const showEditUser = ref(false)
+const showResetPassword = ref(false)
+const selectedUserId = ref<number | null>(null)
 
 const userForm = reactive<UserForm>({
   username: '',
   password: '',
   phone: '',
-  studentId: '',
+  email: '',
   role: 'USER'
 })
 
-// TODO: 从后端获取用户列表
+const newPassword = ref('')
 
-const searchUsers = () => {
-  console.log('搜索用户:', searchKeyword.value)
-  // TODO: 实现搜索功能
-}
-
-const editUser = (user: User) => {
-  Object.assign(userForm, user)
-  showEditUser.value = true
-}
-
-const deleteUser = (id: number) => {
-  if (confirm('确定要删除该用户吗？')) {
-    console.log('删除用户:', id)
-    // TODO: 调用API删除用户
+// 加载用户列表
+const loadUsers = async () => {
+  try {
+    const result = await getUserList(currentPage.value - 1, pageSize.value)
+    userList.value = result.content
+    total.value = result.totalElements
+    totalPages.value = result.totalPages
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    alert('获取用户列表失败，请稍后重试')
   }
 }
 
+// 搜索用户
+const searchUsers = () => {
+  console.log('搜索用户:', searchKeyword.value)
+  // TODO: 后端需要支持搜索功能
+  loadUsers()
+}
+
+
+
+// 删除用户
+const handleDeleteUser = async (id: number) => {
+  if (!confirm('确定要删除该用户吗？')) {
+    return
+  }
+  
+  try {
+    await deleteUserApi(id)
+    alert('删除成功')
+    loadUsers()
+  } catch (error) {
+    console.error('删除用户失败:', error)
+    alert('删除用户失败，请稍后重试')
+  }
+}
+
+// 重置密码
+const openResetPassword = (id: number) => {
+  selectedUserId.value = id
+  newPassword.value = ''
+  showResetPassword.value = true
+}
+
+const submitResetPassword = async () => {
+  if (!selectedUserId.value) return
+  
+  if (!newPassword.value || newPassword.value.length < 6) {
+    alert('密码长度至少为6位')
+    return
+  }
+  
+  try {
+    await resetUserPassword(selectedUserId.value, { newPassword: newPassword.value })
+    alert('密码重置成功')
+    showResetPassword.value = false
+    newPassword.value = ''
+  } catch (error) {
+    console.error('重置密码失败:', error)
+    alert('重置密码失败，请稍后重试')
+  }
+}
+
+// 提交用户信息
 const submitUser = () => {
   console.log('提交用户信息:', userForm)
-  // TODO: 调用API保存用户
+  // TODO: 后端需要实现创建和更新用户接口
+  alert('该功能暂未实现，后端需要添加创建/更新用户接口')
   closeModal()
 }
 
+// 关闭弹窗
 const closeModal = () => {
-  showAddUser.value = false
-  showEditUser.value = false
+  showResetPassword.value = false
   Object.assign(userForm, {
+    id: undefined,
     username: '',
     password: '',
     phone: '',
-    studentId: '',
+    email: '',
     role: 'USER'
   })
 }
+
+// 监听页码变化
+watch(currentPage, () => {
+  loadUsers()
+})
+
+// 监听筛选条件变化
+watch([roleFilter, statusFilter], () => {
+  currentPage.value = 1
+  // TODO: 后端需要支持按角色和状态筛选
+  loadUsers()
+})
+
+// 初始化加载
+onMounted(() => {
+  loadUsers()
+})
 </script>
 
 <style scoped>
@@ -324,6 +362,8 @@ th {
   font-size: 14px;
   font-weight: 600;
   color: #666;
+  height: 52px;
+  box-sizing: border-box;
 }
 
 td {
@@ -372,23 +412,23 @@ td {
   gap: 8px;
 }
 
-.btn-edit,
+.btn-reset,
 .btn-delete {
-  padding: 6px 16px;
+  padding: 6px 12px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
 }
 
-.btn-edit {
+.btn-reset {
   background: white;
-  color: #808080;
-  border: 1px solid #808080;
+  color: #1890ff;
+  border: 1px solid #1890ff;
 }
 
-.btn-edit:hover {
-  background: #808080;
+.btn-reset:hover {
+  background: #1890ff;
   color: white;
 }
 
