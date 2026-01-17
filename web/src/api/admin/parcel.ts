@@ -29,6 +29,8 @@ export interface Parcel {
   receiverId?: number
   receiverName: string
   receiverPhone: string
+  location?: string // 存放位置
+  pickupCode?: string // 取件码
   status: number // 0: 待发货, 1: 已发货, 2: 已入库, 3: 退回/异常
   isSigned: number // 0: 未签收, 1: 已签收
   createTime: string
@@ -139,6 +141,17 @@ export const parcelApi = {
     return request<Parcel>(`/api/admin/parcel/${id}/status`, {
       method: 'POST',
       params: { status }
+    })
+  },
+
+  /**
+   * 为快递生成存放位置和取件码（自动生成）
+   * @param id 包裹ID
+   * @description 仅对状态为"已入库"且未签收的包裹有效，自动生成唯一的存放位置和取件码
+   */
+  createPickupInfo(id: number) {
+    return request<Parcel>(`/api/admin/parcel/${id}/pickup`, {
+      method: 'POST'
     })
   }
 }

@@ -93,13 +93,14 @@
             <th>存放位置</th>
             <th>取件码</th>
             <th>状态</th>
+            <th>签收状态</th>
             <th>到达时间</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="packageList.length === 0">
-            <td colspan="10" class="empty-row">暂无包裹数据</td>
+            <td colspan="11" class="empty-row">暂无包裹数据</td>
           </tr>
           <tr v-for="pkg in packageList" :key="pkg.id">
             <td>{{ pkg.id }}</td>
@@ -114,6 +115,11 @@
             <td>
               <span :class="['status-badge', pkg.status]">
                 {{ getStatusLabel(pkg.status) }}
+              </span>
+            </td>
+            <td>
+              <span :class="['sign-badge', pkg.isSigned === 1 ? 'signed' : 'unsigned']">
+                {{ pkg.isSigned === 1 ? '已签收' : '未签收' }}
               </span>
             </td>
             <td>{{ pkg.arrivalTime }}</td>
@@ -132,7 +138,7 @@
                 <button 
                   v-if="pkg.status === 'STORED' && !pkg.hasStorageInfo" 
                   class="btn-storage" 
-                  @click="setStorageInfo(pkg)">设置存储</button>
+                  @click="setStorageInfo(pkg)">自动生成</button>
                 <button class="btn-status" @click="changePackageStatus(pkg)">改状态</button>
                 <button class="btn-delete" @click="deletePackage(pkg.id)">删除</button>
               </div>
@@ -266,52 +272,14 @@
                   {{ getStatusLabel(currentPackage?.status) }}
                 </span>
               </div>
+              <div class="detail-item">
+                <span class="label">签收状态：</span>
+                <span :class="['sign-badge', currentPackage?.isSigned === 1 ? 'signed' : 'unsigned']">
+                  {{ currentPackage?.isSigned === 1 ? '已签收' : '未签收' }}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 设置存储信息弹窗 -->
-    <div class="modal" v-if="showStorageModal" @click="closeStorageModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>设置存储信息</h3>
-          <button class="close-btn" @click="closeStorageModal">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="info-section">
-            <p class="info-text">
-              <strong>包裹信息：</strong>{{ currentPackage?.trackingNumber }} ({{ currentPackage?.company }})
-            </p>
-            <p class="info-text">
-              <strong>收件人：</strong>{{ currentPackage?.receiverName }} ({{ currentPackage?.receiverPhone }})
-            </p>
-          </div>
-          <div class="form-group">
-            <label>存放位置 *</label>
-            <input 
-              type="text" 
-              v-model="storageForm.location" 
-              placeholder="例如：A区-01货架"
-              class="form-input"
-            >
-          </div>
-          <div class="form-group">
-            <label>取件码 *</label>
-            <input 
-              type="text" 
-              v-model="storageForm.pickupCode" 
-              placeholder="请输入6位取件码"
-              maxlength="6"
-              class="form-input"
-            >
-            <p class="hint-text">取件码为6位数字或字母组合</p>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancel" @click="closeStorageModal">取消</button>
-          <button class="btn-submit" @click="submitStorageInfo">确定</button>
         </div>
       </div>
     </div>
@@ -364,7 +332,6 @@ const packageList = ref<Package[]>([])
 const showAddPackage = ref(false)
 const showEditPackage = ref(false)
 const showPackageDetail = ref(false)
-const showStorageModal = ref(false)
 const currentPackage = ref<Package | null>(null)
 const editingPackageId = ref<number | null>(null)
 
@@ -384,12 +351,6 @@ const packageForm = reactive<PackageForm>({
   location: '',
   pickupCode: '',
   remark: ''
-})
-
-// 存储信息表单
-const storageForm = reactive({
-  location: '',
-  pickupCode: ''
 })
 
 // 后端状态映射到前端状态（物流场景）
@@ -422,14 +383,14 @@ const convertBackendToUI = (parcel: Parcel): Package => {
     company: parcel.company,
     receiverName: parcel.receiverName,
     receiverPhone: parcel.receiverPhone,
-    location: '', // 后端暂无此字段，需要从关联表获取
-    pickupCode: '', // 后端暂无此字段，需要从关联表获取
+    location: parcel.location || '-', // 使用后端字段
+    pickupCode: parcel.pickupCode || '-', // 使用后端字段
     status: mapBackendStatusToUI(parcel.status),
     backendStatus: parcel.status,
     isSigned: parcel.isSigned,
     arrivalTime: new Date(parcel.createTime).toLocaleString('zh-CN'),
     remark: '',
-    hasStorageInfo: false // 默认未设置，后续需要从关联表查询
+    hasStorageInfo: !!(parcel.location && parcel.pickupCode) // 根据字段判断是否已设置
   }
 }
 
@@ -654,50 +615,20 @@ const changePackageStatus = async (pkg: Package) => {
   }
 }
 
-// 设置存储信息（取件码和存放位置）
-const setStorageInfo = (pkg: Package) => {
-  currentPackage.value = pkg
-  storageForm.location = pkg.location || ''
-  storageForm.pickupCode = pkg.pickupCode || ''
-  showStorageModal.value = true
-}
-
-// 提交存储信息
-const submitStorageInfo = async () => {
-  if (!storageForm.location || !storageForm.pickupCode) {
-    alert('请填写存放位置和取件码')
+// 设置存储信息（自动生成取件码和存放位置）
+const setStorageInfo = async (pkg: Package) => {
+  if (!confirm('确定为该包裹自动生成存放位置和取件码吗？')) {
     return
   }
   
   try {
-    // TODO: 调用后端API保存存储信息到关联表
-    // await parcelStorageApi.create({
-    //   parcelId: currentPackage.value!.id,
-    //   location: storageForm.location,
-    //   pickupCode: storageForm.pickupCode
-    // })
-    
-    console.log('设置存储信息:', {
-      parcelId: currentPackage.value!.id,
-      location: storageForm.location,
-      pickupCode: storageForm.pickupCode
-    })
-    
-    alert('存储信息设置成功（前端模拟）')
-    closeStorageModal()
+    const updatedParcel = await parcelApi.createPickupInfo(pkg.id)
+    alert(`存储信息生成成功！\n存放位置：${updatedParcel.location}\n取件码：${updatedParcel.pickupCode}`)
     loadPackages()
   } catch (error) {
-    console.error('设置存储信息失败:', error)
-    alert('设置存储信息失败，请重试')
+    console.error('生成存储信息失败:', error)
+    alert('生成存储信息失败，请确认包裹状态为"已入库"且未签收')
   }
-}
-
-// 关闭存储信息弹窗
-const closeStorageModal = () => {
-  showStorageModal.value = false
-  storageForm.location = ''
-  storageForm.pickupCode = ''
-  currentPackage.value = null
 }
 
 // 监听分页变化
@@ -955,6 +886,23 @@ td {
 .status-badge.RETURNED {
   background: #fff1f0;
   color: #f5222d;
+}
+
+.sign-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sign-badge.signed {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.sign-badge.unsigned {
+  background: #fff7e6;
+  color: #fa8c16;
 }
 
 .action-btns {
@@ -1254,48 +1202,6 @@ td {
   font-family: 'Courier New', monospace;
   color: #808080;
   font-size: 16px;
-}
-
-/* 存储信息弹窗样式 */
-.info-section {
-  background: #f5f7fa;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.info-text {
-  font-size: 14px;
-  color: #333;
-  margin: 8px 0;
-  line-height: 1.6;
-}
-
-.info-text strong {
-  color: #666;
-  font-weight: 600;
-  margin-right: 8px;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #808080;
-}
-
-.hint-text {
-  font-size: 12px;
-  color: #999;
-  margin-top: 6px;
-  margin-bottom: 0;
 }
 
 @media (max-width: 1200px) {
