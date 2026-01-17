@@ -67,8 +67,12 @@ public class AdminParcelController {
     @GetMapping
     @Operation(summary = "分页查询所有快递列表")
     public Page<Parcel> list(@RequestParam(defaultValue = "0") int page,
-                             @RequestParam(defaultValue = "10") int size) {
+                             @RequestParam(defaultValue = "10") int size,
+                             @RequestParam(required = false) Integer status) {
         Pageable pageable = PageRequest.of(page, size);
+        if (status != null) {
+            return service.listByStatus(status, pageable);
+        }
         return service.list(pageable);
     }
 
