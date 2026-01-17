@@ -7,6 +7,7 @@ import com.campus.station.service.ParcelService;
 import com.campus.station.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -74,7 +75,7 @@ public class AdminParcelController {
     }
 
     @PostMapping("/{id}/pickup")
-    @Operation(summary = "为快递生成取件码")
+    @Operation(summary = "为快递生成存放位置和取件码")
     public ResponseEntity<?> createPickupInfo(@PathVariable Long id) {
         return service.getById(id)
                 .map(parcel -> {
@@ -91,13 +92,27 @@ public class AdminParcelController {
                     do {
                         pickupCode = PickupCodeUtil.generate();
                     } while (service.findActiveByPickupCode(pickupCode).isPresent());
+                    String location;
+                    do {
+                        location = generateRandomLocation();
+                    } while (service.findActiveByLocation(location).isPresent());
 
                     Parcel update = new Parcel();
+                    update.setLocation(location);
                     update.setPickupCode(pickupCode);
                     Parcel updated = service.update(id, update);
                     return ResponseEntity.ok(updated);
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private static String generateRandomLocation() {
+        char area = (char) ('A' + ThreadLocalRandom.current().nextInt(4));
+        int shelf = ThreadLocalRandom.current().nextInt(1, 11);
+        int code = ThreadLocalRandom.current().nextInt(0, 10000);
+        String shelfPart = String.format("%02d货架", shelf);
+        String codePart = String.format("%04d", code);
+        return area + "区-" + shelfPart + "-" + codePart;
     }
 
     @GetMapping("/{id}")
