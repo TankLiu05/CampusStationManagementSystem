@@ -34,18 +34,6 @@ public class AdminParcelController {
         this.sysUserService = sysUserService;
     }
 
-    public static class AdminParcelPickupRequest {
-        private String location;
-
-        public String getLocation() {
-            return location;
-        }
-
-        public void setLocation(String location) {
-            this.location = location;
-        }
-    }
-
     @PostMapping
     @Operation(summary = "创建快递（发货）")
     public ResponseEntity<?> create(@RequestBody AdminParcelCreateRequest req) {
@@ -86,11 +74,8 @@ public class AdminParcelController {
     }
 
     @PostMapping("/{id}/pickup")
-    @Operation(summary = "为快递创建存放位置和取件码")
-    public ResponseEntity<?> createPickupInfo(@PathVariable Long id, @RequestBody AdminParcelPickupRequest req) {
-        if (req.getLocation() == null || req.getLocation().isBlank()) {
-            return ResponseEntity.badRequest().body("存放位置为必填项");
-        }
+    @Operation(summary = "为快递生成取件码")
+    public ResponseEntity<?> createPickupInfo(@PathVariable Long id) {
         return service.getById(id)
                 .map(parcel -> {
                     if (parcel.getStatus() == null || parcel.getStatus() != 2) {
@@ -108,7 +93,6 @@ public class AdminParcelController {
                     } while (service.findActiveByPickupCode(pickupCode).isPresent());
 
                     Parcel update = new Parcel();
-                    update.setLocation(req.getLocation());
                     update.setPickupCode(pickupCode);
                     Parcel updated = service.update(id, update);
                     return ResponseEntity.ok(updated);
