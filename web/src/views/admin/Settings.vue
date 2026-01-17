@@ -20,10 +20,6 @@
 
         <div class="card-body">
           <div class="avatar-section">
-            <div class="avatar">
-              <img :src="adminInfo.avatar || '/default-avatar.png'" alt="头像">
-              <button class="change-avatar-btn" v-if="isEditing">更换头像</button>
-            </div>
           </div>
 
           <div class="info-grid">
@@ -36,16 +32,6 @@
                 disabled
               >
               <span v-else>{{ adminInfo.username }}</span>
-            </div>
-
-            <div class="info-item">
-              <label>真实姓名</label>
-              <input 
-                v-if="isEditing" 
-                v-model="editForm.realName" 
-                type="text"
-              >
-              <span v-else>{{ adminInfo.realName || '未设置' }}</span>
             </div>
 
             <div class="info-item">
@@ -66,36 +52,6 @@
                 type="email"
               >
               <span v-else>{{ adminInfo.email || '未设置' }}</span>
-            </div>
-
-            <div class="info-item">
-              <label>工号</label>
-              <input 
-                v-if="isEditing" 
-                v-model="editForm.employeeId" 
-                type="text"
-              >
-              <span v-else>{{ adminInfo.employeeId || '未设置' }}</span>
-            </div>
-
-            <div class="info-item">
-              <label>部门</label>
-              <input 
-                v-if="isEditing" 
-                v-model="editForm.department" 
-                type="text"
-              >
-              <span v-else>{{ adminInfo.department || '未设置' }}</span>
-            </div>
-
-            <div class="info-item">
-              <label>职位</label>
-              <input 
-                v-if="isEditing" 
-                v-model="editForm.position" 
-                type="text"
-              >
-              <span v-else>{{ adminInfo.position || '未设置' }}</span>
             </div>
 
             <div class="info-item">
@@ -120,26 +76,6 @@
               </div>
             </div>
             <button class="action-btn" @click="showChangePassword = true">修改密码</button>
-          </div>
-
-          <div class="security-item">
-            <div class="security-left">
-              <div class="security-info">
-                <h3>手机绑定</h3>
-                <p>{{ adminInfo.phone ? '已绑定' : '未绑定' }}</p>
-              </div>
-            </div>
-            <button class="action-btn">{{ adminInfo.phone ? '更换' : '绑定' }}</button>
-          </div>
-
-          <div class="security-item">
-            <div class="security-left">
-              <div class="security-info">
-                <h3>邮箱绑定</h3>
-                <p>{{ adminInfo.email ? '已绑定' : '未绑定' }}</p>
-              </div>
-            </div>
-            <button class="action-btn">{{ adminInfo.email ? '更换' : '绑定' }}</button>
           </div>
         </div>
       </div>
@@ -177,19 +113,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { getAdminProfile, updateAdminProfile, changeAdminPassword, type UserProfile, type ChangePasswordRequest } from '@/api/admin/profile'
 
 interface AdminInfo {
   username: string
-  realName?: string
   phone?: string
   email?: string
-  employeeId?: string
-  department?: string
-  position?: string
   avatar?: string
   createTime: string
+}
+
+interface EditForm {
+  username?: string
+  phone?: string
+  email?: string
 }
 
 interface PasswordForm {
@@ -209,17 +148,17 @@ const showChangePassword = ref(false)
 
 const adminInfo = reactive<AdminInfo>({
   username: 'admin',
-  realName: '',
   phone: '',
   email: '',
-  employeeId: '',
-  department: '',
-  position: '',
   avatar: '',
   createTime: '2024-01-01'
 })
 
-const editForm = reactive({ ...adminInfo })
+const editForm = reactive<EditForm>({
+  username: '',
+  phone: '',
+  email: ''
+})
 
 const passwordForm = reactive<PasswordForm>({
   oldPassword: '',
@@ -233,7 +172,29 @@ const preferences = reactive<Preferences>({
   smsNotifications: false
 })
 
-// TODO: 从后端获取管理员信息
+// 页面加载时获取管理员信息
+onMounted(async () => {
+  await loadProfile()
+})
+
+// 加载管理员个人信息
+const loadProfile = async () => {
+  try {
+    const data = await getAdminProfile()
+    // 格式化时间
+    const formattedTime = data.createTime ? new Date(data.createTime).toLocaleString('zh-CN') : ''
+    Object.assign(adminInfo, {
+      username: data.username,
+      phone: data.phone || '',
+      email: data.email || '',
+      avatar: data.avatar || '',
+      createTime: formattedTime
+    })
+  } catch (error) {
+    console.error('获取管理员信息失败:', error)
+    alert('获取管理员信息失败，请稍后重试')
+  }
+}
 
 const toggleEdit = () => {
   isEditing.value = true
@@ -244,23 +205,59 @@ const cancelEdit = () => {
   isEditing.value = false
 }
 
-const saveProfile = () => {
-  console.log('保存管理员信息:', editForm)
-  // TODO: 调用API保存信息
-  Object.assign(adminInfo, editForm)
-  isEditing.value = false
-  alert('保存成功')
+const saveProfile = async () => {
+  try {
+    const updateData = {
+      username: editForm.username,
+      phone: editForm.phone
+    }
+    
+    await updateAdminProfile(updateData)
+    
+    // 重新加载最新数据
+    await loadProfile()
+    
+    isEditing.value = false
+    alert('保存成功')
+  } catch (error) {
+    console.error('保存失败:', error)
+    alert('保存失败，请稍后重试')
+  }
 }
 
-const changePassword = () => {
+const changePassword = async () => {
   if (passwordForm.newPassword !== passwordForm.confirmPassword) {
     alert('两次输入的密码不一致')
     return
   }
-  console.log('修改密码')
-  // TODO: 调用API修改密码
-  showChangePassword.value = false
-  alert('密码修改成功')
+  
+  if (!passwordForm.oldPassword || !passwordForm.newPassword) {
+    alert('请填写完整的密码信息')
+    return
+  }
+  
+  try {
+    const data: ChangePasswordRequest = {
+      oldPassword: passwordForm.oldPassword,
+      newPassword: passwordForm.newPassword
+    }
+    
+    await changeAdminPassword(data)
+    
+    // 清空表单
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    
+    showChangePassword.value = false
+    alert('密码修改成功，请重新登录')
+    
+    // 可选：跳转到登录页
+    // window.location.href = '/login'
+  } catch (error) {
+    console.error('修改密码失败:', error)
+    alert('修改密码失败，请检查旧密码是否正确')
+  }
 }
 </script>
 
