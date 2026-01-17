@@ -12,8 +12,9 @@
         <input 
           type="text" 
           v-model="searchKeyword" 
-          placeholder="搜索快递单号、收件人..."
+          placeholder="搜索快递单号..."
           class="search-input"
+          @keyup.enter="searchPackages"
         >
         <button class="search-btn" @click="searchPackages">搜索</button>
       </div>
@@ -402,10 +403,36 @@ const getStatusLabel = (status?: string) => {
   return labels[status || ''] || '未知'
 }
 
-const searchPackages = () => {
-  console.log('搜索包裹:', searchKeyword.value)
-  // TODO: 后端暂不支持搜索，待扩展
-  alert('搜索功能待后端接口扩展')
+const searchPackages = async () => {
+  const keyword = searchKeyword.value.trim()
+  if (!keyword) {
+    alert('请输入搜索关键词')
+    return
+  }
+  
+  try {
+    // 调用后端搜索接口
+    const parcel = await parcelApi.searchByTrackingNumber(keyword)
+    // 将搜索结果转换为前端格式并显示
+    packageList.value = [convertBackendToUI(parcel)]
+    total.value = 1
+    totalPages.value = 1
+    currentPage.value = 1
+    
+    // 更新统计数据
+    updateStats([parcel])
+  } catch (error) {
+    console.error('搜索包裹失败:', error)
+    alert('未找到该快递单号对应的包裹')
+    // 搜索失败时清空列表
+    packageList.value = []
+    total.value = 0
+    totalPages.value = 1
+    stats.pendingShip = 0
+    stats.shipping = 0
+    stats.stored = 0
+    stats.abnormal = 0
+  }
 }
 
 const toggleSelectAll = (checked: boolean) => {
@@ -442,9 +469,9 @@ const resetFilters = () => {
   companyFilter.value = ''
   startDate.value = ''
   endDate.value = ''
-  searchKeyword.value = ''
+  searchKeyword.value = '' // 清空搜索关键词
   currentPage.value = 1
-  loadPackages()
+  loadPackages() // 重新加载完整列表
 }
 
 const viewPackage = async (pkg: Package) => {

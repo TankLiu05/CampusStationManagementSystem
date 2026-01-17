@@ -52,7 +52,7 @@ const menuItems: MenuItem[] = [
   { id: 'users', label: '用户管理', icon: 'users', route: '/admin/users' },
   { id: 'packages', label: '包裹管理', icon: 'packages', route: '/admin/packages' },
   { id: 'announcements', label: '公告管理', icon: 'announcements', route: '/admin/announcements' },
-  { id: 'statistics', label: '数据统计', icon: 'statistics', route: '/admin/statistics' },
+  { id: 'settings', label: '系统设置', icon: 'settings', route: '/admin/settings' },
 ]
 
 const handleNavClick = (item: MenuItem) => {
@@ -66,7 +66,7 @@ const getIconPath = (icon: string): string | undefined => {
     users: '/src/assets/icons/1.png',
     packages: '/src/assets/icons/2.png',
     announcements: '/src/assets/icons/4.png',
-    statistics: '/src/assets/icons/7.png',
+    settings: '/src/assets/icons/5.png',
   }
   return iconMap[icon]
 }
@@ -175,6 +175,4 @@ const getIconPath = (icon: string): string | undefined => {
   padding: 15px 0;
   border-top: 1px solid #e0e0e0;
 }
-
-
 </style>

@@ -164,5 +164,15 @@ export const parcelApi = {
     return request<Parcel>(`/api/admin/parcel/${id}/pickup`, {
       method: 'POST'
     })
+  },
+
+  /**
+   * 根据快递单号搜索包裹
+   * @param trackingNumber 快递单号
+   */
+  searchByTrackingNumber(trackingNumber: string) {
+    return request<Parcel>('/api/admin/parcel/search', {
+      params: { trackingNumber }
+    })
   }
 }

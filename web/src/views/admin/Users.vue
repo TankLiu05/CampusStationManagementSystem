@@ -19,7 +19,6 @@
       </div>
       <div class="action-buttons">
         <button class="btn-primary" @click="showAddUser = true">添加用户</button>
-        <button class="btn-secondary" @click="exportUsers">导出数据</button>
       </div>
     </div>
 
@@ -189,11 +188,6 @@ const searchUsers = () => {
   // TODO: 实现搜索功能
 }
 
-const exportUsers = () => {
-  console.log('导出用户数据')
-  // TODO: 实现导出功能
-}
-
 const editUser = (user: User) => {
   Object.assign(userForm, user)
   showEditUser.value = true
@@ -309,17 +303,6 @@ const closeModal = () => {
 
 .btn-primary:hover {
   background: #666666;
-}
-
-.btn-secondary {
-  background: white;
-  color: #333;
-  border: 1px solid #e0e0e0;
-}
-
-.btn-secondary:hover {
-  border-color: #808080;
-  color: #808080;
 }
 
 .filter-section {

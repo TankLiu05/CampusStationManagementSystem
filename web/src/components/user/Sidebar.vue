@@ -60,9 +60,7 @@ const activeItem = ref(props.defaultActive)
 const menuItems: MenuItem[] = [
   { id: 'home', label: '首页', icon: 'home', route: '/user/home' },
   { id: 'myPackages', label: '我的包裹', icon: 'myPackages', route: '/user/packages' },
-  { id: 'pickupCode', label: '取件码', icon: 'pickupCode', route: '/user/pickup-code' },
   { id: 'announcements', label: '公告信息', icon: 'announcements', route: '/user/announcements' },
-  { id: 'history', label: '历史记录', icon: 'history', route: '/user/history' },
 ]
 
 const handleNavClick = (item: MenuItem) => {
@@ -79,8 +77,6 @@ const getIconPath = (icon: string): string | undefined => {
   const iconMap: Record<string, string> = {
     myPackages: '/src/assets/icons/2.png',
     announcements: '/src/assets/icons/4.png',
-    pickupCode: '/src/assets/icons/12.png',
-    history: '/src/assets/icons/8.png',
     home: '/src/assets/icons/14.png',
   }
   return iconMap[icon]

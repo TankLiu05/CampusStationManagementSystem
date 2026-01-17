@@ -5,9 +5,7 @@ import { getCurrentUser } from '@/api/sysUser'
 // 用户端页面
 import UserHome from '../views/user/Home.vue'
 import MyPackages from '../views/user/MyPackages.vue'
-import PickupCode from '../views/user/PickupCode.vue'
 import UserAnnouncements from '../views/user/Announcements.vue'
-import History from '../views/user/History.vue'
 import Profile from '../views/user/Profile.vue'
 
 // 管理员端页面
@@ -15,7 +13,7 @@ import AdminHome from '../views/admin/Home.vue'
 import Users from '../views/admin/Users.vue'
 import Packages from '../views/admin/Packages.vue'
 import AdminAnnouncements from '../views/admin/Announcements.vue'
-import Statistics from '../views/admin/Statistics.vue'
+import Settings from '../views/admin/Settings.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -40,21 +38,9 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'USER' }
     },
     {
-      path: '/user/pickup-code',
-      name: 'PickupCode',
-      component: PickupCode,
-      meta: { requiresAuth: true, role: 'USER' }
-    },
-    {
       path: '/user/announcements',
       name: 'UserAnnouncements',
       component: UserAnnouncements,
-      meta: { requiresAuth: true, role: 'USER' }
-    },
-    {
-      path: '/user/history',
-      name: 'History',
-      component: History,
       meta: { requiresAuth: true, role: 'USER' }
     },
     {
@@ -89,9 +75,9 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'ADMIN' }
     },
     {
-      path: '/admin/statistics',
-      name: 'Statistics',
-      component: Statistics,
+      path: '/admin/settings',
+      name: 'Settings',
+      component: Settings,
       meta: { requiresAuth: true, role: 'ADMIN' }
     },
     {
