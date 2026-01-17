@@ -64,20 +64,24 @@ public class AdminUserController {
     @Operation(summary = "根据用户名查询用户")
     public ResponseEntity<?> getByUsername(@RequestParam String username) {
         requireAdmin();
-        return service.getByUsername(username)
-                .map(AdminUserController::toView)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在"));
+        java.util.Optional<SysUser> optional = service.getByUsername(username);
+        if (!optional.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在");
+        }
+        AdminUserView view = toView(optional.get());
+        return ResponseEntity.ok(view);
     }
 
     @GetMapping("/byPhone")
     @Operation(summary = "根据手机号查询用户")
     public ResponseEntity<?> getByPhone(@RequestParam String phone) {
         requireAdmin();
-        return service.getByPhone(phone)
-                .map(AdminUserController::toView)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在"));
+        java.util.Optional<SysUser> optional = service.getByPhone(phone);
+        if (!optional.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在");
+        }
+        AdminUserView view = toView(optional.get());
+        return ResponseEntity.ok(view);
     }
 
     @PostMapping("/{id}/status")
