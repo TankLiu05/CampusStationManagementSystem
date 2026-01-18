@@ -4,6 +4,7 @@ import com.campus.station.common.SessionUtil;
 import com.campus.station.model.Notice;
 import com.campus.station.model.SysUser;
 import com.campus.station.service.NoticeService;
+import com.campus.station.service.SysAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
@@ -28,9 +29,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminNoticeController {
 
     private final NoticeService service;
+    private final SysAdminService sysAdminService;
 
-    public AdminNoticeController(NoticeService service) {
+    public AdminNoticeController(NoticeService service, SysAdminService sysAdminService) {
         this.service = service;
+        this.sysAdminService = sysAdminService;
     }
 
     private SysUser requireAdmin() {
@@ -38,7 +41,7 @@ public class AdminNoticeController {
         if (current == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
         }
-        if (current.getRole() == null || !"ADMIN".equalsIgnoreCase(current.getRole())) {
+        if (sysAdminService.getByUserId(current.getId()).isEmpty()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权访问公告管理接口");
         }
         return current;

@@ -1,19 +1,29 @@
 package com.campus.station.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "sys_user")
-public class SysUser {
+@Table(name = "sys_admin")
+public class SysAdmin {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "username", nullable = false, unique = true, length = 50)
+    @Column(name = "admin_id", nullable = false)
+    private Long userId;
+
+    @Column(name = "username", nullable = false, length = 50)
     private String username;
 
     @Column(name = "password", nullable = false, length = 100)
@@ -27,6 +37,10 @@ public class SysUser {
 
     @Column(name = "status", nullable = false)
     private Byte status;
+
+    @ManyToOne
+    @JoinColumn(name = "admin_id", insertable = false, updatable = false)
+    private SysUser user;
 
     @CreationTimestamp
     @Column(name = "create_time", nullable = false, updatable = false)
@@ -42,6 +56,14 @@ public class SysUser {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getUsername() {
@@ -82,6 +104,14 @@ public class SysUser {
 
     public void setStatus(Byte status) {
         this.status = status;
+    }
+
+    public SysUser getUser() {
+        return user;
+    }
+
+    public void setUser(SysUser user) {
+        this.user = user;
     }
 
     public LocalDateTime getCreateTime() {

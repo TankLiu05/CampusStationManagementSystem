@@ -4,6 +4,7 @@ import com.campus.station.common.SessionUtil;
 import com.campus.station.model.SysUser;
 import com.campus.station.service.NoticeService;
 import com.campus.station.service.ParcelService;
+import com.campus.station.service.SysAdminService;
 import com.campus.station.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,11 +27,13 @@ public class AdminProfileController {
     private final SysUserService sysUserService;
     private final ParcelService parcelService;
     private final NoticeService noticeService;
+    private final SysAdminService sysAdminService;
 
-    public AdminProfileController(SysUserService sysUserService, ParcelService parcelService, NoticeService noticeService) {
+    public AdminProfileController(SysUserService sysUserService, ParcelService parcelService, NoticeService noticeService, SysAdminService sysAdminService) {
         this.sysUserService = sysUserService;
         this.parcelService = parcelService;
         this.noticeService = noticeService;
+        this.sysAdminService = sysAdminService;
     }
 
     private SysUser requireAdmin() {
@@ -38,7 +41,7 @@ public class AdminProfileController {
         if (current == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
         }
-        if (current.getRole() == null || !"ADMIN".equalsIgnoreCase(current.getRole())) {
+        if (sysAdminService.getByUserId(current.getId()).isEmpty()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权访问管理员个人信息接口");
         }
         return current;

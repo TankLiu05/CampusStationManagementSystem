@@ -54,11 +54,6 @@ public class SysUserController {
     @PostMapping
     @Operation(summary = "普通用户注册")
     public ResponseEntity<?> create(@RequestBody SysUser req) {
-        // 仅允许注册普通用户
-        if (req.getRole() != null && !"USER".equalsIgnoreCase(req.getRole())) {
-            return ResponseEntity.status(403).body("仅允许注册普通用户");
-        }
-        req.setRole("USER");
         if (req.getStatus() == null) {
             req.setStatus((byte) 1);
         }

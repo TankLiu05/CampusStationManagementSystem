@@ -68,8 +68,6 @@ public class SysUserServiceImpl implements SysUserService {
         if (update.getPassword() != null) existing.setPassword(update.getPassword());
         if (update.getPhone() != null) existing.setPhone(update.getPhone());
         if (update.getEmail() != null) existing.setEmail(update.getEmail());
-        if (update.getAvatar() != null) existing.setAvatar(update.getAvatar());
-        if (update.getRole() != null) existing.setRole(update.getRole());
         if (update.getStatus() != null) existing.setStatus(update.getStatus());
 
         return repository.save(existing);

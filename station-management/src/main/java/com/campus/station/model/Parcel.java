@@ -28,6 +28,12 @@ public class Parcel {
     @Column(name = "receiver_phone", length = 20)
     private String receiverPhone;
 
+    @Column(name = "origin", length = 100)
+    private String origin;
+
+    @Column(name = "destination", length = 100)
+    private String destination;
+
     @Column(name = "location", length = 100)
     private String location;
 
@@ -94,6 +100,22 @@ public class Parcel {
 
     public void setReceiverPhone(String receiverPhone) {
         this.receiverPhone = receiverPhone;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
+    }
+
+    public String getDestination() {
+        return destination;
+    }
+
+    public void setDestination(String destination) {
+        this.destination = destination;
     }
 
     public String getLocation() {

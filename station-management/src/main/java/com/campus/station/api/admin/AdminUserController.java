@@ -4,6 +4,7 @@ import com.campus.station.common.SessionUtil;
 import com.campus.station.model.SysUser;
 import com.campus.station.service.NoticeService;
 import com.campus.station.service.ParcelService;
+import com.campus.station.service.SysAdminService;
 import com.campus.station.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,11 +30,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminUserController {
 
     private final SysUserService service;
+    private final SysAdminService sysAdminService;
     private final ParcelService parcelService;
     private final NoticeService noticeService;
 
-    public AdminUserController(SysUserService service, ParcelService parcelService, NoticeService noticeService) {
+    public AdminUserController(SysUserService service, SysAdminService sysAdminService, ParcelService parcelService, NoticeService noticeService) {
         this.service = service;
+        this.sysAdminService = sysAdminService;
         this.parcelService = parcelService;
         this.noticeService = noticeService;
     }
@@ -43,7 +46,7 @@ public class AdminUserController {
         if (current == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
         }
-        if (current.getRole() == null || !"ADMIN".equalsIgnoreCase(current.getRole())) {
+        if (sysAdminService.getByUserId(current.getId()).isEmpty()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权访问用户管理接口");
         }
         return current;
@@ -118,8 +121,6 @@ public class AdminUserController {
         view.setUsername(user.getUsername());
         view.setPhone(user.getPhone());
         view.setEmail(user.getEmail());
-        view.setAvatar(user.getAvatar());
-        view.setRole(user.getRole());
         view.setStatus(user.getStatus());
         view.setCreateTime(user.getCreateTime());
         view.setUpdateTime(user.getUpdateTime());
@@ -131,8 +132,6 @@ public class AdminUserController {
         private String username;
         private String phone;
         private String email;
-        private String avatar;
-        private String role;
         private Byte status;
         private LocalDateTime createTime;
         private LocalDateTime updateTime;
@@ -167,22 +166,6 @@ public class AdminUserController {
 
         public void setEmail(String email) {
             this.email = email;
-        }
-
-        public String getAvatar() {
-            return avatar;
-        }
-
-        public void setAvatar(String avatar) {
-            this.avatar = avatar;
-        }
-
-        public String getRole() {
-            return role;
-        }
-
-        public void setRole(String role) {
-            this.role = role;
         }
 
         public Byte getStatus() {
