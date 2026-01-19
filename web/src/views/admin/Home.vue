@@ -97,12 +97,7 @@ const handleNavigate = (path: string) => {
 onMounted(async () => {
   try {
     currentUser.value = await getCurrentUser()
-    
-    // 权限检查:如果不是管理员,跳转到用户首页
-    if (currentUser.value.role !== 'ADMIN') {
-      router.replace('/user/home')
-      return
-    }
+    // 权限检查已由路由守卫处理，这里不再重复检查
     
     // 加载统计数据
     loadStatistics()

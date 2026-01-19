@@ -163,6 +163,8 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login, register } from '@/api/sysUser'
+import { request } from '@/utls/request'
+import { clearRoleCache } from '@/router'
 
 const router = useRouter()
 const isRegister = ref(false)
@@ -183,19 +185,33 @@ const registerForm = reactive({
 const showPassword = ref(false)
 
 const handleLogin = async () => {
+  console.log('开始登录...')
+  // 登录前清除旧的角色缓存
+  clearRoleCache()
+  
   try {
-    const user = await login(loginForm.username, loginForm.password)
-    console.log('用户登录成功:', user)
+    const res = await login(loginForm.username, loginForm.password)
+    console.log('登录响应:', JSON.stringify(res))
     
-    // 根据用户角色跳转到对应首页
-    if (user.role === 'ADMIN') {
-      router.push('/admin/home')
-    } else {
-      router.push('/user/home')
+    // 处理后端可能返回的 ApiResponse 格式
+    const resAny = res as any
+    if (resAny && typeof resAny === 'object' && 'success' in resAny) {
+      if (!resAny.success) {
+        window.alert(resAny.message || '登录失败')
+        return
+      }
     }
-  } catch (err) {
-    console.error('用户登录失败:', err)
-    window.alert('登录失败，请检查账号或密码')
+    
+    // 登录成功，直接跳转到用户首页，路由守卫会自动判断角色并重定向
+    console.log('登录成功，跳转中...')
+    router.push('/user/home')
+  } catch (err: any) {
+    console.error('登录失败:', err)
+    let msg = '登录失败，请检查账号或密码'
+    if (err && err.message) {
+      msg = err.message
+    }
+    window.alert(msg)
   }
 }
 
