@@ -52,8 +52,9 @@
         </div>
       </div>
 
-      <!-- 管理功能区 -->
+      <!-- 管理功能区：快捷操作 + 仓库信息 -->
       <div class="admin-sections">
+        <!-- 左侧：快捷操作 -->
         <div class="section">
           <h2>快捷操作</h2>
           <div class="action-buttons">
@@ -66,6 +67,66 @@
             <button class="action-btn" @click="handleNavigate('/admin/users')">
               <span>用户管理</span>
             </button>
+            <button class="action-btn" @click="handleNavigate('/admin/logistics')">
+              <span>物流管理</span>
+            </button>
+            <button class="action-btn" @click="handleNavigate('/admin/returns')">
+              <span>退货申请</span>
+            </button>
+            <button class="action-btn" @click="handleNavigate('/admin/warehouse')">
+              <span>仓库管理</span>
+            </button>
+            <button class="action-btn" @click="handleNavigate('/admin/messages')">
+              <span>留言管理</span>
+            </button>
+            <button class="action-btn" @click="handleNavigate('/admin/settings')">
+              <span>系统设置</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 右侧：仓库信息概览 -->
+        <div class="section warehouse-section">
+          <div class="section-header">
+            <h2>仓库信息</h2>
+            <button class="link-btn" @click="handleNavigate('/admin/warehouse-info')">查看详情</button>
+          </div>
+          <div class="warehouse-info">
+            <div class="warehouse-basic">
+              <div class="warehouse-name">{{ warehouseInfo.name }}</div>
+              <div class="warehouse-address">{{ warehouseInfo.address }}</div>
+              <div class="warehouse-meta">
+                <span>营业时间：{{ warehouseInfo.businessHours }}</span>
+                <span>联系电话：{{ warehouseInfo.phone }}</span>
+              </div>
+            </div>
+            <div class="warehouse-capacity">
+              <div class="capacity-header">
+                <span class="capacity-label">仓库容量</span>
+                <span class="capacity-rate">{{ capacityStats.usageRate }}%</span>
+              </div>
+              <div class="capacity-bar">
+                <div class="capacity-fill" :style="{ width: capacityStats.usageRate + '%' }"></div>
+              </div>
+              <div class="capacity-detail">
+                <span>已用 {{ capacityStats.usedCapacity }} / {{ capacityStats.totalCapacity }} 格</span>
+                <span>剩余 {{ capacityStats.remainCapacity }} 格</span>
+              </div>
+            </div>
+            <div class="warehouse-stats">
+              <div class="warehouse-stat-item">
+                <span class="stat-label">今日入库</span>
+                <span class="stat-value">{{ capacityStats.todayIn }} 件</span>
+              </div>
+              <div class="warehouse-stat-item">
+                <span class="stat-label">今日出库</span>
+                <span class="stat-value">{{ capacityStats.todayOut }} 件</span>
+              </div>
+              <div class="warehouse-stat-item">
+                <span class="stat-label">滞留包裹</span>
+                <span class="stat-value warning">{{ capacityStats.overdueParcels }} 件</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -73,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCurrentUser, logout } from '@/api/sysUser'
 import type { SysUser } from '@/api/sysUser'
@@ -88,6 +149,25 @@ const userCount = ref(0)
 const parcelCount = ref(0)
 const signedCount = ref(0)
 const noticeCount = ref(0)
+
+// 仓库基本信息
+const warehouseInfo = reactive({
+  name: '东校区快递驿站',
+  address: '东校区学生生活区A栋1楼',
+  phone: '010-12345678',
+  businessHours: '08:00 - 21:00'
+})
+
+// 容量统计
+const capacityStats = reactive({
+  totalCapacity: 500,
+  usedCapacity: 356,
+  remainCapacity: 144,
+  usageRate: 71,
+  todayIn: 45,
+  todayOut: 32,
+  overdueParcels: 15
+})
 
 // 导航处理函数
 const handleNavigate = (path: string) => {
@@ -206,7 +286,7 @@ const loadStatistics = async () => {
 /* 管理功能区 */
 .admin-sections {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1.5fr;
   gap: 24px;
 }
 
@@ -224,6 +304,33 @@ const loadStatistics = async () => {
   margin-bottom: 24px;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  margin-bottom: 0;
+}
+
+.link-btn {
+  padding: 6px 16px;
+  background: transparent;
+  color: #666;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.link-btn:hover {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
 .action-buttons {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -238,13 +345,134 @@ const loadStatistics = async () => {
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   font-size: 16px;
   color: #333;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: #f9f9f9;
+  border-color: #ccc;
 }
 
 .action-btn:active {
   border-color: #999;
+}
+
+/* 仓库信息区 */
+.warehouse-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.warehouse-info {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.warehouse-basic {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.warehouse-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+.warehouse-address {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.warehouse-meta {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+  color: #999;
+}
+
+.warehouse-capacity {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.capacity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.capacity-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.capacity-rate {
+  font-size: 18px;
+  font-weight: 600;
+  color: #52c41a;
+}
+
+.capacity-bar {
+  height: 10px;
+  background: #e0e0e0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.capacity-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #52c41a, #73d13d);
+  border-radius: 5px;
+  transition: width 0.3s;
+}
+
+.capacity-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #999;
+}
+
+.warehouse-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.warehouse-stat-item {
+  background: #f9f9f9;
+  padding: 16px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.warehouse-stat-item .stat-label {
+  display: block;
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.warehouse-stat-item .stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.warehouse-stat-item .stat-value.warning {
+  color: #fa8c16;
 }
 
 /* 响应式设计 */
@@ -256,6 +484,10 @@ const loadStatistics = async () => {
   .admin-sections {
     grid-template-columns: 1fr;
   }
+
+  .warehouse-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
@@ -265,6 +497,15 @@ const loadStatistics = async () => {
 
   .action-buttons {
     grid-template-columns: 1fr;
+  }
+
+  .warehouse-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .warehouse-meta {
+    flex-direction: column;
+    gap: 8px;
   }
 
   .main-content {

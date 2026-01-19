@@ -37,9 +37,13 @@ const menuNameMap: Record<string, string> = {
   '/admin/home': '工作台',
   '/admin/users': '用户管理',
   '/admin/packages': '包裹管理',
+  '/admin/warehouse': '仓库管理',
+  '/admin/warehouse-info': '仓库信息',
+  '/admin/returns': '退货申请',
+  '/admin/logistics': '物流管理',
+  '/admin/messages': '留言管理',
   '/admin/announcements': '公告管理',
-  '/admin/statistics': '数据统计',
-  '/admin/reports': '报表中心'
+  '/admin/settings': '个人设置'
 }
 
 // 路由到菜单ID的映射
@@ -47,9 +51,13 @@ const routeToMenuId: Record<string, string> = {
   '/admin/home': 'dashboard',
   '/admin/users': 'users',
   '/admin/packages': 'packages',
+  '/admin/warehouse': 'warehouse',
+  '/admin/warehouse-info': 'warehouse-info',
+  '/admin/returns': 'returns',
+  '/admin/logistics': 'logistics',
+  '/admin/messages': 'messages',
   '/admin/announcements': 'announcements',
-  '/admin/statistics': 'statistics',
-  '/admin/reports': 'reports'
+  '/admin/settings': 'settings'
 }
 
 const currentPageName = computed(() => {

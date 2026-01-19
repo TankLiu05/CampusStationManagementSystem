@@ -15,6 +15,11 @@ import Users from '../views/admin/Users.vue'
 import Packages from '../views/admin/Packages.vue'
 import AdminAnnouncements from '../views/admin/Announcements.vue'
 import Settings from '../views/admin/Settings.vue'
+import Warehouse from '../views/admin/Warehouse.vue'
+import WarehouseInfo from '../views/admin/WarehouseInfo.vue'
+import Returns from '../views/admin/Returns.vue'
+import Logistics from '../views/admin/Logistics.vue'
+import Messages from '../views/admin/Messages.vue'
 
 // 缓存用户角色，避免重复请求
 let cachedRole: 'ADMIN' | 'USER' | null = null
@@ -100,6 +105,36 @@ const router = createRouter({
       path: '/admin/settings',
       name: 'Settings',
       component: Settings,
+      meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+      path: '/admin/warehouse',
+      name: 'Warehouse',
+      component: Warehouse,
+      meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+      path: '/admin/warehouse-info',
+      name: 'WarehouseInfo',
+      component: WarehouseInfo,
+      meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+      path: '/admin/returns',
+      name: 'Returns',
+      component: Returns,
+      meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+      path: '/admin/logistics',
+      name: 'Logistics',
+      component: Logistics,
+      meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+      path: '/admin/messages',
+      name: 'Messages',
+      component: Messages,
       meta: { requiresAuth: true, role: 'ADMIN' }
     },
     {

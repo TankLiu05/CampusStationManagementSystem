@@ -51,6 +51,11 @@ const menuItems: MenuItem[] = [
   { id: 'dashboard', label: '工作台', icon: 'dashboard', route: '/admin/home' },
   { id: 'users', label: '用户管理', icon: 'users', route: '/admin/users' },
   { id: 'packages', label: '包裹管理', icon: 'packages', route: '/admin/packages' },
+  { id: 'warehouse', label: '仓库管理', icon: 'warehouse', route: '/admin/warehouse' },
+  { id: 'warehouse-info', label: '仓库信息', icon: 'warehouse-info', route: '/admin/warehouse-info' },
+  { id: 'returns', label: '退货申请', icon: 'returns', route: '/admin/returns' },
+  { id: 'logistics', label: '物流管理', icon: 'logistics', route: '/admin/logistics' },
+  { id: 'messages', label: '留言管理', icon: 'messages', route: '/admin/messages' },
   { id: 'announcements', label: '公告管理', icon: 'announcements', route: '/admin/announcements' },
   { id: 'settings', label: '个人设置', icon: 'settings', route: '/admin/settings' },
 ]
@@ -77,6 +82,11 @@ const getIconPath = (icon: string): string | undefined => {
     dashboard: '/src/assets/icons/6.png',
     users: '/src/assets/icons/1.png',
     packages: '/src/assets/icons/2.png',
+    warehouse: '/src/assets/icons/7.png',
+    'warehouse-info': '/src/assets/icons/3.png',
+    returns: '/src/assets/icons/9.png',
+    logistics: '/src/assets/icons/8.png',
+    messages: '/src/assets/icons/10.png',
     announcements: '/src/assets/icons/4.png',
     settings: '/src/assets/icons/5.png',
   }
