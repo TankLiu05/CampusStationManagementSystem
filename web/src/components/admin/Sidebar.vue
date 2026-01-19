@@ -50,6 +50,7 @@ const activeItem = ref(props.defaultActive)
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: '工作台', icon: 'dashboard', route: '/admin/home' },
   { id: 'users', label: '用户管理', icon: 'users', route: '/admin/users' },
+  { id: 'admins', label: '管理员管理', icon: 'admins', route: '/admin/admins' },
   { id: 'packages', label: '包裹管理', icon: 'packages', route: '/admin/packages' },
   { id: 'warehouse', label: '仓库管理', icon: 'warehouse', route: '/admin/warehouse' },
   { id: 'warehouse-info', label: '仓库信息', icon: 'warehouse-info', route: '/admin/warehouse-info' },
@@ -81,6 +82,7 @@ const getIconPath = (icon: string): string | undefined => {
   const iconMap: Record<string, string> = {
     dashboard: '/src/assets/icons/6.png',
     users: '/src/assets/icons/1.png',
+    admins: '/src/assets/icons/23.png',
     packages: '/src/assets/icons/2.png',
     warehouse: '/src/assets/icons/7.png',
     'warehouse-info': '/src/assets/icons/3.png',

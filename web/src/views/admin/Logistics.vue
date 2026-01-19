@@ -46,11 +46,11 @@
       <div class="stats-cards">
         <div class="stat-card">
           <div class="stat-icon" style="background: #f5f5f5;">
-            <img src="@/assets/icons/2.png" alt="在途包裹" class="icon-img" />
+            <img src="@/assets/icons/2.png" alt="包裹总数" class="icon-img" />
           </div>
           <div class="stat-content">
             <div class="stat-value">{{ stats.totalParcels }}</div>
-            <div class="stat-label">在途包裹</div>
+            <div class="stat-label">包裹总数</div>
           </div>
         </div>
         <div class="stat-card">
@@ -122,7 +122,7 @@
               <td>
                 <div class="action-btns">
                   <button class="btn-view" @click="viewLogistics(item)">轨迹</button>
-                  <button class="btn-edit" @click="updateRoute(item)">更新</button>
+                  <button class="btn-edit" :disabled="!!item.pickupCode" :class="{ disabled: !!item.pickupCode }" @click="updateRoute(item)">更新</button>
                   <button class="btn-refresh" @click="refreshLogistics(item)">刷新</button>
                 </div>
               </td>
@@ -132,9 +132,9 @@
 
         <!-- 分页 -->
         <div class="pagination">
-          <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">上一页</button>
+          <button class="page-btn" :disabled="currentPage === 1 || loading" @click="handlePageChange(-1)">上一页</button>
           <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页，共 {{ total }} 条</span>
-          <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">下一页</button>
+          <button class="page-btn" :disabled="currentPage >= totalPages || loading" @click="handlePageChange(1)">下一页</button>
         </div>
       </div>
 
@@ -196,16 +196,7 @@
               <label>下一站点</label>
               <input type="text" v-model="updateForm.nextStation">
             </div>
-            <div class="form-group">
-              <label>物流状态</label>
-              <select v-model="updateForm.status">
-                <option value="collected">已揽收</option>
-                <option value="in_transit">运输中</option>
-                <option value="arrived">已到站</option>
-                <option value="delivering">派送中</option>
-                <option value="signed">已签收</option>
-              </select>
-            </div>
+
             <div class="form-row">
               <div class="form-group">
                 <label>预计到达下一站</label>
@@ -290,8 +281,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { parcelRouteApi, type ParcelRoute, type ParcelRouteCreateRequest } from '@/api/admin/parcelRoute'
+import { parcelApi, type Parcel, type PageResponse } from '@/api/admin/parcel'
 
 interface TrackingHistory {
   status: string
@@ -312,14 +305,17 @@ interface LogisticsItem {
   updateTime: string
   isDelayed: boolean
   trackingHistory: TrackingHistory[]
+  pickupCode?: string // 取件码
 }
 
 const searchKeyword = ref('')
 const filterCompany = ref('')
 const filterStatus = ref('')
 const currentPage = ref(1)
-const totalPages = ref(2)
-const total = ref(18)
+const pageSize = ref(10)
+const totalPages = ref(1)
+const total = ref(0)
+const loading = ref(false)
 
 const showAddRoute = ref(false)
 const showUpdateRoute = ref(false)
@@ -327,10 +323,10 @@ const showTrackingDetail = ref(false)
 const currentLogistics = ref<LogisticsItem | null>(null)
 
 const stats = reactive({
-  totalParcels: 156,
-  inTransit: 89,
-  arrived: 45,
-  delayed: 12
+  totalParcels: 0,
+  inTransit: 0,
+  arrived: 0,
+  delayed: 0
 })
 
 const routeForm = reactive({
@@ -344,132 +340,40 @@ const routeForm = reactive({
 const updateForm = reactive({
   currentStation: '',
   nextStation: '',
-  status: '',
   etaNextStation: '',
   etaDelivered: '',
   remark: ''
 })
 
-// 模拟数据
-const logisticsList = ref<LogisticsItem[]>([
-  {
-    id: 1,
-    trackingNumber: 'SF1234567890123',
-    company: '顺丰速运',
-    currentStation: '上海浦东转运中心',
-    nextStation: '校园驿站',
-    etaNextStation: '2026-01-19 18:00',
-    etaDelivered: '2026-01-19 20:00',
-    status: 'in_transit',
-    updateTime: '2026-01-19 14:30',
-    isDelayed: false,
-    trackingHistory: [
-      { status: '运输中', time: '2026-01-19 14:30', description: '快件已到达上海浦东转运中心', location: '上海市浦东新区' },
-      { status: '运输中', time: '2026-01-19 08:00', description: '快件已从杭州转运中心发出', location: '杭州市萧山区' },
-      { status: '运输中', time: '2026-01-18 22:15', description: '快件已到达杭州转运中心', location: '杭州市萧山区' },
-      { status: '已揽收', time: '2026-01-18 16:30', description: '快递员已揽收', location: '杭州市西湖区' },
-    ]
-  },
-  {
-    id: 2,
-    trackingNumber: 'YT9876543210987',
-    company: '圆通速递',
-    currentStation: '校园驿站',
-    nextStation: '',
+// 包裹列表数据
+const logisticsList = ref<LogisticsItem[]>([])
+
+// 将后端包裹数据转换为前端展示格式
+const convertParcelToLogistics = (parcel: Parcel): LogisticsItem => {
+  // 根据后端状态映射前端物流状态
+  const statusMap: Record<number, string> = {
+    0: 'collected',    // 待发货 -> 已揽收
+    1: 'in_transit',   // 已发货 -> 运输中
+    2: 'arrived',      // 已入库 -> 已到站
+    3: 'delivering'    // 退回/异常 -> 派送中
+  }
+  const frontStatus = parcel.isSigned === 1 ? 'signed' : (statusMap[parcel.status] || 'in_transit')
+  
+  return {
+    id: parcel.id,
+    trackingNumber: parcel.trackingNumber,
+    company: parcel.company,
+    currentStation: parcel.location || '待分配',
+    nextStation: parcel.status === 2 ? '' : '校园驿站',
     etaNextStation: '',
-    etaDelivered: '2026-01-19 12:00',
-    status: 'arrived',
-    updateTime: '2026-01-19 10:00',
+    etaDelivered: '',
+    status: frontStatus,
+    updateTime: parcel.updateTime?.replace('T', ' ').substring(0, 16) || '',
     isDelayed: false,
-    trackingHistory: [
-      { status: '已到站', time: '2026-01-19 10:00', description: '快件已到达校园驿站，请及时取件', location: '校园驿站' },
-      { status: '派送中', time: '2026-01-19 08:30', description: '快件正在派送中', location: '上海市杨浦区' },
-      { status: '运输中', time: '2026-01-18 20:00', description: '快件已到达上海集散中心', location: '上海市青浦区' },
-    ]
-  },
-  {
-    id: 3,
-    trackingNumber: 'ZT1122334455667',
-    company: '中通快递',
-    currentStation: '南京转运中心',
-    nextStation: '上海转运中心',
-    etaNextStation: '2026-01-20 06:00',
-    etaDelivered: '2026-01-20 18:00',
-    status: 'in_transit',
-    updateTime: '2026-01-19 16:00',
-    isDelayed: false,
-    trackingHistory: [
-      { status: '运输中', time: '2026-01-19 16:00', description: '快件已到达南京转运中心', location: '南京市江宁区' },
-      { status: '运输中', time: '2026-01-19 10:00', description: '快件已从合肥转运中心发出', location: '合肥市蜀山区' },
-      { status: '已揽收', time: '2026-01-18 14:00', description: '快递员已揽收', location: '合肥市包河区' },
-    ]
-  },
-  {
-    id: 4,
-    trackingNumber: 'ST5566778899001',
-    company: '申通快递',
-    currentStation: '上海青浦仓',
-    nextStation: '杨浦区配送站',
-    etaNextStation: '2026-01-19 16:00',
-    etaDelivered: '2026-01-19 18:00',
-    status: 'delivering',
-    updateTime: '2026-01-19 15:30',
-    isDelayed: true,
-    trackingHistory: [
-      { status: '派送中', time: '2026-01-19 15:30', description: '快件正在派送中，预计18:00前送达', location: '上海市杨浦区' },
-      { status: '运输中', time: '2026-01-19 08:00', description: '快件已到达上海青浦仓', location: '上海市青浦区' },
-    ]
-  },
-  {
-    id: 5,
-    trackingNumber: 'JT6677889900112',
-    company: '极兔速递',
-    currentStation: '校园驿站',
-    nextStation: '',
-    etaNextStation: '',
-    etaDelivered: '2026-01-18 12:00',
-    status: 'signed',
-    updateTime: '2026-01-18 11:30',
-    isDelayed: false,
-    trackingHistory: [
-      { status: '已签收', time: '2026-01-18 11:30', description: '已签收，签收人：本人', location: '校园驿站' },
-      { status: '已到站', time: '2026-01-18 09:00', description: '快件已到达校园驿站', location: '校园驿站' },
-      { status: '派送中', time: '2026-01-18 07:30', description: '快件正在派送中', location: '上海市杨浦区' },
-    ]
-  },
-  {
-    id: 6,
-    trackingNumber: 'YD2233445566778',
-    company: '韵达快递',
-    currentStation: '郑州转运中心',
-    nextStation: '上海转运中心',
-    etaNextStation: '2026-01-20 12:00',
-    etaDelivered: '2026-01-21 18:00',
-    status: 'in_transit',
-    updateTime: '2026-01-19 12:00',
-    isDelayed: true,
-    trackingHistory: [
-      { status: '运输中', time: '2026-01-19 12:00', description: '快件已到达郑州转运中心', location: '郑州市新郑市' },
-      { status: '运输中', time: '2026-01-18 18:00', description: '快件已从西安转运中心发出', location: '西安市长安区' },
-      { status: '已揽收', time: '2026-01-17 16:00', description: '快递员已揽收', location: '西安市雁塔区' },
-    ]
-  },
-  {
-    id: 7,
-    trackingNumber: 'SF9988776655443',
-    company: '顺丰速运',
-    currentStation: '广州转运中心',
-    nextStation: '上海转运中心',
-    etaNextStation: '2026-01-20 08:00',
-    etaDelivered: '2026-01-20 20:00',
-    status: 'collected',
-    updateTime: '2026-01-19 09:00',
-    isDelayed: false,
-    trackingHistory: [
-      { status: '已揽收', time: '2026-01-19 09:00', description: '快递员已揽收', location: '广州市天河区' },
-    ]
-  },
-])
+    trackingHistory: [],
+    pickupCode: parcel.pickupCode
+  }
+}
 
 const filteredLogistics = computed(() => {
   let result = logisticsList.value
@@ -479,12 +383,34 @@ const filteredLogistics = computed(() => {
   if (filterStatus.value) {
     result = result.filter(l => l.status === filterStatus.value)
   }
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(l => l.trackingNumber.toLowerCase().includes(keyword))
-  }
   return result
 })
+
+// 加载包裹列表
+const loadParcelList = async () => {
+  loading.value = true
+  try {
+    const res = await parcelApi.list(currentPage.value - 1, pageSize.value)
+    logisticsList.value = res.content.map(convertParcelToLogistics)
+    total.value = res.totalElements
+    totalPages.value = res.totalPages || 1
+    
+    // 更新统计数据
+    updateStats(res.content)
+  } catch (error: any) {
+    console.error('加载包裹列表失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 更新统计数据
+const updateStats = (parcels: Parcel[]) => {
+  stats.totalParcels = total.value
+  stats.inTransit = parcels.filter(p => p.status === 1).length
+  stats.arrived = parcels.filter(p => p.status === 2 && p.isSigned === 0).length
+  stats.delayed = 0 // 需要后端提供超时数据
+}
 
 const getStatusLabel = (status?: string) => {
   const labels: Record<string, string> = {
@@ -497,7 +423,28 @@ const getStatusLabel = (status?: string) => {
   return labels[status || ''] || '未知'
 }
 
-const searchLogistics = () => {
+const searchLogistics = async () => {
+  if (searchKeyword.value.trim()) {
+    loading.value = true
+    try {
+      const parcel = await parcelApi.searchByTrackingNumber(searchKeyword.value.trim())
+      if (parcel) {
+        logisticsList.value = [convertParcelToLogistics(parcel)]
+        total.value = 1
+        totalPages.value = 1
+      } else {
+        logisticsList.value = []
+        total.value = 0
+      }
+    } catch (error: any) {
+      logisticsList.value = []
+      total.value = 0
+    } finally {
+      loading.value = false
+    }
+  } else {
+    loadParcelList()
+  }
   currentPage.value = 1
 }
 
@@ -506,6 +453,7 @@ const resetFilters = () => {
   filterCompany.value = ''
   filterStatus.value = ''
   currentPage.value = 1
+  loadParcelList()
 }
 
 const viewLogistics = (item: LogisticsItem) => {
@@ -514,11 +462,15 @@ const viewLogistics = (item: LogisticsItem) => {
 }
 
 const updateRoute = (item: LogisticsItem) => {
+  // 已生成取件码的快件不能修改
+  if (item.pickupCode) {
+    alert('该快件已生成取件码，无法修改站点信息')
+    return
+  }
   currentLogistics.value = item
   Object.assign(updateForm, {
     currentStation: item.currentStation,
     nextStation: item.nextStation,
-    status: item.status,
     etaNextStation: '',
     etaDelivered: '',
     remark: ''
@@ -530,34 +482,78 @@ const refreshLogistics = (item: LogisticsItem) => {
   alert(`刷新物流信息：${item.trackingNumber}（模拟）`)
 }
 
-const submitRoute = () => {
+const submitRoute = async () => {
   if (!routeForm.trackingNumber || !routeForm.currentStation) {
     alert('请填写快递单号和当前站点')
     return
   }
-  alert('添加成功（模拟）')
-  showAddRoute.value = false
-  Object.assign(routeForm, {
-    trackingNumber: '',
-    currentStation: '',
-    nextStation: '',
-    etaNextStation: '',
-    etaDelivered: ''
-  })
+  if (!routeForm.nextStation) {
+    alert('请填写下一站点')
+    return
+  }
+  if (!routeForm.etaNextStation || !routeForm.etaDelivered) {
+    alert('请填写预计到达时间')
+    return
+  }
+
+  try {
+    const data: ParcelRouteCreateRequest = {
+      trackingNumber: routeForm.trackingNumber,
+      currentStation: routeForm.currentStation,
+      nextStation: routeForm.nextStation,
+      etaNextStation: routeForm.etaNextStation,
+      etaDelivered: routeForm.etaDelivered
+    }
+    await parcelRouteApi.create(data)
+    alert('添加成功')
+    showAddRoute.value = false
+    Object.assign(routeForm, {
+      trackingNumber: '',
+      currentStation: '',
+      nextStation: '',
+      etaNextStation: '',
+      etaDelivered: ''
+    })
+  } catch (error: any) {
+    alert(error.message || '添加失败')
+  }
 }
 
-const submitUpdate = () => {
+const submitUpdate = async () => {
   if (!updateForm.currentStation) {
     alert('请填写当前站点')
     return
   }
-  alert('更新成功（模拟）')
-  showUpdateRoute.value = false
+
+  try {
+    // 如果更新了预计送达时间，调用后端接口
+    if (updateForm.etaDelivered && currentLogistics.value?.id) {
+      await parcelRouteApi.updateEtaDelivered(
+        currentLogistics.value.id,
+        updateForm.etaDelivered
+      )
+    }
+    alert('更新成功')
+    showUpdateRoute.value = false
+  } catch (error: any) {
+    alert(error.message || '更新失败')
+  }
 }
 
 const batchUpdateEta = () => {
-  alert('批量更新ETA（模拟）')
+  alert('批量更新ETA功能开发中')
 }
+
+// 监听分页变化
+const handlePageChange = (delta: number) => {
+  currentPage.value += delta
+  loadParcelList()
+}
+
+// 页面加载时初始化
+onMounted(() => {
+  loadParcelList()
+})
 </script>
 
 <style scoped>
@@ -782,31 +778,37 @@ td {
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  display: inline-block;
 }
 
+/* 已揽收 - 浅灰 */
 .status-badge.collected {
-  background: #f0f0f0;
-  color: #666;
+  background: #f5f5f5;
+  color: #8c8c8c;
 }
 
+/* 运输中 - 淡蓝 */
 .status-badge.in_transit {
-  background: #e6f7ff;
-  color: #1890ff;
+  background: #f0f5ff;
+  color: #597ef7;
 }
 
+/* 已到站 - 淡绿 */
 .status-badge.arrived {
   background: #f6ffed;
-  color: #52c41a;
+  color: #73d13d;
 }
 
+/* 派送中 - 淡橙 */
 .status-badge.delivering {
   background: #fff7e6;
-  color: #fa8c16;
+  color: #ffa940;
 }
 
+/* 已签收 - 中灰 */
 .status-badge.signed {
   background: #f0f0f0;
-  color: #333;
+  color: #595959;
 }
 
 .action-btns {
@@ -842,6 +844,18 @@ td {
 .btn-edit:hover {
   background: #808080;
   color: white;
+}
+
+.btn-edit.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #d9d9d9;
+  color: #d9d9d9;
+}
+
+.btn-edit.disabled:hover {
+  background: white;
+  color: #d9d9d9;
 }
 
 .btn-refresh {

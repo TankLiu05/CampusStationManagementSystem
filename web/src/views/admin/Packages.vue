@@ -110,6 +110,7 @@
               <div class="action-btns">
                 <button class="btn-view" @click="viewPackage(pkg)">详情</button>
                 <button class="btn-edit" @click="editPackage(pkg)">编辑</button>
+                <!-- 根据状态显示下一步操作 -->
                 <button 
                   v-if="pkg.status === 'PENDING_SHIP'" 
                   class="btn-ship" 
@@ -121,8 +122,19 @@
                 <button 
                   v-if="pkg.status === 'STORED' && !pkg.hasStorageInfo" 
                   class="btn-storage" 
-                  @click="setStorageInfo(pkg)">自动生成</button>
-                <button class="btn-status" @click="changePackageStatus(pkg)">改状态</button>
+                  @click="setStorageInfo(pkg)">生成取件码</button>
+                <button 
+                  v-if="pkg.status === 'STORED' && pkg.hasStorageInfo && pkg.isSigned === 0" 
+                  class="btn-sign" 
+                  @click="signPackage(pkg.id)">签收</button>
+                <button 
+                  v-if="pkg.status === 'RETURNED'" 
+                  class="btn-reprocess" 
+                  @click="reprocessPackage(pkg.id)">重新处理</button>
+                <button 
+                  v-if="pkg.status !== 'RETURNED'" 
+                  class="btn-abnormal" 
+                  @click="markAbnormal(pkg.id)">标记异常</button>
                 <button class="btn-delete" @click="deletePackage(pkg.id)">删除</button>
               </div>
             </td>
@@ -585,43 +597,6 @@ const storePackage = async (id: number) => {
   }
 }
 
-// 更改包裹状态：手动选择状态
-const changePackageStatus = async (pkg: Package) => {
-  const statusOptions = [
-    { value: 0, label: '待发货' },
-    { value: 1, label: '运输中' },
-    { value: 2, label: '已入库' },
-    { value: 3, label: '退回/异常' }
-  ]
-  
-  const currentStatus = statusOptions.find(s => s.value === pkg.backendStatus)
-  const message = `当前状态：${currentStatus?.label}
-
-请选择新状态：
-0 - 待发货
-1 - 运输中
-2 - 已入库
-3 - 退回/异常`
-  
-  const input = prompt(message)
-  if (input === null) return // 用户取消
-  
-  const newStatus = parseInt(input)
-  if (isNaN(newStatus) || newStatus < 0 || newStatus > 3) {
-    alert('无效的状态值，请输入0-3的数字')
-    return
-  }
-  
-  try {
-    await parcelApi.changeStatus(pkg.id, newStatus)
-    alert('状态修改成功')
-    loadPackages()
-  } catch (error) {
-    console.error('修改状态失败:', error)
-    alert('修改状态失败，请重试')
-  }
-}
-
 // 设置存储信息（自动生成取件码和存放位置）
 const setStorageInfo = async (pkg: Package) => {
   if (!confirm('确定为该包裹自动生成存放位置和取件码吗？')) {
@@ -634,7 +609,55 @@ const setStorageInfo = async (pkg: Package) => {
     loadPackages()
   } catch (error) {
     console.error('生成存储信息失败:', error)
-    alert('生成存储信息失败，请确认包裹状态为"已入库"且未签收')
+    alert('生成存储信息失败，请确认包裹状态为“已入库”且未签收')
+  }
+}
+
+// 签收功能：标记包裹已签收
+const signPackage = async (id: number) => {
+  if (!confirm('确定该包裹已被签收吗？')) {
+    return
+  }
+  
+  try {
+    await parcelApi.update(id, { isSigned: 1 })
+    alert('签收成功')
+    loadPackages()
+  } catch (error) {
+    console.error('签收失败:', error)
+    alert('签收失败，请重试')
+  }
+}
+
+// 标记异常：将包裹状态改为退回/异常
+const markAbnormal = async (id: number) => {
+  if (!confirm('确定要将该包裹标记为异常吗？')) {
+    return
+  }
+  
+  try {
+    await parcelApi.changeStatus(id, 3) // 状态改为3：退回/异常
+    alert('已标记为异常')
+    loadPackages()
+  } catch (error) {
+    console.error('标记异常失败:', error)
+    alert('标记异常失败，请重试')
+  }
+}
+
+// 重新处理：将异常包裹重新置为待发货
+const reprocessPackage = async (id: number) => {
+  if (!confirm('确定要重新处理该包裹吗？状态将重置为待发货')) {
+    return
+  }
+  
+  try {
+    await parcelApi.changeStatus(id, 0) // 状态改为0：待发货
+    alert('已重新处理，状态已重置为待发货')
+    loadPackages()
+  } catch (error) {
+    console.error('重新处理失败:', error)
+    alert('重新处理失败，请重试')
   }
 }
 
@@ -972,13 +995,35 @@ td {
   color: white;
 }
 
-.btn-status {
+.btn-sign {
+  background: white;
+  color: #52c41a;
+  border: 1px solid #52c41a;
+}
+
+.btn-sign:hover {
+  background: #52c41a;
+  color: white;
+}
+
+.btn-abnormal {
+  background: white;
+  color: #faad14;
+  border: 1px solid #faad14;
+}
+
+.btn-abnormal:hover {
+  background: #faad14;
+  color: white;
+}
+
+.btn-reprocess {
   background: white;
   color: #722ed1;
   border: 1px solid #722ed1;
 }
 
-.btn-status:hover {
+.btn-reprocess:hover {
   background: #722ed1;
   color: white;
 }

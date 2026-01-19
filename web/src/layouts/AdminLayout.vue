@@ -36,6 +36,7 @@ const currentUser = ref<SysUser | null>(null)
 const menuNameMap: Record<string, string> = {
   '/admin/home': '工作台',
   '/admin/users': '用户管理',
+  '/admin/admins': '管理员管理',
   '/admin/packages': '包裹管理',
   '/admin/warehouse': '仓库管理',
   '/admin/warehouse-info': '仓库信息',
@@ -50,6 +51,7 @@ const menuNameMap: Record<string, string> = {
 const routeToMenuId: Record<string, string> = {
   '/admin/home': 'dashboard',
   '/admin/users': 'users',
+  '/admin/admins': 'admins',
   '/admin/packages': 'packages',
   '/admin/warehouse': 'warehouse',
   '/admin/warehouse-info': 'warehouse-info',

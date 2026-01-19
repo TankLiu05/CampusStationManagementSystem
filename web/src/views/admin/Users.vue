@@ -28,7 +28,7 @@
             <th>用户名</th>
             <th>手机号</th>
             <th>邮箱</th>
-            <th>角色</th>
+            <th>状态</th>
             <th>注册时间</th>
             <th>操作</th>
           </tr>
@@ -43,13 +43,19 @@
             <td>{{ user.phone || '-' }}</td>
             <td>{{ user.email || '-' }}</td>
             <td>
-              <span :class="['role-badge', user.role]">
-                {{ user.role === 'ADMIN' ? '管理员' : '普通用户' }}
+              <span :class="['status-badge', user.status === 1 ? 'ACTIVE' : 'DISABLED']">
+                {{ user.status === 1 ? '正常' : '禁用' }}
               </span>
             </td>
             <td>{{ new Date(user.createTime).toLocaleString('zh-CN') }}</td>
             <td>
               <div class="action-btns">
+                <button 
+                  :class="user.status === 1 ? 'btn-disable' : 'btn-enable'" 
+                  @click="handleChangeStatus(user.id, user.status)"
+                >
+                  {{ user.status === 1 ? '禁用' : '启用' }}
+                </button>
                 <button class="btn-reset" @click="openResetPassword(user.id)">重置密码</button>
                 <button class="btn-delete" @click="handleDeleteUser(user.id)">删除</button>
               </div>
@@ -92,7 +98,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import { getUserList, deleteUser as deleteUserApi, resetUserPassword, getUserByUsername, getUserByPhone, type User } from '@/api/admin/user'
+import { getUserList, deleteUser as deleteUserApi, resetUserPassword, getUserByUsername, getUserByPhone, changeUserStatus, type User } from '@/api/admin/user'
 
 interface UserForm {
   id?: number
@@ -183,6 +189,25 @@ const searchUsers = async () => {
 }
 
 
+
+// 修改用户状态
+const handleChangeStatus = async (id: number, currentStatus: number) => {
+  const newStatus = currentStatus === 1 ? 0 : 1
+  const action = newStatus === 1 ? '启用' : '禁用'
+  
+  if (!confirm(`确定要${action}该用户吗？`)) {
+    return
+  }
+  
+  try {
+    await changeUserStatus(id, newStatus)
+    alert(`${action}成功`)
+    loadUsers()
+  } catch (error) {
+    console.error('修改用户状态失败:', error)
+    alert(`${action}失败，请稍后重试`)
+  }
+}
 
 // 删除用户
 const handleDeleteUser = async (id: number) => {
@@ -443,6 +468,37 @@ td {
 
 .btn-delete:hover {
   background: #f5222d;
+  color: white;
+}
+
+.btn-enable,
+.btn-disable {
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-enable {
+  background: white;
+  color: #52c41a;
+  border: 1px solid #52c41a;
+}
+
+.btn-enable:hover {
+  background: #52c41a;
+  color: white;
+}
+
+.btn-disable {
+  background: white;
+  color: #faad14;
+  border: 1px solid #faad14;
+}
+
+.btn-disable:hover {
+  background: #faad14;
   color: white;
 }
 

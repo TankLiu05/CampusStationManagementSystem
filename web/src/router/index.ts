@@ -12,6 +12,7 @@ import Profile from '../views/user/Profile.vue'
 // 管理员端页面
 import AdminHome from '../views/admin/Home.vue'
 import Users from '../views/admin/Users.vue'
+import Admins from '../views/admin/Admins.vue'
 import Packages from '../views/admin/Packages.vue'
 import AdminAnnouncements from '../views/admin/Announcements.vue'
 import Settings from '../views/admin/Settings.vue'
@@ -87,6 +88,12 @@ const router = createRouter({
       path: '/admin/users',
       name: 'Users',
       component: Users,
+      meta: { requiresAuth: true, role: 'ADMIN' }
+    },
+    {
+      path: '/admin/admins',
+      name: 'Admins',
+      component: Admins,
       meta: { requiresAuth: true, role: 'ADMIN' }
     },
     {
