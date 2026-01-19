@@ -20,16 +20,7 @@
       </div>
     </nav>
 
-    <div class="sidebar-footer">
-      <div
-        class="nav-item"
-        :class="{ active: activeItem === 'profile' }"
-        @click="handleProfile"
-      >
-        <img src="@/assets/icons/5.png" alt="个人中心" class="nav-icon" />
-        <span class="nav-label">个人中心</span>
-      </div>
-    </div>
+
   </aside>
 </template>
 
@@ -61,6 +52,8 @@ const menuItems: MenuItem[] = [
   { id: 'home', label: '首页', icon: 'home', route: '/user/home' },
   { id: 'myPackages', label: '我的包裹', icon: 'myPackages', route: '/user/packages' },
   { id: 'announcements', label: '公告信息', icon: 'announcements', route: '/user/announcements' },
+  { id: 'messages', label: '留言信息', icon: 'messages', route: '/user/messages' },
+  { id: 'profile', label: '个人中心', icon: 'profile', route: '/user/profile' },
 ]
 
 // 监听路由变化，自动更新激活状态
@@ -70,8 +63,6 @@ watch(
     const item = menuItems.find(item => item.route === newPath)
     if (item) {
       activeItem.value = item.id
-    } else if (newPath === '/user/profile') {
-      activeItem.value = 'profile'
     }
   },
   { immediate: true }
@@ -82,16 +73,13 @@ const handleNavClick = (item: MenuItem) => {
   router.push(item.route)
 }
 
-const handleProfile = () => {
-  activeItem.value = 'profile'
-  router.push('/user/profile')
-}
-
 const getIconPath = (icon: string): string | undefined => {
   const iconMap: Record<string, string> = {
+    home: '/src/assets/icons/14.png',
     myPackages: '/src/assets/icons/2.png',
     announcements: '/src/assets/icons/4.png',
-    home: '/src/assets/icons/14.png',
+    messages: '/src/assets/icons/email.png',
+    profile: '/src/assets/icons/5.png',
   }
   return iconMap[icon]
 }
@@ -184,10 +172,114 @@ const getIconPath = (icon: string): string | undefined => {
   text-overflow: ellipsis;
 }
 
-.sidebar-footer {
-  padding: 15px 0;
-  border-top: 1px solid #e0e0e0;
+/* 响应式设计 */
+@media (max-width: 992px) {
+  .sidebar {
+    width: 220px;
+  }
+  
+  .nav-item {
+    padding: 12px 16px;
+    margin: 4px 8px;
+    font-size: 14px;
+  }
+  
+  .nav-icon {
+    font-size: 20px;
+    min-width: 26px;
+  }
+  
+  .nav-icon[src] {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .nav-label {
+    margin-left: 10px;
+  }
+  
+  .logo h3 {
+    font-size: 18px;
+  }
 }
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .sidebar-header {
+    height: 60px;
+    min-height: 60px;
+    padding: 0 20px;
+  }
+  
+  .sidebar-nav {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 8px;
+  }
+  
+  .nav-item {
+    padding: 10px 14px;
+    margin: 0;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #f5f5f5;
+  }
+  
+  .nav-item.active {
+    background: #e0e0e0;
+  }
+  
+  .nav-icon {
+    font-size: 16px;
+    min-width: 20px;
+  }
+  
+  .nav-icon[src] {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .nav-label {
+    margin-left: 6px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar-nav {
+    padding: 8px;
+    gap: 6px;
+  }
+  
+  .nav-item {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .nav-icon[src] {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .nav-label {
+    margin-left: 4px;
+    font-size: 12px;
+  }
+  
+  .logo h3 {
+    font-size: 16px;
+  }
+}
+
+
 
 
 </style>

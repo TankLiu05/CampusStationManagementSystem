@@ -8,6 +8,7 @@ import UserHome from '../views/user/Home.vue'
 import MyPackages from '../views/user/MyPackages.vue'
 import UserAnnouncements from '../views/user/Announcements.vue'
 import Profile from '../views/user/Profile.vue'
+import UserMessages from '../views/user/Messages.vue'
 
 // 管理员端页面
 import AdminHome from '../views/admin/Home.vue'
@@ -75,6 +76,12 @@ const router = createRouter({
       path: '/user/profile',
       name: 'Profile',
       component: Profile,
+      meta: { requiresAuth: true, role: 'USER' }
+    },
+    {
+      path: '/user/messages',
+      name: 'UserMessages',
+      component: UserMessages,
       meta: { requiresAuth: true, role: 'USER' }
     },
     // 管理员端路由

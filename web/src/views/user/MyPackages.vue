@@ -822,4 +822,114 @@ onMounted(async () => {
   background: #ccc;
   cursor: not-allowed;
 }
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .page-header h1 {
+    font-size: 24px;
+  }
+  
+  .page-header p {
+    font-size: 14px;
+  }
+  
+  .filter-section {
+    padding: 16px;
+  }
+  
+  .filter-tabs {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .tab-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  
+  .search-box {
+    flex-direction: column;
+  }
+  
+  .search-box input {
+    width: 100%;
+  }
+  
+  .search-btn {
+    width: 100%;
+  }
+  
+  .package-card {
+    padding: 16px;
+  }
+  
+  .package-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .package-actions {
+    width: 100%;
+  }
+  
+  .action-btn {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .dialog-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .dialog-header {
+    padding: 16px;
+  }
+  
+  .dialog-body {
+    padding: 16px;
+  }
+  
+  .dialog-footer {
+    padding: 12px 16px;
+  }
+  
+  .detail-label {
+    min-width: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 22px;
+  }
+  
+  .filter-tabs {
+    gap: 6px;
+  }
+  
+  .tab-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  
+  .tab-count {
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+  
+  .package-company {
+    font-size: 15px;
+  }
+  
+  .info-row {
+    font-size: 13px;
+  }
+  
+  .empty-state,
+  .loading-state {
+    padding: 40px 20px;
+  }
+}
 </style>

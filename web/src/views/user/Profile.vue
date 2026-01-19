@@ -576,5 +576,93 @@ const changePassword = async () => {
   .info-grid {
     grid-template-columns: 1fr;
   }
+  
+  .page-header h1 {
+    font-size: 24px;
+  }
+  
+  .page-header p {
+    font-size: 14px;
+  }
+  
+  .card-header {
+    padding: 20px;
+  }
+  
+  .card-header h2 {
+    font-size: 18px;
+  }
+  
+  .card-body {
+    padding: 20px;
+  }
+  
+  .info-item label {
+    font-size: 13px;
+  }
+  
+  .info-item span {
+    font-size: 14px;
+  }
+  
+  .security-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .action-btn {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .modal-content {
+    width: 95%;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 22px;
+  }
+  
+  .card-header {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .card-body {
+    padding: 16px;
+  }
+  
+  .edit-actions {
+    width: 100%;
+  }
+  
+  .save-btn,
+  .cancel-btn,
+  .edit-btn {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .info-item input {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .modal-header {
+    padding: 16px;
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .modal-footer {
+    padding: 12px 16px;
+  }
 }
 </style>

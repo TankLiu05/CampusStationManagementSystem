@@ -490,26 +490,147 @@ const loadStatistics = async () => {
   }
 }
 
+@media (max-width: 992px) {
+  .welcome-section h1 {
+    font-size: 28px;
+  }
+  
+  .welcome-section p {
+    font-size: 16px;
+  }
+  
+  .stat-card {
+    padding: 20px;
+  }
+  
+  .stat-number {
+    font-size: 24px;
+  }
+  
+  .stat-icon {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .stat-icon img {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 @media (max-width: 768px) {
   .stats-cards {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .welcome-section {
+    margin-bottom: 24px;
+  }
+  
+  .welcome-section h1 {
+    font-size: 24px;
+  }
+  
+  .welcome-section p {
+    font-size: 14px;
+  }
+  
+  .stats-cards {
+    margin-bottom: 24px;
+  }
+  
+  .stat-card {
+    padding: 16px;
+    gap: 16px;
+  }
+  
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .stat-icon img {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .stat-number {
+    font-size: 22px;
+  }
+  
+  .section {
+    padding: 20px;
+  }
+  
+  .section h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
   }
 
   .action-buttons {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .action-btn {
+    padding: 14px;
+    font-size: 14px;
   }
 
   .warehouse-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  
+  .warehouse-stat-item {
+    padding: 12px;
+  }
+  
+  .warehouse-stat-item .stat-value {
+    font-size: 16px;
   }
 
   .warehouse-meta {
     flex-direction: column;
     gap: 8px;
   }
+}
 
-  .main-content {
-    padding: 20px;
+@media (max-width: 480px) {
+  .welcome-section h1 {
+    font-size: 22px;
+  }
+  
+  .stat-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-btn {
+    padding: 12px;
+    font-size: 13px;
+  }
+  
+  .warehouse-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .warehouse-name {
+    font-size: 16px;
+  }
+  
+  .warehouse-address {
+    font-size: 13px;
+  }
+  
+  .warehouse-meta {
+    font-size: 12px;
   }
 }
 </style>

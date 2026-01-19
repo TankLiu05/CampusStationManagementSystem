@@ -199,4 +199,116 @@ const getIconPath = (icon: string): string | undefined => {
   padding: 15px 0;
   border-top: 1px solid #e0e0e0;
 }
+
+/* 响应式设计 */
+@media (max-width: 992px) {
+  .sidebar {
+    width: 220px;
+  }
+  
+  .nav-item {
+    padding: 12px 16px;
+    margin: 4px 8px;
+    font-size: 14px;
+  }
+  
+  .nav-icon {
+    font-size: 20px;
+    min-width: 26px;
+  }
+  
+  .nav-icon[src] {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .nav-label {
+    margin-left: 10px;
+  }
+  
+  .logo h3 {
+    font-size: 18px;
+  }
+  
+  .logo-icon {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .sidebar-header {
+    height: 60px;
+    min-height: 60px;
+    padding: 0 20px;
+  }
+  
+  .sidebar-nav {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 8px;
+  }
+  
+  .nav-item {
+    padding: 10px 14px;
+    margin: 0;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #f5f5f5;
+  }
+  
+  .nav-item.active {
+    background: #e0e0e0;
+  }
+  
+  .nav-icon {
+    font-size: 16px;
+    min-width: 20px;
+  }
+  
+  .nav-icon[src] {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .nav-label {
+    margin-left: 6px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar-nav {
+    padding: 8px;
+    gap: 6px;
+  }
+  
+  .nav-item {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .nav-icon[src] {
+    width: 14px;
+    height: 14px;
+  }
+  
+  .nav-label {
+    margin-left: 4px;
+    font-size: 12px;
+  }
+  
+  .logo h3 {
+    font-size: 16px;
+  }
+}
 </style>

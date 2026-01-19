@@ -108,4 +108,35 @@ const handleLogout = async () => {
   flex: 1;
   padding: 40px;
 }
+
+/* 响应式设计 */
+@media (max-width: 992px) {
+  .right-container {
+    margin-left: 220px;
+  }
+  
+  .main-content {
+    padding: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  
+  .right-container {
+    margin-left: 0;
+  }
+  
+  .main-content {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 15px;
+  }
+}
 </style>

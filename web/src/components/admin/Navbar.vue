@@ -96,9 +96,16 @@ const handleLogout = () => {
 }
 
 /* 响应式设计 */
+@media (max-width: 992px) {
+  .header-content {
+    padding: 0 30px;
+  }
+}
+
 @media (max-width: 768px) {
   .header-content {
     padding: 0 20px;
+    height: 60px;
   }
 
   .page-title h2 {
@@ -107,6 +114,39 @@ const handleLogout = () => {
 
   .admin-badge {
     display: none;
+  }
+  
+  .user-info {
+    gap: 10px;
+  }
+  
+  .username {
+    font-size: 14px;
+  }
+  
+  .logout-btn {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content {
+    padding: 0 15px;
+    height: 56px;
+  }
+  
+  .page-title h2 {
+    font-size: 15px;
+  }
+  
+  .username {
+    display: none;
+  }
+  
+  .logout-btn {
+    padding: 6px 12px;
+    font-size: 12px;
   }
 }
 </style>

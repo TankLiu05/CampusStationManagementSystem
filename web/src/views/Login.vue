@@ -560,6 +560,76 @@ const handleRegister = async () => {
 }
 
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .hero-title {
+    font-size: 36px;
+  }
+  
+  .hero-subtitle {
+    font-size: 16px;
+  }
+  
+  .center-image {
+    width: 500px;
+    height: 500px;
+  }
+}
+
+@media (max-width: 992px) {
+  .form-section {
+    flex: 6;
+  }
+  
+  .image-section {
+    flex: 4;
+  }
+  
+  .hero-content {
+    top: 100px;
+    left: 40px;
+  }
+  
+  .hero-title {
+    font-size: 28px;
+  }
+  
+  .hero-subtitle {
+    font-size: 14px;
+    max-width: 400px;
+  }
+  
+  .center-image {
+    width: 350px;
+    height: 350px;
+    top: 400px;
+  }
+  
+  .corner-man {
+    width: 150px;
+    height: 150px;
+    top: 30px;
+    right: 30px;
+  }
+  
+  .feature-status {
+    bottom: 30px;
+    left: 30px;
+  }
+  
+  .status-text {
+    font-size: 14px;
+  }
+  
+  .title {
+    font-size: 36px;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+    margin-bottom: 30px;
+  }
+}
+
 @media (max-width: 768px) {
   .user-login {
     flex-direction: column;
@@ -567,15 +637,82 @@ const handleRegister = async () => {
   
   .form-section {
     flex: none;
-    height: 60vh;
-    padding: 30px 20px;
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    padding: 40px 20px;
     order: 1;
+    margin: 0;
+    border-radius: 0;
   }
   
   .image-section {
-    flex: none;
-    height: 40vh;
-    order: 2;
+    display: none;
+  }
+  
+  .form-wrapper {
+    max-width: 100%;
+    padding: 0 10px;
+  }
+  
+  .title {
+    font-size: 32px;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+    margin-bottom: 30px;
+  }
+  
+  .input-wrapper input {
+    padding: 14px 16px 14px 48px;
+    font-size: 14px;
+  }
+  
+  .login-btn {
+    padding: 14px;
+    font-size: 16px;
+  }
+  
+  .footer-info {
+    margin-top: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-section {
+    padding: 30px 15px;
+  }
+  
+  .title {
+    font-size: 28px;
+  }
+  
+  .subtitle {
+    font-size: 13px;
+  }
+  
+  .form-group label,
+  .label-text {
+    font-size: 15px;
+  }
+  
+  .input-wrapper input {
+    padding: 12px 14px 12px 44px;
+    font-size: 14px;
+  }
+  
+  .login-btn {
+    padding: 12px;
+    font-size: 15px;
+  }
+  
+  .forgot-link {
+    font-size: 14px;
+  }
+  
+  .checkbox-label {
+    font-size: 14px;
   }
 }
 </style>

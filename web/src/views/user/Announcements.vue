@@ -395,4 +395,91 @@ onMounted(() => {
   font-size: 14px;
   color: #666;
 }
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .page-header h1 {
+    font-size: 24px;
+  }
+  
+  .page-header p {
+    font-size: 14px;
+  }
+  
+  .important-section h2,
+  .normal-section h2 {
+    font-size: 18px;
+  }
+  
+  .announcement-card {
+    padding: 16px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .header-left {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .card-header h3 {
+    font-size: 16px;
+  }
+  
+  .publish-time {
+    font-size: 13px;
+  }
+  
+  .card-content p {
+    font-size: 14px;
+  }
+  
+  .pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .page-btn {
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+  
+  .empty-state {
+    padding: 40px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 22px;
+  }
+  
+  .important-section h2,
+  .normal-section h2 {
+    font-size: 16px;
+  }
+  
+  .badge {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  
+  .card-header h3 {
+    font-size: 15px;
+  }
+  
+  .card-content p {
+    font-size: 13px;
+    -webkit-line-clamp: 2;
+  }
+  
+  .detail-btn {
+    padding: 6px 16px;
+    font-size: 13px;
+  }
+}
 </style>
