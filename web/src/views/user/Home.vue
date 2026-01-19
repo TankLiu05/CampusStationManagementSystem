@@ -55,7 +55,7 @@
           <div class="section-header">
             <h2>待取包裹</h2>
             <button class="view-more-btn" @click="router.push('/user/packages')">
-              查看全部 →
+              查看全部
             </button>
           </div>
           <div class="section-content">
@@ -83,7 +83,7 @@
           <div class="section-header">
             <h2>已签收</h2>
             <button class="view-more-btn" @click="router.push('/user/packages')">
-              查看全部 →
+              查看全部
             </button>
           </div>
           <div class="section-content">
@@ -110,7 +110,7 @@
           <div class="section-header">
             <h2>最新公告</h2>
             <button class="view-more-btn" @click="router.push('/user/announcements')">
-              查看全部 →
+              查看全部
             </button>
           </div>
           <div class="section-content">
