@@ -187,6 +187,9 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
+import { useToast } from '@/composables/useToast'
+
+const { success, warning } = useToast()
 
 interface Message {
   id: number
@@ -299,14 +302,14 @@ const viewMessage = (message: Message) => {
 
 const submitMessage = () => {
   if (!newMessage.type) {
-    alert('请选择留言类型')
+    warning('请选择留言类型')
     return
   }
   if (!newMessage.content.trim()) {
-    alert('请输入留言内容')
+    warning('请输入留言内容')
     return
   }
-  alert('留言提交成功（模拟）')
+  success('留言提交成功（模拟）')
   showNewMessageModal.value = false
   newMessage.type = ''
   newMessage.content = ''

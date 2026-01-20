@@ -138,6 +138,11 @@ import {
   type AdminDetail,
   type AdminRole
 } from '@/api/admin/management'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { success, error: showError, warning } = useToast()
+const { confirm } = useConfirm()
 
 interface AdminForm {
   username: string
@@ -206,7 +211,7 @@ const loadAdmins = async () => {
     }
   } catch (error) {
     console.error('获取管理员列表失败:', error)
-    alert('获取管理员列表失败，请稍后重试')
+    showError('获取管理员列表失败，请稍后重试')
   }
 }
 
@@ -273,22 +278,22 @@ const submitAdmin = async () => {
         city: adminForm.city || undefined,
         stationId: adminForm.stationId || undefined
       })
-      alert('更新成功')
+      success('更新成功')
       closeModal()
       loadAdmins()
     } catch (error) {
       console.error('更新管理员失败:', error)
-      alert('更新管理员失败，请稍后重试')
+      showError('更新管理员失败，请稍后重试')
     }
   } else {
     // 新增管理员
     if (!adminForm.username || !adminForm.password || !adminForm.role) {
-      alert('请填写用户名、密码和角色')
+      warning('请填写用户名、密码和角色')
       return
     }
     
     if (adminForm.password.length < 6) {
-      alert('密码长度至少为6位')
+      warning('密码长度至少为6位')
       return
     }
     
@@ -303,29 +308,32 @@ const submitAdmin = async () => {
         city: adminForm.city || undefined,
         stationId: adminForm.stationId || undefined
       })
-      alert('创建成功')
+      success('创建成功')
       closeModal()
       loadAdmins()
     } catch (error) {
       console.error('创建管理员失败:', error)
-      alert('创建管理员失败，请稍后重试')
+      showError('创建管理员失败，请稍后重试')
     }
   }
 }
 
 // 删除管理员
 const handleDeleteAdmin = async (adminId: number) => {
-  if (!confirm('确定要删除该管理员吗？')) {
-    return
-  }
+  const confirmed = await confirm({
+    title: '删除管理员',
+    message: '确定要删除该管理员吗？',
+    type: 'danger'
+  })
+  if (!confirmed) return
   
   try {
     await deleteAdmin(adminId)
-    alert('删除成功')
+    success('删除成功')
     loadAdmins()
   } catch (error) {
     console.error('删除管理员失败:', error)
-    alert('删除管理员失败，请稍后重试')
+    showError('删除管理员失败，请稍后重试')
   }
 }
 

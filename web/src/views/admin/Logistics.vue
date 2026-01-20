@@ -285,6 +285,9 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelRouteApi, type ParcelRoute, type ParcelRouteCreateRequest } from '@/api/admin/parcelRoute'
 import { parcelApi, type Parcel, type PageResponse } from '@/api/admin/parcel'
+import { useToast } from '@/composables/useToast'
+
+const { success, error: showError, warning, info } = useToast()
 
 interface TrackingHistory {
   status: string
@@ -464,7 +467,7 @@ const viewLogistics = (item: LogisticsItem) => {
 const updateRoute = (item: LogisticsItem) => {
   // 已生成取件码的快件不能修改
   if (item.pickupCode) {
-    alert('该快件已生成取件码，无法修改站点信息')
+    warning('该快件已生成取件码，无法修改站点信息')
     return
   }
   currentLogistics.value = item
@@ -479,20 +482,20 @@ const updateRoute = (item: LogisticsItem) => {
 }
 
 const refreshLogistics = (item: LogisticsItem) => {
-  alert(`刷新物流信息：${item.trackingNumber}（模拟）`)
+  info(`刷新物流信息：${item.trackingNumber}（模拟）`)
 }
 
 const submitRoute = async () => {
   if (!routeForm.trackingNumber || !routeForm.currentStation) {
-    alert('请填写快递单号和当前站点')
+    warning('请填写快递单号和当前站点')
     return
   }
   if (!routeForm.nextStation) {
-    alert('请填写下一站点')
+    warning('请填写下一站点')
     return
   }
   if (!routeForm.etaNextStation || !routeForm.etaDelivered) {
-    alert('请填写预计到达时间')
+    warning('请填写预计到达时间')
     return
   }
 
@@ -505,7 +508,7 @@ const submitRoute = async () => {
       etaDelivered: routeForm.etaDelivered
     }
     await parcelRouteApi.create(data)
-    alert('添加成功')
+    success('添加成功')
     showAddRoute.value = false
     Object.assign(routeForm, {
       trackingNumber: '',
@@ -515,13 +518,13 @@ const submitRoute = async () => {
       etaDelivered: ''
     })
   } catch (error: any) {
-    alert(error.message || '添加失败')
+    showError(error.message || '添加失败')
   }
 }
 
 const submitUpdate = async () => {
   if (!updateForm.currentStation) {
-    alert('请填写当前站点')
+    warning('请填写当前站点')
     return
   }
 
@@ -533,15 +536,15 @@ const submitUpdate = async () => {
         updateForm.etaDelivered
       )
     }
-    alert('更新成功')
+    success('更新成功')
     showUpdateRoute.value = false
   } catch (error: any) {
-    alert(error.message || '更新失败')
+    showError(error.message || '更新失败')
   }
 }
 
 const batchUpdateEta = () => {
-  alert('批量更新ETA功能开发中')
+  info('批量更新ETA功能开发中')
 }
 
 // 监听分页变化

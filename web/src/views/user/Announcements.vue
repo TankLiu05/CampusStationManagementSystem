@@ -68,6 +68,9 @@
 import { ref, computed, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import { listNotices, getNoticeById, type Notice } from '@/api/user/notice'
+import { useToast } from '@/composables/useToast'
+
+const { info, error: showError } = useToast()
 
 interface Announcement {
   id: number
@@ -174,7 +177,7 @@ const viewDetail = async (id: number) => {
     const notice = await getNoticeById(id)
     // TODO: 可以使用更好的弹窗组件来显示详情
     console.log('公告详情:', notice)
-    alert(`公告详情
+    info(`公告详情
 
 标题：${notice.title}
 
@@ -183,7 +186,7 @@ const viewDetail = async (id: number) => {
 发布时间：${formatDateTime(notice.createTime)}`)
   } catch (error) {
     console.error('查看公告详情失败:', error)
-    alert('查看详情失败，请稍后重试')
+    showError('查看详情失败，请稍后重试')
   }
 }
 

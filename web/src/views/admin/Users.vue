@@ -99,6 +99,11 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { getUserList, deleteUser as deleteUserApi, resetUserPassword, getUserByUsername, getUserByPhone, changeUserStatus, type User } from '@/api/admin/user'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { success, error: showError, warning, info } = useToast()
+const { confirm } = useConfirm()
 
 interface UserForm {
   id?: number
@@ -139,7 +144,7 @@ const loadUsers = async () => {
     totalPages.value = result.totalPages
   } catch (error) {
     console.error('获取用户列表失败:', error)
-    alert('获取用户列表失败，请稍后重试')
+    showError('获取用户列表失败，请稍后重试')
   }
 }
 
@@ -181,10 +186,10 @@ const searchUsers = async () => {
     userList.value = []
     total.value = 0
     totalPages.value = 0
-    alert('未找到匹配的用户')
+    warning('未找到匹配的用户')
   } catch (error) {
     console.error('搜索用户失败:', error)
-    alert('搜索失败，请稍后重试')
+    showError('搜索失败，请稍后重试')
   }
 }
 
@@ -195,33 +200,39 @@ const handleChangeStatus = async (id: number, currentStatus: number) => {
   const newStatus = currentStatus === 1 ? 0 : 1
   const action = newStatus === 1 ? '启用' : '禁用'
   
-  if (!confirm(`确定要${action}该用户吗？`)) {
-    return
-  }
+  const confirmed = await confirm({
+    title: `${action}用户`,
+    message: `确定要${action}该用户吗？`,
+    type: newStatus === 0 ? 'warning' : 'info'
+  })
+  if (!confirmed) return
   
   try {
     await changeUserStatus(id, newStatus)
-    alert(`${action}成功`)
+    success(`${action}成功`)
     loadUsers()
   } catch (error) {
     console.error('修改用户状态失败:', error)
-    alert(`${action}失败，请稍后重试`)
+    showError(`${action}失败，请稍后重试`)
   }
 }
 
 // 删除用户
 const handleDeleteUser = async (id: number) => {
-  if (!confirm('确定要删除该用户吗？')) {
-    return
-  }
+  const confirmed = await confirm({
+    title: '删除用户',
+    message: '确定要删除该用户吗？',
+    type: 'danger'
+  })
+  if (!confirmed) return
   
   try {
     await deleteUserApi(id)
-    alert('删除成功')
+    success('删除成功')
     loadUsers()
   } catch (error) {
     console.error('删除用户失败:', error)
-    alert('删除用户失败，请稍后重试')
+    showError('删除用户失败，请稍后重试')
   }
 }
 
@@ -236,18 +247,18 @@ const submitResetPassword = async () => {
   if (!selectedUserId.value) return
   
   if (!newPassword.value || newPassword.value.length < 6) {
-    alert('密码长度至少为6位')
+    warning('密码长度至少为6位')
     return
   }
   
   try {
     await resetUserPassword(selectedUserId.value, { newPassword: newPassword.value })
-    alert('密码重置成功')
+    success('密码重置成功')
     showResetPassword.value = false
     newPassword.value = ''
   } catch (error) {
     console.error('重置密码失败:', error)
-    alert('重置密码失败，请稍后重试')
+    showError('重置密码失败，请稍后重试')
   }
 }
 
@@ -255,7 +266,7 @@ const submitResetPassword = async () => {
 const submitUser = () => {
   console.log('提交用户信息:', userForm)
   // TODO: 后端需要实现创建和更新用户接口
-  alert('该功能暂未实现，后端需要添加创建/更新用户接口')
+  info('该功能暂未实现，后端需要添加创建/更新用户接口')
   closeModal()
 }
 

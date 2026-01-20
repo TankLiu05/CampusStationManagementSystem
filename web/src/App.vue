@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import Toast from '@/components/Toast.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 </script>
 
 <template>
   <RouterView />
+  <Toast />
+  <ConfirmDialog />
 </template>
 
 <style scoped>

@@ -165,6 +165,7 @@ import { useRouter } from 'vue-router'
 import { login, register } from '@/api/sysUser'
 import { request } from '@/utls/request'
 import { clearRoleCache } from '@/router'
+import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const isRegister = ref(false)
@@ -183,6 +184,7 @@ const registerForm = reactive({
 })
 
 const showPassword = ref(false)
+const { success, error } = useToast()
 
 const handleLogin = async () => {
   console.log('开始登录...')
@@ -197,7 +199,7 @@ const handleLogin = async () => {
     const resAny = res as any
     if (resAny && typeof resAny === 'object' && 'success' in resAny) {
       if (!resAny.success) {
-        window.alert(resAny.message || '登录失败')
+        error(resAny.message || '登录失败')
         return
       }
     }
@@ -211,7 +213,7 @@ const handleLogin = async () => {
     if (err && err.message) {
       msg = err.message
     }
-    window.alert(msg)
+    error(msg)
   }
 }
 
@@ -219,7 +221,7 @@ const handleRegister = async () => {
   try {
     const user = await register(registerForm)
     console.log('用户注册成功:', user)
-    window.alert('注册成功！请登录')
+    success('注册成功！请登录')
     // 注册成功后切换到登录界面
     isRegister.value = false
     // 清空注册表单
@@ -229,7 +231,7 @@ const handleRegister = async () => {
     registerForm.email = ''
   } catch (err) {
     console.error('用户注册失败:', err)
-    window.alert('注册失败，请检查信息或稍后再试')
+    error('注册失败，请检查信息或稍后再试')
   }
 }
 </script>

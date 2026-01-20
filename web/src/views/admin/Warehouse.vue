@@ -246,6 +246,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { success, warning } = useToast()
+const { confirm } = useConfirm()
 
 interface Zone {
   id: number
@@ -375,9 +380,14 @@ const editShelf = (shelf: Shelf) => {
   showEditShelf.value = true
 }
 
-const deleteShelf = (id: number) => {
-  if (confirm('确定要删除该货架吗？')) {
-    alert('删除成功（模拟）')
+const deleteShelf = async (id: number) => {
+  const confirmed = await confirm({
+    title: '删除货架',
+    message: '确定要删除该货架吗？',
+    type: 'danger'
+  })
+  if (confirmed) {
+    success('删除成功（模拟）')
   }
 }
 
@@ -389,19 +399,19 @@ const closeShelfModal = () => {
 
 const submitShelf = () => {
   if (!shelfForm.code || !shelfForm.zoneId) {
-    alert('请填写货架编号和所属区域')
+    warning('请填写货架编号和所属区域')
     return
   }
-  alert(showAddShelf.value ? '添加成功（模拟）' : '更新成功（模拟）')
+  success(showAddShelf.value ? '添加成功（模拟）' : '更新成功（模拟）')
   closeShelfModal()
 }
 
 const submitZone = () => {
   if (!zoneForm.name) {
-    alert('请填写区域名称')
+    warning('请填写区域名称')
     return
   }
-  alert('添加区域成功（模拟）')
+  success('添加区域成功（模拟）')
   showAddZone.value = false
   Object.assign(zoneForm, { name: '', description: '' })
 }

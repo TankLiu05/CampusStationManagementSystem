@@ -118,6 +118,9 @@
 import { ref, reactive, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import { getUserProfile, updateUserProfile, changeUserPassword, type UserProfile as UserProfileType, type ChangePasswordRequest } from '@/api/user/profile'
+import { useToast } from '@/composables/useToast'
+
+const { success, error: showError, warning } = useToast()
 
 interface UserInfo {
   username: string
@@ -182,7 +185,7 @@ const loadProfile = async () => {
     })
   } catch (error) {
     console.error('获取用户信息失败:', error)
-    alert('获取用户信息失败，请稍后重试')
+    showError('获取用户信息失败，请稍后重试')
   }
 }
 
@@ -208,21 +211,21 @@ const saveProfile = async () => {
     await loadProfile()
     
     isEditing.value = false
-    alert('保存成功')
+    success('保存成功')
   } catch (error) {
     console.error('保存失败:', error)
-    alert('保存失败，请稍后重试')
+    showError('保存失败，请稍后重试')
   }
 }
 
 const changePassword = async () => {
   if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-    alert('两次输入的密码不一致')
+    warning('两次输入的密码不一致')
     return
   }
   
   if (!passwordForm.oldPassword || !passwordForm.newPassword) {
-    alert('请填写完整的密码信息')
+    warning('请填写完整的密码信息')
     return
   }
   
@@ -240,13 +243,13 @@ const changePassword = async () => {
     passwordForm.confirmPassword = ''
     
     showChangePassword.value = false
-    alert('密码修改成功')
+    success('密码修改成功')
     
     // 可选：跳转到登录页
     // window.location.href = '/login'
   } catch (error) {
     console.error('修改密码失败:', error)
-    alert('修改密码失败，请检查旧密码是否正确')
+    showError('修改密码失败，请检查旧密码是否正确')
   }
 }
 </script>

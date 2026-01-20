@@ -258,6 +258,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { success, warning, info } = useToast()
+const { confirm } = useConfirm()
 
 interface Message {
   id: number
@@ -447,28 +452,38 @@ const replyMessage = (message: Message) => {
 
 const submitReply = () => {
   if (!replyContent.value.trim()) {
-    alert('请输入回复内容')
+    warning('请输入回复内容')
     return
   }
-  alert('回复成功（模拟）')
+  success('回复成功（模拟）')
   showReplyModal.value = false
   replyContent.value = ''
 }
 
-const closeMessage = (message: Message) => {
-  if (confirm('确定要关闭该留言吗？关闭后用户将无法继续追问。')) {
-    alert('关闭成功（模拟）')
+const closeMessage = async (message: Message) => {
+  const confirmed = await confirm({
+    title: '关闭留言',
+    message: '确定要关闭该留言吗？关闭后用户将无法继续追问。',
+    type: 'warning'
+  })
+  if (confirmed) {
+    success('关闭成功（模拟）')
   }
 }
 
-const deleteMessage = (id: number) => {
-  if (confirm('确定要删除该留言吗？')) {
-    alert('删除成功（模拟）')
+const deleteMessage = async (id: number) => {
+  const confirmed = await confirm({
+    title: '删除留言',
+    message: '确定要删除该留言吗？',
+    type: 'danger'
+  })
+  if (confirmed) {
+    success('删除成功（模拟）')
   }
 }
 
 const exportMessages = () => {
-  alert('导出数据（模拟）')
+  info('导出数据（模拟）')
 }
 </script>
 

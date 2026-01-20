@@ -321,6 +321,9 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { useToast } from '@/composables/useToast'
+
+const { success, warning, info } = useToast()
 
 interface ReturnRequest {
   id: number
@@ -572,17 +575,17 @@ const confirmProcess = () => {
     'complete': '完成'
   }
   
-  alert(`${actionLabels[processAction.value]}成功（模拟）`)
+  success(`${actionLabels[processAction.value]}成功（模拟）`)
   showProcessModal.value = false
 }
 
 const submitReturn = () => {
   if (!returnForm.trackingNumber || !returnForm.applicantName || 
       !returnForm.applicantPhone || !returnForm.reasonType) {
-    alert('请填写必填项')
+    warning('请填写必填项')
     return
   }
-  alert('提交成功（模拟）')
+  success('提交成功（模拟）')
   showCreateReturn.value = false
   Object.assign(returnForm, {
     trackingNumber: '',
@@ -595,7 +598,7 @@ const submitReturn = () => {
 }
 
 const exportData = () => {
-  alert('导出数据（模拟）')
+  info('导出数据（模拟）')
 }
 </script>
 

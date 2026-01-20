@@ -266,6 +266,11 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelApi, type Parcel, type ParcelCreateRequest, type ParcelUpdateRequest } from '@/api/admin/parcel'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { success, error: showError, warning, info } = useToast()
+const { confirm } = useConfirm()
 
 interface Package {
   id: number
@@ -368,7 +373,7 @@ const loadPackages = async () => {
     updateStats(response.content)
   } catch (error) {
     console.error('加载包裹列表失败:', error)
-    alert('加载包裹列表失败，请重试')
+    showError('加载包裹列表失败，请重试')
   }
 }
 
@@ -393,7 +398,7 @@ const getStatusLabel = (status?: string) => {
 const searchPackages = async () => {
   const keyword = searchKeyword.value.trim()
   if (!keyword) {
-    alert('请输入搜索关键词')
+    warning('请输入搜索关键词')
     return
   }
   
@@ -410,7 +415,7 @@ const searchPackages = async () => {
     updateStats([parcel])
   } catch (error) {
     console.error('搜索包裹失败:', error)
-    alert('未找到该快递单号对应的包裹')
+    warning('未找到该快递单号对应的包裹')
     // 搜索失败时清空列表
     packageList.value = []
     total.value = 0
@@ -434,29 +439,33 @@ const batchDelete = async () => {
   // 如果勾选框未显示，则显示勾选框并提示用户选择
   if (!showCheckboxes.value) {
     showCheckboxes.value = true
-    alert('请勾选要删除的包裹，然后再次点击批量删除按钮')
+    info('请勾选要删除的包裹，然后再次点击批量删除按钮')
     return
   }
   
   // 如果已显示勾选框但未选择任何包裹
   if (selectedIds.value.length === 0) {
-    alert('请先勾选要删除的包裹')
+    warning('请先勾选要删除的包裹')
     return
   }
 
-  if (!confirm(`确定要删除选中的 ${selectedIds.value.length} 个包裹吗？`)) {
+  if (!(await confirm({
+    title: '批量删除',
+    message: `确定要删除选中的 ${selectedIds.value.length} 个包裹吗？`,
+    type: 'danger'
+  }))) {
     return
   }
 
   try {
     await parcelApi.deleteBatch(selectedIds.value)
-    alert('批量删除成功')
+    success('批量删除成功')
     selectedIds.value = []
     showCheckboxes.value = false // 删除成功后隐藏勾选框
     loadPackages()
   } catch (error) {
     console.error('批量删除包裹失败:', error)
-    alert('批量删除失败，请重试')
+    showError('批量删除失败，请重试')
   }
 }
 
@@ -476,7 +485,7 @@ const viewPackage = async (pkg: Package) => {
     showPackageDetail.value = true
   } catch (error) {
     console.error('获取包裹详情失败:', error)
-    alert('获取包裹详情失败，请重试')
+    showError('获取包裹详情失败，请重试')
   }
 }
 
@@ -495,17 +504,21 @@ const editPackage = (pkg: Package) => {
 }
 
 const deletePackage = async (id: number) => {
-  if (!confirm('确定要删除该包裹吗？')) {
+  if (!(await confirm({
+    title: '删除包裹',
+    message: '确定要删除该包裹吗？',
+    type: 'danger'
+  }))) {
     return
   }
   
   try {
     await parcelApi.delete(id)
-    alert('删除成功')
+    success('删除成功')
     loadPackages()
   } catch (error) {
     console.error('删除包裹失败:', error)
-    alert('删除包裹失败，请重试')
+    showError('删除包裹失败，请重试')
   }
 }
 
@@ -513,7 +526,7 @@ const submitPackage = async () => {
   // 表单验证
   if (!packageForm.trackingNumber || !packageForm.company || 
       !packageForm.receiverPhone) {
-    alert('请填写快递单号、快递公司和收件人手机号')
+    warning('请填写快递单号、快递公司和收件人手机号')
     return
   }
   
@@ -527,7 +540,7 @@ const submitPackage = async () => {
         receiverPhone: packageForm.receiverPhone || undefined
       }
       await parcelApi.update(editingPackageId.value, updateData)
-      alert('更新成功')
+      success('更新成功')
     } else {
       // 创建包裹 - 使用手机号查找用户
       const createData: ParcelCreateRequest = {
@@ -539,14 +552,14 @@ const submitPackage = async () => {
         isSigned: 0 // 默认未签收
       }
       await parcelApi.create(createData)
-      alert('创建成功')
+      success('创建成功')
     }
     
     closeModal()
     loadPackages()
   } catch (error) {
     console.error('提交包裹失败:', error)
-    alert('提交包裹失败，请检查收件人信息是否正确')
+    showError('提交包裹失败，请检查收件人信息是否正确')
   }
 }
 
@@ -567,97 +580,121 @@ const closeModal = () => {
 
 // 发货功能：将包裹状态从“待发货”改为“运输中”
 const shipPackage = async (id: number) => {
-  if (!confirm('确定要将该包裹标记为已发货吗？')) {
+  if (!(await confirm({
+    title: '确认发货',
+    message: '确定要将该包裹标记为已发货吗？',
+    type: 'info'
+  }))) {
     return
   }
   
   try {
     await parcelApi.changeStatus(id, 1) // 状态改为1：已发货/运输中
-    alert('发货成功')
+    success('发货成功')
     loadPackages()
   } catch (error) {
     console.error('发货失败:', error)
-    alert('发货失败，请重试')
+    showError('发货失败，请重试')
   }
 }
 
 // 入库功能：将包裹状态从“运输中”改为“已入库”
 const storePackage = async (id: number) => {
-  if (!confirm('确定该包裹已到达驿站并入库吗？')) {
+  if (!(await confirm({
+    title: '确认入库',
+    message: '确定该包裹已到达驿站并入库吗？',
+    type: 'info'
+  }))) {
     return
   }
   
   try {
     await parcelApi.changeStatus(id, 2) // 状态改为2：已入库
-    alert('入库成功')
+    success('入库成功')
     loadPackages()
   } catch (error) {
     console.error('入库失败:', error)
-    alert('入库失败，请重试')
+    showError('入库失败，请重试')
   }
 }
 
 // 设置存储信息（自动生成取件码和存放位置）
 const setStorageInfo = async (pkg: Package) => {
-  if (!confirm('确定为该包裹自动生成存放位置和取件码吗？')) {
+  if (!(await confirm({
+    title: '生成存储信息',
+    message: '确定为该包裹自动生成存放位置和取件码吗？',
+    type: 'info'
+  }))) {
     return
   }
   
   try {
     const updatedParcel = await parcelApi.createPickupInfo(pkg.id)
-    alert(`存储信息生成成功！\n存放位置：${updatedParcel.location}\n取件码：${updatedParcel.pickupCode}`)
+    success(`存储信息生成成功！存放位置：${updatedParcel.location}，取件码：${updatedParcel.pickupCode}`)
     loadPackages()
   } catch (error) {
     console.error('生成存储信息失败:', error)
-    alert('生成存储信息失败，请确认包裹状态为“已入库”且未签收')
+    showError('生成存储信息失败，请确认包裹状态为“已入库”且未签收')
   }
 }
 
 // 签收功能：标记包裹已签收
 const signPackage = async (id: number) => {
-  if (!confirm('确定该包裹已被签收吗？')) {
+  if (!(await confirm({
+    title: '确认签收',
+    message: '确定该包裹已被签收吗？',
+    type: 'info'
+  }))) {
     return
   }
   
   try {
     await parcelApi.update(id, { isSigned: 1 })
-    alert('签收成功')
+    success('签收成功')
     loadPackages()
   } catch (error) {
     console.error('签收失败:', error)
-    alert('签收失败，请重试')
+    showError('签收失败，请重试')
   }
 }
 
 // 标记异常：将包裹状态改为退回/异常
 const markAbnormal = async (id: number) => {
-  if (!confirm('确定要将该包裹标记为异常吗？')) {
+  if (!(await confirm({
+    title: '标记异常',
+    message: '确定要将该包裹标记为异常吗？',
+    type: 'warning'
+  }))) {
     return
   }
   
   try {
     await parcelApi.changeStatus(id, 3) // 状态改为3：退回/异常
-    alert('已标记为异常')
+    success('已标记为异常')
     loadPackages()
   } catch (error) {
     console.error('标记异常失败:', error)
-    alert('标记异常失败，请重试')
+    showError('标记异常失败，请重试')
   }
 }
 
 // 重新处理：将异常包裹重新置为待发货
 const reprocessPackage = async (id: number) => {
-  if (!confirm('确定要重新处理该包裹吗？状态将重置为待发货')) {
+  if (!(await confirm({
+    title: '重新处理',
+    message: '确定要重新处理该包裹吗？状态将重置为待发货',
+    type: 'warning'
+  }))) {
     return
   }
   
   try {
     await parcelApi.changeStatus(id, 0) // 状态改为0：待发货
-    alert('已重新处理，状态已重置为待发货')
+    success('已重新处理，状态已重置为待发货')
     loadPackages()
   } catch (error) {
     console.error('重新处理失败:', error)
-    alert('重新处理失败，请重试')
+    showError('重新处理失败，请重试')
   }
 }
 

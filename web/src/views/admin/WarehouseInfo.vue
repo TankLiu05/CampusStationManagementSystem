@@ -218,6 +218,9 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { useToast } from '@/composables/useToast'
+
+const { success } = useToast()
 
 interface WarehouseInfo {
   name: string
@@ -317,7 +320,7 @@ const getZoneStatusLabel = (status: string) => {
 const saveInfo = () => {
   Object.assign(warehouseInfo, editForm)
   showEditInfo.value = false
-  alert('保存成功（模拟）')
+  success('保存成功（模拟）')
 }
 </script>
 

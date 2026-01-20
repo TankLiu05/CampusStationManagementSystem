@@ -135,6 +135,11 @@ import {
   deleteNotice,
   type Notice 
 } from '@/api/admin/notice'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { success, error: showError, warning, info } = useToast()
+const { confirm } = useConfirm()
 
 interface Announcement {
   id: number
@@ -224,7 +229,7 @@ const loadAnnouncements = async () => {
     totalPages.value = response.totalPages
   } catch (error) {
     console.error('加载公告列表失败:', error)
-    alert('加载公告列表失败，请稍后重试')
+    showError('加载公告列表失败，请稍后重试')
     announcementList.value = []
   } finally {
     loading.value = false
@@ -264,19 +269,24 @@ const editAnnouncement = (item: Announcement) => {
 const toggleStatus = (item: Announcement) => {
   console.log('切换发布状态:', item)
   // TODO: 后端暂不支持状态切换，需要后续扩展
-  alert('状态切换功能暂未实现')
+  info('状态切换功能暂未实现')
   activeMenuId.value = null
 }
 
 const deleteAnnouncement = async (id: number) => {
-  if (!confirm('确定要删除该公告吗？')) {
+  const confirmed = await confirm({
+    title: '删除公告',
+    message: '确定要删除该公告吗？',
+    type: 'danger'
+  })
+  if (!confirmed) {
     activeMenuId.value = null
     return
   }
   
   try {
     await deleteNotice(id)
-    alert('删除成功')
+    success('删除成功')
     // 如果当前页删除后为空且不是第一页，返回上一页
     if (announcementList.value.length === 1 && currentPage.value > 1) {
       currentPage.value--
@@ -284,14 +294,14 @@ const deleteAnnouncement = async (id: number) => {
     await loadAnnouncements()
   } catch (error) {
     console.error('删除公告失败:', error)
-    alert('删除失败，请稍后重试')
+    showError('删除失败，请稍后重试')
   }
   activeMenuId.value = null
 }
 
 const submitAnnouncement = async () => {
   if (!announcementForm.type || !announcementForm.title || !announcementForm.content) {
-    alert('请填写完整信息')
+    warning('请填写完整信息')
     return
   }
   
@@ -304,11 +314,11 @@ const submitAnnouncement = async () => {
     if (showEditAnnouncement.value && announcementForm.id) {
       // 编辑模式
       await updateNotice(announcementForm.id, noticeData)
-      alert('更新成功')
+      success('更新成功')
     } else {
       // 新增模式
       await createNotice(noticeData)
-      alert('创建成功')
+      success('创建成功')
       currentPage.value = 1 // 跳转到第一页
     }
     
@@ -316,7 +326,7 @@ const submitAnnouncement = async () => {
     await loadAnnouncements()
   } catch (error) {
     console.error('提交公告失败:', error)
-    alert('操作失败，请稍后重试')
+    showError('操作失败，请稍后重试')
   }
 }
 

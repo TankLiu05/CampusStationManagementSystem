@@ -163,6 +163,9 @@ import {
   listUnsignedParcels,
   type Parcel 
 } from '@/api/user/parcel'
+import { useToast } from '@/composables/useToast'
+
+const { success, error: showError } = useToast()
 
 interface Tab {
   label: string
@@ -349,10 +352,10 @@ async function handleSignFromDialog() {
     await loadParcels()
     // 关闭对话框
     closeDetailDialog()
-    alert('签收成功！')
+    success('签收成功！')
   } catch (error) {
     console.error('签收失败:', error)
-    alert('签收失败，请重试')
+    showError('签收失败，请重试')
   } finally {
     signing.value = false
   }
