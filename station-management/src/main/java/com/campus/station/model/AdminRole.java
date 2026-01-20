@@ -4,6 +4,5 @@ public enum AdminRole {
     SUPERADMIN,
     MANAGER,
     CITY_ADMIN,
-    STREET_ADMIN,
-    USER
+    STREET_ADMIN
 }

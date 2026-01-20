@@ -153,7 +153,11 @@ public class AdminManagementController {
     public ResponseEntity<?> listManageableAdmins() {
         AdminRoleScope currentScope = requireCurrentAdminScope();
 
-        // 所有管理员（包括 SUPERADMIN）都查询自己创建的下级管理员
+        if (currentScope.getRole() == AdminRole.SUPERADMIN) {
+            List<AdminRoleScope> allScopes = adminRoleScopeService.getByParentAdminId(null);
+            return ResponseEntity.ok(allScopes);
+        }
+
         List<AdminRoleScope> scopes = adminRoleScopeService.getByParentAdminId(currentScope.getAdminId());
         return ResponseEntity.ok(scopes);
     }
