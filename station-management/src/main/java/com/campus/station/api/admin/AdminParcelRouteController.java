@@ -3,7 +3,7 @@ package com.campus.station.api.admin;
 import com.campus.station.common.SessionUtil;
 import com.campus.station.model.Parcel;
 import com.campus.station.model.ParcelRoute;
-import com.campus.station.model.SysUser;
+import com.campus.station.model.SysAdmin;
 import com.campus.station.service.ParcelRouteService;
 import com.campus.station.service.ParcelService;
 import com.campus.station.service.SysAdminService;
@@ -34,13 +34,10 @@ public class AdminParcelRouteController {
         this.sysAdminService = sysAdminService;
     }
 
-    private SysUser requireAdmin() {
-        SysUser current = SessionUtil.getCurrentUser();
+    private SysAdmin requireAdmin() {
+        SysAdmin current = SessionUtil.getCurrentAdmin();
         if (current == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
-        }
-        if (sysAdminService.getByUserId(current.getId()).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权访问快递流转接口");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员未登录");
         }
         return current;
     }

@@ -2,6 +2,7 @@ package com.campus.station.service.impl;
 
 import com.campus.station.model.SysAdmin;
 import com.campus.station.repository.SysAdminRepository;
+import com.campus.station.repository.SysUserRepository;
 import com.campus.station.service.SysAdminService;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
@@ -11,15 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class SysAdminServiceImpl implements SysAdminService {
 
     private final SysAdminRepository repository;
+    private final SysUserRepository userRepository;
 
-    public SysAdminServiceImpl(SysAdminRepository repository) {
+    public SysAdminServiceImpl(SysAdminRepository repository, SysUserRepository userRepository) {
         this.repository = repository;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<SysAdmin> getByUserId(Long userId) {
-        return repository.findByUserId(userId);
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -29,8 +26,21 @@ public class SysAdminServiceImpl implements SysAdminService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<SysAdmin> getByUsername(String username) {
+        return repository.findByUsername(username);
+    }
+
+    @Override
     @Transactional
     public SysAdmin create(SysAdmin admin) {
+        if (admin.getUsername() != null) {
+            boolean existsInAdmin = repository.existsByUsername(admin.getUsername());
+            boolean existsInUser = userRepository.existsByUsername(admin.getUsername());
+            if (existsInAdmin || existsInUser) {
+                throw new IllegalArgumentException("用户名已存在");
+            }
+        }
         return repository.save(admin);
     }
 
@@ -40,7 +50,12 @@ public class SysAdminServiceImpl implements SysAdminService {
         SysAdmin existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("管理员不存在"));
 
-        if (update.getUsername() != null) {
+        if (update.getUsername() != null && !update.getUsername().equals(existing.getUsername())) {
+            boolean existsInAdmin = repository.existsByUsername(update.getUsername());
+            boolean existsInUser = userRepository.existsByUsername(update.getUsername());
+            if (existsInAdmin || existsInUser) {
+                throw new IllegalArgumentException("用户名已存在");
+            }
             existing.setUsername(update.getUsername());
         }
         if (update.getPassword() != null) {

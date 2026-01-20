@@ -1,11 +1,8 @@
 package com.campus.station.api.admin;
 
 import com.campus.station.common.SessionUtil;
-import com.campus.station.model.SysUser;
-import com.campus.station.service.NoticeService;
-import com.campus.station.service.ParcelService;
+import com.campus.station.model.SysAdmin;
 import com.campus.station.service.SysAdminService;
-import com.campus.station.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
@@ -21,85 +18,103 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @Tag(name = "AdminProfile", description = "管理员个人信息相关接口")
-@RequestMapping("/api/admin/profile")
+@RequestMapping("/api/admin")
 public class AdminProfileController {
 
-    private final SysUserService sysUserService;
-    private final ParcelService parcelService;
-    private final NoticeService noticeService;
     private final SysAdminService sysAdminService;
 
-    public AdminProfileController(SysUserService sysUserService, ParcelService parcelService, NoticeService noticeService, SysAdminService sysAdminService) {
-        this.sysUserService = sysUserService;
-        this.parcelService = parcelService;
-        this.noticeService = noticeService;
+    public AdminProfileController(SysAdminService sysAdminService) {
         this.sysAdminService = sysAdminService;
     }
 
-    private SysUser requireAdmin() {
-        SysUser current = SessionUtil.getCurrentUser();
+    private SysAdmin requireAdmin() {
+        SysAdmin current = SessionUtil.getCurrentAdmin();
         if (current == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
-        }
-        if (sysAdminService.getByUserId(current.getId()).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权访问管理员个人信息接口");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员未登录");
         }
         return current;
     }
 
-    @GetMapping
-    @Operation(summary = "获取当前管理员个人信息（个人中心）")
-    public ResponseEntity<?> getProfile() {
-        SysUser currentUser = requireAdmin();
-        return ResponseEntity.ok(currentUser);
+    @PostMapping("/login")
+    @Operation(summary = "管理员登录")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+        String username = body.get("username");
+        String password = body.get("password");
+        if (username == null || password == null) {
+            return ResponseEntity.badRequest().body("用户名与密码为必填项");
+        }
+
+        return sysAdminService.getByUsername(username)
+                .map(admin -> {
+                    if (!password.equals(admin.getPassword())) {
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("用户名或密码错误");
+                    }
+                    if (admin.getStatus() != null && admin.getStatus() == (byte) 0) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("账号已禁用");
+                    }
+                    SessionUtil.setCurrentAdmin(admin);
+                    return ResponseEntity.ok(admin);
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("管理员不存在"));
     }
 
-    @PutMapping
+    @PostMapping("/logout")
+    @Operation(summary = "管理员登出")
+    public ResponseEntity<?> logout() {
+        SessionUtil.clearCurrentAdmin();
+        return ResponseEntity.ok("登出成功");
+    }
+
+    @GetMapping("/profile")
+    @Operation(summary = "获取当前管理员个人信息（个人中心）")
+    public ResponseEntity<?> getProfile() {
+        SysAdmin current = requireAdmin();
+        return ResponseEntity.ok(current);
+    }
+
+    @PutMapping("/profile")
     @Operation(summary = "管理员修改自己的基本信息（用户名、手机号等）")
     public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> body) {
-        SysUser currentUser = requireAdmin();
+        SysAdmin current = requireAdmin();
 
         String username = body.get("username");
         String phone = body.get("phone");
 
-        SysUser update = new SysUser();
+        SysAdmin update = new SysAdmin();
         update.setUsername(username);
         update.setPhone(phone);
 
-        SysUser saved;
+        SysAdmin saved;
         try {
-            saved = sysUserService.update(currentUser.getId(), update);
+            saved = sysAdminService.update(current.getId(), update);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(409).body(ex.getMessage());
         }
 
-        parcelService.updateReceiverInfo(saved.getId(), saved.getUsername(), saved.getPhone());
-        noticeService.updateCreatorNameByUser(saved.getId(), saved.getUsername());
-
-        SessionUtil.setCurrentUser(saved);
+        SessionUtil.setCurrentAdmin(saved);
 
         return ResponseEntity.ok(saved);
     }
 
-    @PostMapping("/password")
+    @PostMapping("/profile/password")
     @Operation(summary = "管理员修改自己的密码")
     public ResponseEntity<?> changePassword(@RequestBody Map<String, String> body) {
-        SysUser currentUser = requireAdmin();
+        SysAdmin current = requireAdmin();
 
         String oldPassword = body.get("oldPassword");
         String newPassword = body.get("newPassword");
         if (oldPassword == null || newPassword == null) {
             return ResponseEntity.badRequest().body("旧密码和新密码为必填项");
         }
-        if (!oldPassword.equals(currentUser.getPassword())) {
+        if (!oldPassword.equals(current.getPassword())) {
             return ResponseEntity.status(400).body("旧密码不正确");
         }
 
-        SysUser update = new SysUser();
+        SysAdmin update = new SysAdmin();
         update.setPassword(newPassword);
-        SysUser saved = sysUserService.update(currentUser.getId(), update);
+        SysAdmin saved = sysAdminService.update(current.getId(), update);
 
-        SessionUtil.setCurrentUser(saved);
+        SessionUtil.setCurrentAdmin(saved);
 
         return ResponseEntity.ok("密码修改成功");
     }

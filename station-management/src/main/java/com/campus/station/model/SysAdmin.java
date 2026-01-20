@@ -7,8 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
@@ -22,10 +20,7 @@ public class SysAdmin {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "admin_id", nullable = false)
-    private Long userId;
-
-    @Column(name = "username", nullable = false, length = 50)
+    @Column(name = "username", nullable = false, length = 50, unique = true)
     private String username;
 
     @Column(name = "password", nullable = false, length = 100)
@@ -44,10 +39,6 @@ public class SysAdmin {
     @Column(name = "role", nullable = false, length = 20)
     private AdminRole role;
 
-    @ManyToOne
-    @JoinColumn(name = "admin_id", insertable = false, updatable = false)
-    private SysUser user;
-
     @CreationTimestamp
     @Column(name = "create_time", nullable = false, updatable = false)
     private LocalDateTime createTime;
@@ -62,14 +53,6 @@ public class SysAdmin {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
     }
 
     public String getUsername() {
@@ -118,14 +101,6 @@ public class SysAdmin {
 
     public void setRole(AdminRole role) {
         this.role = role;
-    }
-
-    public SysUser getUser() {
-        return user;
-    }
-
-    public void setUser(SysUser user) {
-        this.user = user;
     }
 
     public LocalDateTime getCreateTime() {

@@ -28,6 +28,11 @@ public class AdminRoleScopeServiceImpl implements AdminRoleScopeService {
     }
 
     @Override
+    public List<AdminRoleScope> listAll() {
+        return repository.findAll();
+    }
+
+    @Override
     @Transactional
     public AdminRoleScope create(AdminRoleScope scope) {
         return repository.save(scope);
@@ -48,8 +53,8 @@ public class AdminRoleScopeServiceImpl implements AdminRoleScopeService {
         if (update.getCity() != null) {
             existing.setCity(update.getCity());
         }
-        if (update.getStationId() != null) {
-            existing.setStationId(update.getStationId());
+        if (update.getStation() != null) {
+            existing.setStation(update.getStation());
         }
 
         return repository.save(existing);
@@ -61,4 +66,3 @@ public class AdminRoleScopeServiceImpl implements AdminRoleScopeService {
         repository.deleteById(id);
     }
 }
-

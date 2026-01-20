@@ -3,6 +3,7 @@ package com.campus.station.common;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.campus.station.model.SysAdmin;
 import com.campus.station.model.SysUser;
 
 import jakarta.servlet.http.HttpSession;
@@ -14,6 +15,7 @@ import jakarta.servlet.http.HttpSession;
 public class SessionUtil {
 
     private static final String SESSION_USER_KEY = "CURRENT_USER";
+    private static final String SESSION_ADMIN_KEY = "CURRENT_ADMIN";
 
     /**
      * 获取当前 HttpSession
@@ -26,9 +28,6 @@ public class SessionUtil {
         return attributes.getRequest().getSession();
     }
 
-    /**
-     * 将用户信息存入 Session（登录时调用）
-     */
     public static void setCurrentUser(SysUser user) {
         HttpSession session = getSession();
         if (session != null) {
@@ -36,10 +35,6 @@ public class SessionUtil {
         }
     }
 
-    /**
-     * 从 Session 中获取当前登录用户
-     * @return 当前登录用户，未登录则返回 null
-     */
     public static SysUser getCurrentUser() {
         HttpSession session = getSession();
         if (session == null) {
@@ -48,25 +43,15 @@ public class SessionUtil {
         return (SysUser) session.getAttribute(SESSION_USER_KEY);
     }
 
-    /**
-     * 获取当前登录用户的 ID
-     * @return 用户 ID，未登录则返回 null
-     */
     public static Long getCurrentUserId() {
         SysUser user = getCurrentUser();
         return user != null ? user.getId() : null;
     }
 
-    /**
-     * 判断当前是否已登录
-     */
     public static boolean isLoggedIn() {
         return getCurrentUser() != null;
     }
 
-    /**
-     * 清除 Session 中的用户信息（登出时调用）
-     */
     public static void clearCurrentUser() {
         HttpSession session = getSession();
         if (session != null) {
@@ -74,9 +59,28 @@ public class SessionUtil {
         }
     }
 
-    /**
-     * 销毁整个 Session
-     */
+    public static void setCurrentAdmin(SysAdmin admin) {
+        HttpSession session = getSession();
+        if (session != null) {
+            session.setAttribute(SESSION_ADMIN_KEY, admin);
+        }
+    }
+
+    public static SysAdmin getCurrentAdmin() {
+        HttpSession session = getSession();
+        if (session == null) {
+            return null;
+        }
+        return (SysAdmin) session.getAttribute(SESSION_ADMIN_KEY);
+    }
+
+    public static void clearCurrentAdmin() {
+        HttpSession session = getSession();
+        if (session != null) {
+            session.removeAttribute(SESSION_ADMIN_KEY);
+        }
+    }
+
     public static void invalidateSession() {
         HttpSession session = getSession();
         if (session != null) {

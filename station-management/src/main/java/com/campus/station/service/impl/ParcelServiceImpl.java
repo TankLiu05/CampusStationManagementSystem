@@ -239,7 +239,7 @@ public class ParcelServiceImpl implements ParcelService {
 
         String province = scope.getProvince();
         String city = scope.getCity();
-        String stationCode = scope.getStationId() == null ? null : String.valueOf(scope.getStationId());
+        String stationCode = scope.getStation();
 
         if (role == AdminRole.MANAGER) {
             return matchesProvince(parcel, province);

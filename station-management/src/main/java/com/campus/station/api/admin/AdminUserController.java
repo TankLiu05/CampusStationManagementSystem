@@ -1,10 +1,10 @@
 package com.campus.station.api.admin;
 
 import com.campus.station.common.SessionUtil;
+import com.campus.station.model.SysAdmin;
 import com.campus.station.model.SysUser;
 import com.campus.station.service.NoticeService;
 import com.campus.station.service.ParcelService;
-import com.campus.station.service.SysAdminService;
 import com.campus.station.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,24 +30,19 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminUserController {
 
     private final SysUserService service;
-    private final SysAdminService sysAdminService;
     private final ParcelService parcelService;
     private final NoticeService noticeService;
 
-    public AdminUserController(SysUserService service, SysAdminService sysAdminService, ParcelService parcelService, NoticeService noticeService) {
+    public AdminUserController(SysUserService service, ParcelService parcelService, NoticeService noticeService) {
         this.service = service;
-        this.sysAdminService = sysAdminService;
         this.parcelService = parcelService;
         this.noticeService = noticeService;
     }
 
-    private SysUser requireAdmin() {
-        SysUser current = SessionUtil.getCurrentUser();
+    private SysAdmin requireAdmin() {
+        SysAdmin current = SessionUtil.getCurrentAdmin();
         if (current == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
-        }
-        if (sysAdminService.getByUserId(current.getId()).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权访问用户管理接口");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员未登录");
         }
         return current;
     }

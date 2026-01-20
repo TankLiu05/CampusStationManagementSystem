@@ -5,9 +5,9 @@ import java.util.Optional;
 
 public interface SysAdminService {
 
-    Optional<SysAdmin> getByUserId(Long userId);
-
     Optional<SysAdmin> getById(Long id);
+
+    Optional<SysAdmin> getByUsername(String username);
 
     SysAdmin create(SysAdmin admin);
 

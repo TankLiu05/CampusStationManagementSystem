@@ -6,7 +6,7 @@
         <p class="subtitle">
           {{ isRegister ? '注册后即可开始使用校园驿站系统' : '登录后即可签收快递并查看最新公告信息' }}
         </p>
-        
+
         <!-- 登录表单 -->
         <form v-if="!isRegister" @submit.prevent="handleLogin">
           <div class="form-group">
@@ -22,7 +22,7 @@
               />
             </div>
           </div>
-          
+
           <div class="form-group">
             <div class="label-row">
               <span class="label-text">密码</span>
@@ -42,19 +42,19 @@
               </span>
             </div>
           </div>
-          
+
           <div class="form-group remember">
             <label class="checkbox-wrapper">
               <input type="checkbox" v-model="loginForm.remember" />
               <span class="checkbox-label">保持7天登录状态</span>
             </label>
           </div>
-          
+
           <button type="submit" class="login-btn">
-            立即登录 
+            立即登录
           </button>
         </form>
-        
+
         <!-- 注册表单 -->
         <form v-else @submit.prevent="handleRegister">
           <div class="form-group">
@@ -70,7 +70,7 @@
               />
             </div>
           </div>
-          
+
           <div class="form-group">
             <label for="reg-password">密码</label>
             <div class="input-wrapper">
@@ -88,7 +88,7 @@
               </span>
             </div>
           </div>
-          
+
           <div class="form-group">
             <label for="reg-phone">手机号（可选）</label>
             <div class="input-wrapper">
@@ -101,7 +101,7 @@
               />
             </div>
           </div>
-          
+
           <div class="form-group">
             <label for="reg-email">邮箱（可选）</label>
             <div class="input-wrapper">
@@ -114,12 +114,12 @@
               />
             </div>
           </div>
-          
+
           <button type="submit" class="login-btn">
             立即注册
           </button>
         </form>
-        
+
         <div class="footer-info">
           <span>•</span>
           <span class="toggle-mode" @click="isRegister = !isRegister">
@@ -129,31 +129,43 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 右侧图片区域 (50%) -->
     <div class="image-section">
       <img src="@/assets/icons/users.png" alt="用户登录" />
-          
+
       <!-- 顶部主标题和副标题 -->
       <div class="hero-content">
         <h1 class="hero-title">随时随地<br>掌控您的包裹</h1>
         <p class="hero-subtitle">轻松追踪您的快递包裹状态,随时随地查询取件码,享受便捷的校园物流体验</p>
       </div>
-          
+
       <!-- 中心图片 -->
       <div class="center-image">
         <img src="@/assets/icons/photo.png" alt="物流配送" />
       </div>
-          
+
       <!-- 右下角功能展示 -->
       <div class="feature-status">
         <span class="status-icon"><img src="@/assets/icons/car.png" alt="物流" /></span>
         <span class="status-text">全链路追踪.为您提供最快的物流服务</span>
       </div>
-          
+
       <!-- 右下角人物图片 -->
       <div class="corner-man">
         <img src="@/assets/icons/man.png" alt="人物" />
+      </div>
+    </div>
+
+    <div v-if="showRoleDialog" class="role-dialog-overlay">
+      <div class="role-dialog">
+        <h2 class="role-dialog-title">选择登录身份</h2>
+        <p class="role-dialog-text">检测到该账号同时存在用户和管理员身份，请选择登录方式。</p>
+        <div class="role-dialog-actions">
+          <button type="button" class="login-btn role-user-btn" @click="loginAsUser">进入用户端</button>
+          <button type="button" class="login-btn role-admin-btn" @click="loginAsAdmin">进入管理端</button>
+        </div>
+        <button type="button" class="role-dialog-cancel" @click="showRoleDialog = false">取消</button>
       </div>
     </div>
   </div>
@@ -162,7 +174,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { login, register } from '@/api/sysUser'
+import { login as userLogin, register } from '@/api/sysUser'
 import { request } from '@/utls/request'
 import { clearRoleCache } from '@/router'
 import { useToast } from '@/composables/useToast'
@@ -184,29 +196,48 @@ const registerForm = reactive({
 })
 
 const showPassword = ref(false)
+const showRoleDialog = ref(false)
 const { success, error } = useToast()
 
 const handleLogin = async () => {
   console.log('开始登录...')
   // 登录前清除旧的角色缓存
   clearRoleCache()
-  
+
   try {
-    const res = await login(loginForm.username, loginForm.password)
-    console.log('登录响应:', JSON.stringify(res))
-    
-    // 处理后端可能返回的 ApiResponse 格式
-    const resAny = res as any
-    if (resAny && typeof resAny === 'object' && 'success' in resAny) {
-      if (!resAny.success) {
-        error(resAny.message || '登录失败')
-        return
-      }
+    const [adminResult, userResult] = await Promise.allSettled([
+      request('/api/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: loginForm.username,
+          password: loginForm.password,
+        }),
+      }),
+      userLogin(loginForm.username, loginForm.password),
+    ])
+
+    const adminSuccess = adminResult.status === 'fulfilled'
+    const userSuccess = userResult.status === 'fulfilled'
+
+    if (adminSuccess && userSuccess) {
+      console.log('检测到用户同时具有管理员和用户身份')
+      showRoleDialog.value = true
+      return
     }
-    
-    // 登录成功，直接跳转到用户首页，路由守卫会自动判断角色并重定向
-    console.log('登录成功，跳转中...')
-    router.push('/user/home')
+
+    if (adminSuccess) {
+      console.log('管理员登录成功，跳转中...')
+      router.push('/admin/home')
+      return
+    }
+
+    if (userSuccess) {
+      console.log('用户登录成功，跳转中...')
+      router.push('/user/home')
+      return
+    }
+
+    window.alert('登录失败，请检查账号或密码')
   } catch (err: any) {
     console.error('登录失败:', err)
     let msg = '登录失败，请检查账号或密码'
@@ -233,6 +264,16 @@ const handleRegister = async () => {
     console.error('用户注册失败:', err)
     error('注册失败，请检查信息或稍后再试')
   }
+}
+
+const loginAsUser = () => {
+  showRoleDialog.value = false
+  router.push('/user/home')
+}
+
+const loginAsAdmin = () => {
+  showRoleDialog.value = false
+  router.push('/admin/home')
 }
 </script>
 
@@ -528,7 +569,7 @@ const handleRegister = async () => {
   font-size: 10px;
   width: 30px;
   height: 30px;
-  object-fit: contain; 
+  object-fit: contain;
 }
 
 .status-icon img {
@@ -561,16 +602,72 @@ const handleRegister = async () => {
   object-fit: contain;
 }
 
+.role-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.role-dialog {
+  width: 360px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px 24px 20px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+  text-align: center;
+}
+
+.role-dialog-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.role-dialog-text {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+
+.role-dialog-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.role-user-btn {
+  flex: 1;
+}
+
+.role-admin-btn {
+  flex: 1;
+  background: #3b82f6;
+}
+
+.role-dialog-cancel {
+  margin-top: 10px;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 /* 响应式设计 */
 @media (max-width: 1200px) {
   .hero-title {
     font-size: 36px;
   }
-  
+
   .hero-subtitle {
     font-size: 16px;
   }
-  
+
   .center-image {
     width: 500px;
     height: 500px;
@@ -581,51 +678,51 @@ const handleRegister = async () => {
   .form-section {
     flex: 6;
   }
-  
+
   .image-section {
     flex: 4;
   }
-  
+
   .hero-content {
     top: 100px;
     left: 40px;
   }
-  
+
   .hero-title {
     font-size: 28px;
   }
-  
+
   .hero-subtitle {
     font-size: 14px;
     max-width: 400px;
   }
-  
+
   .center-image {
     width: 350px;
     height: 350px;
     top: 400px;
   }
-  
+
   .corner-man {
     width: 150px;
     height: 150px;
     top: 30px;
     right: 30px;
   }
-  
+
   .feature-status {
     bottom: 30px;
     left: 30px;
   }
-  
+
   .status-text {
     font-size: 14px;
   }
-  
+
   .title {
     font-size: 36px;
   }
-  
+
   .subtitle {
     font-size: 14px;
     margin-bottom: 30px;
@@ -636,7 +733,7 @@ const handleRegister = async () => {
   .user-login {
     flex-direction: column;
   }
-  
+
   .form-section {
     flex: none;
     width: 100%;
@@ -647,35 +744,35 @@ const handleRegister = async () => {
     margin: 0;
     border-radius: 0;
   }
-  
+
   .image-section {
     display: none;
   }
-  
+
   .form-wrapper {
     max-width: 100%;
     padding: 0 10px;
   }
-  
+
   .title {
     font-size: 32px;
   }
-  
+
   .subtitle {
     font-size: 14px;
     margin-bottom: 30px;
   }
-  
+
   .input-wrapper input {
     padding: 14px 16px 14px 48px;
     font-size: 14px;
   }
-  
+
   .login-btn {
     padding: 14px;
     font-size: 16px;
   }
-  
+
   .footer-info {
     margin-top: 30px;
   }
@@ -685,34 +782,34 @@ const handleRegister = async () => {
   .form-section {
     padding: 30px 15px;
   }
-  
+
   .title {
     font-size: 28px;
   }
-  
+
   .subtitle {
     font-size: 13px;
   }
-  
+
   .form-group label,
   .label-text {
     font-size: 15px;
   }
-  
+
   .input-wrapper input {
     padding: 12px 14px 12px 44px;
     font-size: 14px;
   }
-  
+
   .login-btn {
     padding: 12px;
     font-size: 15px;
   }
-  
+
   .forgot-link {
     font-size: 14px;
   }
-  
+
   .checkbox-label {
     font-size: 14px;
   }

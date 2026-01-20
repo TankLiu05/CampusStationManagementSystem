@@ -2,7 +2,7 @@ package com.campus.station.api.admin;
 
 import com.campus.station.common.SessionUtil;
 import com.campus.station.model.Notice;
-import com.campus.station.model.SysUser;
+import com.campus.station.model.SysAdmin;
 import com.campus.station.service.NoticeService;
 import com.campus.station.service.SysAdminService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,13 +36,10 @@ public class AdminNoticeController {
         this.sysAdminService = sysAdminService;
     }
 
-    private SysUser requireAdmin() {
-        SysUser current = SessionUtil.getCurrentUser();
+    private SysAdmin requireAdmin() {
+        SysAdmin current = SessionUtil.getCurrentAdmin();
         if (current == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
-        }
-        if (sysAdminService.getByUserId(current.getId()).isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "无权访问公告管理接口");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员未登录");
         }
         return current;
     }
@@ -50,7 +47,7 @@ public class AdminNoticeController {
     @PostMapping
     @Operation(summary = "创建公告")
     public ResponseEntity<Notice> create(@RequestBody Notice req) {
-        SysUser admin = requireAdmin();
+        SysAdmin admin = requireAdmin();
         req.setCreatorId(admin.getId());
         req.setCreatorName(admin.getUsername());
         Notice created = service.create(req);

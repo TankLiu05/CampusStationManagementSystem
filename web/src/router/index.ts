@@ -158,38 +158,29 @@ const router = createRouter({
   ],
 })
 
-// 路由守卫：权限控制
 router.beforeEach(async (to, from, next) => {
-  // 不需要认证的页面直接放行
   if (!to.meta.requiresAuth) {
     next()
     return
   }
 
   try {
-    // 获取当前用户信息，确认已登录
-    await getCurrentUser()
-    
-    // 如果没有缓存角色，检查用户是否是管理员
-    if (cachedRole === null) {
+    if (to.meta.role === 'ADMIN') {
       const isAdmin = await checkIsAdmin()
-      cachedRole = isAdmin ? 'ADMIN' : 'USER'
-    }
-    
-    // 检查角色权限
-    if (to.meta.role && cachedRole !== to.meta.role) {
-      // 角色不匹配，根据角色重定向到对应首页
-      if (cachedRole === 'ADMIN') {
-        next('/admin/home')
-      } else {
-        next('/user/home')
+      if (!isAdmin) {
+        cachedRole = null
+        next('/login')
+        return
       }
+      cachedRole = 'ADMIN'
+      next()
       return
     }
-    
+
+    await getCurrentUser()
+    cachedRole = 'USER'
     next()
   } catch (err) {
-    // 未登录或认证失败，清除缓存并跳转到登录页
     cachedRole = null
     console.error('认证失败:', err)
     next('/login')

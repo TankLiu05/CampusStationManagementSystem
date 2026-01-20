@@ -9,9 +9,9 @@
       <!-- 操作栏 -->
       <div class="action-bar">
         <div class="search-section">
-          <input 
-            type="text" 
-            v-model="searchKeyword" 
+          <input
+            type="text"
+            v-model="searchKeyword"
             placeholder="搜索管理员用户名..."
             class="search-input"
           >
@@ -88,8 +88,8 @@
               <label>角色 *</label>
               <select v-model="adminForm.role">
                 <option value="">请选择角色</option>
-                <option value="MANAGER">管理员</option>
-                <option value="CITY_ADMIN">城市管理员</option>
+                <option value="MANAGER">省级管理员</option>
+                <option value="CITY_ADMIN">市级管理员</option>
                 <option value="STREET_ADMIN">站点管理员</option>
               </select>
             </div>
@@ -110,8 +110,8 @@
               <input type="text" v-model="adminForm.city" placeholder="请输入城市">
             </div>
             <div class="form-group">
-              <label>站点ID</label>
-              <input type="number" v-model="adminForm.stationId" placeholder="请输入站点ID">
+              <label>站点</label>
+              <input type="text" v-model="adminForm.station" placeholder="请输入站点详细信息">
             </div>
           </div>
           <div class="modal-footer">
@@ -127,11 +127,11 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import { 
-  getAdminList, 
-  getAdminDetail, 
-  createAdmin, 
-  updateAdmin, 
+import {
+  getAdminList,
+  getAdminDetail,
+  createAdmin,
+  updateAdmin,
   deleteAdmin,
   roleNameMap,
   type AdminRoleScope,
@@ -152,7 +152,7 @@ interface AdminForm {
   email: string
   province: string
   city: string
-  stationId: number | null
+  station: string
 }
 
 const searchKeyword = ref('')
@@ -170,7 +170,7 @@ const adminForm = reactive<AdminForm>({
   email: '',
   province: '',
   city: '',
-  stationId: null
+  station: ''
 })
 
 // 过滤管理员列表
@@ -187,11 +187,32 @@ const filteredAdminList = computed(() => {
 
 // 获取管辖范围文本
 const getScopeText = (admin: AdminRoleScope): string => {
-  const parts = []
-  if (admin.province) parts.push(admin.province)
-  if (admin.city) parts.push(admin.city)
-  if (admin.stationId) parts.push(`站点${admin.stationId}`)
-  return parts.length > 0 ? parts.join(' - ') : '全部'
+  const { role, province, city, station } = admin
+
+  if (role === 'SUPERADMIN') {
+    return '全部'
+  }
+
+  if (role === 'MANAGER') {
+    return province || '未设置'
+  }
+
+  if (role === 'CITY_ADMIN') {
+    const parts: string[] = []
+    if (province) parts.push(province)
+    if (city) parts.push(city)
+    return parts.length > 0 ? parts.join(' - ') : '未设置'
+  }
+
+  if (role === 'STREET_ADMIN') {
+    const parts: string[] = []
+    if (province) parts.push(province)
+    if (city) parts.push(city)
+    if (station) parts.push(station)
+    return parts.length > 0 ? parts.join(' - ') : '未设置'
+  }
+
+  return '未设置'
 }
 
 // 加载管理员列表
@@ -199,7 +220,7 @@ const loadAdmins = async () => {
   try {
     const list = await getAdminList()
     adminList.value = list
-    
+
     // 获取每个管理员的详细信息
     for (const admin of list) {
       try {
@@ -233,7 +254,7 @@ const openEditModal = (admin: AdminRoleScope) => {
   isEdit.value = true
   editingAdminId.value = admin.adminId
   const detail = adminDetails.value[admin.adminId]
-  
+
   adminForm.username = detail?.username || ''
   adminForm.password = ''
   adminForm.role = admin.role
@@ -241,8 +262,7 @@ const openEditModal = (admin: AdminRoleScope) => {
   adminForm.email = detail?.email || ''
   adminForm.province = admin.province || ''
   adminForm.city = admin.city || ''
-  adminForm.stationId = admin.stationId
-  
+  adminForm.station = admin.station || ''
   showModal.value = true
 }
 
@@ -255,7 +275,7 @@ const resetForm = () => {
   adminForm.email = ''
   adminForm.province = ''
   adminForm.city = ''
-  adminForm.stationId = null
+  adminForm.station = ''
 }
 
 // 关闭弹窗
@@ -269,14 +289,14 @@ const submitAdmin = async () => {
   if (isEdit.value) {
     // 编辑管理员
     if (!editingAdminId.value) return
-    
+
     try {
       await updateAdmin(editingAdminId.value, {
         phone: adminForm.phone || undefined,
         email: adminForm.email || undefined,
         province: adminForm.province || undefined,
         city: adminForm.city || undefined,
-        stationId: adminForm.stationId || undefined
+        station: adminForm.station || undefined
       })
       success('更新成功')
       closeModal()
@@ -291,12 +311,33 @@ const submitAdmin = async () => {
       warning('请填写用户名、密码和角色')
       return
     }
-    
+
     if (adminForm.password.length < 6) {
       warning('密码长度至少为6位')
       return
     }
-    
+
+    if (adminForm.role === 'MANAGER') {
+      if (!adminForm.province.trim()) {
+        alert('省级管理员必须填写省份')
+        return
+      }
+    }
+
+    if (adminForm.role === 'CITY_ADMIN') {
+      if (!adminForm.province.trim() || !adminForm.city.trim()) {
+        alert('市级管理员必须填写省份和城市')
+        return
+      }
+    }
+
+    if (adminForm.role === 'STREET_ADMIN') {
+      if (!adminForm.province.trim() || !adminForm.city.trim() || !adminForm.station.trim()) {
+        alert('站点管理员必须填写省份、城市和站点信息')
+        return
+      }
+    }
+
     try {
       await createAdmin({
         username: adminForm.username,
@@ -306,7 +347,7 @@ const submitAdmin = async () => {
         email: adminForm.email || undefined,
         province: adminForm.province || undefined,
         city: adminForm.city || undefined,
-        stationId: adminForm.stationId || undefined
+        station: adminForm.station || undefined
       })
       success('创建成功')
       closeModal()
@@ -326,7 +367,7 @@ const handleDeleteAdmin = async (adminId: number) => {
     type: 'danger'
   })
   if (!confirmed) return
-  
+
   try {
     await deleteAdmin(adminId)
     success('删除成功')

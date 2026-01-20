@@ -3,8 +3,9 @@ package com.campus.station.api.admin;
 import com.campus.station.common.SessionUtil;
 import com.campus.station.model.AdminRole;
 import com.campus.station.model.AdminRoleScope;
+import com.campus.station.model.AdminStation;
 import com.campus.station.model.SysAdmin;
-import com.campus.station.model.SysUser;
+import com.campus.station.repository.AdminStationRepository;
 import com.campus.station.service.AdminRoleScopeService;
 import com.campus.station.service.SysAdminService;
 import com.campus.station.service.SysUserService;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,30 +33,24 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/admin/management")
 public class AdminManagementController {
 
-    private final SysUserService sysUserService;
     private final SysAdminService sysAdminService;
     private final AdminRoleScopeService adminRoleScopeService;
+    private final AdminStationRepository adminStationRepository;
 
-    public AdminManagementController(SysUserService sysUserService,
-                                     SysAdminService sysAdminService,
-                                     AdminRoleScopeService adminRoleScopeService) {
-        this.sysUserService = sysUserService;
+    public AdminManagementController(SysAdminService sysAdminService,
+                                     AdminRoleScopeService adminRoleScopeService,
+                                     AdminStationRepository adminStationRepository) {
         this.sysAdminService = sysAdminService;
         this.adminRoleScopeService = adminRoleScopeService;
-    }
-
-    private SysUser requireLoginUser() {
-        SysUser current = SessionUtil.getCurrentUser();
-        if (current == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
-        }
-        return current;
+        this.adminStationRepository = adminStationRepository;
     }
 
     private SysAdmin requireCurrentAdmin() {
-        SysUser current = requireLoginUser();
-        return sysAdminService.getByUserId(current.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "非管理员，无权操作"));
+        SysAdmin current = SessionUtil.getCurrentAdmin();
+        if (current == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员未登录");
+        }
+        return current;
     }
 
     private AdminRoleScope requireCurrentAdminScope() {
@@ -77,6 +73,45 @@ public class AdminManagementController {
         return false;
     }
 
+    private boolean canViewScope(AdminRoleScope currentScope, AdminRoleScope targetScope) {
+        if (currentScope == null || targetScope == null) {
+            return false;
+        }
+        AdminRole currentRole = currentScope.getRole();
+        AdminRole targetRole = targetScope.getRole();
+
+        if (currentRole == AdminRole.SUPERADMIN) {
+            return true;
+        }
+
+        // 省级管理员：查看同省的市级和站点管理员
+        if (currentRole == AdminRole.MANAGER) {
+            String province = currentScope.getProvince();
+            if (province == null || province.isBlank()) {
+                return false;
+            }
+            if (targetRole != AdminRole.CITY_ADMIN && targetRole != AdminRole.STREET_ADMIN) {
+                return false;
+            }
+            return province.equals(targetScope.getProvince());
+        }
+
+        // 市级管理员：查看同市的站点管理员
+        if (currentRole == AdminRole.CITY_ADMIN) {
+            String city = currentScope.getCity();
+            if (city == null || city.isBlank()) {
+                return false;
+            }
+            if (targetRole != AdminRole.STREET_ADMIN) {
+                return false;
+            }
+            return city.equals(targetScope.getCity());
+        }
+
+        // 站点管理员目前没有下级
+        return false;
+    }
+
     @PostMapping
     @Operation(summary = "创建管理员")
     public ResponseEntity<?> createAdmin(@RequestBody Map<String, Object> body) {
@@ -89,10 +124,7 @@ public class AdminManagementController {
         String roleStr = (String) body.get("role");
         String province = (String) body.get("province");
         String city = (String) body.get("city");
-        Long stationId = parseStationId(body.get("stationId"));
-        if (body.get("stationId") != null && stationId == null) {
-            return ResponseEntity.badRequest().body("站点ID必须为数字");
-        }
+        String station = (String) body.get("station");
 
         if (username == null || username.isBlank() || password == null || password.isBlank() || roleStr == null) {
             return ResponseEntity.badRequest().body("用户名、密码和角色为必填项");
@@ -105,27 +137,35 @@ public class AdminManagementController {
             return ResponseEntity.badRequest().body("角色无效");
         }
 
+        if (targetRole == AdminRole.MANAGER) {
+            if (province == null || province.isBlank()) {
+                return ResponseEntity.badRequest().body("省级管理员必须填写省份");
+            }
+        } else if (targetRole == AdminRole.CITY_ADMIN) {
+            if (province == null || province.isBlank() || city == null || city.isBlank()) {
+                return ResponseEntity.badRequest().body("市级管理员必须填写省份和城市");
+            }
+        } else if (targetRole == AdminRole.STREET_ADMIN) {
+            if (province == null || province.isBlank() || city == null || city.isBlank() || station == null
+                    || station.isBlank()) {
+                return ResponseEntity.badRequest().body("站点管理员必须填写省份、城市和站点信息");
+            }
+        }
+
+        String currentProvince = currentScope.getProvince();
+        if (currentProvince != null && !currentProvince.isBlank()
+                && (targetRole == AdminRole.MANAGER || targetRole == AdminRole.CITY_ADMIN
+                        || targetRole == AdminRole.STREET_ADMIN)) {
+            if (province == null || !currentProvince.equals(province)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无权跨省创建管理员");
+            }
+        }
+
         if (!canManage(currentScope, targetRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无权创建该等级管理员");
         }
 
-        SysUser sysUser = new SysUser();
-        sysUser.setUsername(username);
-        sysUser.setPassword(password);
-        sysUser.setPhone(phone);
-        sysUser.setEmail(email);
-        sysUser.setStatus((byte) 1);
-        sysUser.setRole(targetRole);
-
-        SysUser createdUser;
-        try {
-            createdUser = sysUserService.create(sysUser);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(409).body(ex.getMessage());
-        }
-
         SysAdmin sysAdmin = new SysAdmin();
-        sysAdmin.setUserId(createdUser.getId());
         sysAdmin.setUsername(username);
         sysAdmin.setPassword(password);
         sysAdmin.setPhone(phone);
@@ -133,7 +173,12 @@ public class AdminManagementController {
         sysAdmin.setStatus((byte) 1);
         sysAdmin.setRole(targetRole);
 
-        SysAdmin createdAdmin = sysAdminService.create(sysAdmin);
+        SysAdmin createdAdmin;
+        try {
+            createdAdmin = sysAdminService.create(sysAdmin);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(409).body(ex.getMessage());
+        }
 
         AdminRoleScope scope = new AdminRoleScope();
         scope.setAdminId(createdAdmin.getId());
@@ -141,9 +186,32 @@ public class AdminManagementController {
         scope.setRole(targetRole);
         scope.setProvince(province);
         scope.setCity(city);
-        scope.setStationId(stationId);
+        scope.setStation(station);
 
         AdminRoleScope createdScope = adminRoleScopeService.create(scope);
+
+        if (targetRole == AdminRole.STREET_ADMIN
+                && province != null && !province.isBlank()
+                && city != null && !city.isBlank()
+                && station != null && !station.isBlank()) {
+            boolean exists = adminStationRepository.existsByProvinceAndCityAndStation(province, city, station);
+            if (!exists) {
+                AdminStation adminStation = new AdminStation();
+                adminStation.setProvince(province);
+                adminStation.setCity(city);
+                adminStation.setStation(station);
+                if (phone != null) {
+                    adminStation.setPhone(phone);
+                } else {
+                    adminStation.setPhone("");
+                }
+                adminStation.setUsername(username);
+                try {
+                    adminStationRepository.save(adminStation);
+                } catch (Exception e) {
+                }
+            }
+        }
 
         return ResponseEntity.ok(new AdminDetailView(createdAdmin, createdScope));
     }
@@ -154,12 +222,16 @@ public class AdminManagementController {
         AdminRoleScope currentScope = requireCurrentAdminScope();
 
         if (currentScope.getRole() == AdminRole.SUPERADMIN) {
-            List<AdminRoleScope> allScopes = adminRoleScopeService.getByParentAdminId(null);
+            List<AdminRoleScope> allScopes = adminRoleScopeService.listAll();
             return ResponseEntity.ok(allScopes);
         }
 
-        List<AdminRoleScope> scopes = adminRoleScopeService.getByParentAdminId(currentScope.getAdminId());
-        return ResponseEntity.ok(scopes);
+        List<AdminRoleScope> allScopes = adminRoleScopeService.listAll();
+        List<AdminRoleScope> visibleScopes = allScopes.stream()
+                .filter(scope -> !scope.getAdminId().equals(currentScope.getAdminId()))
+                .filter(scope -> canViewScope(currentScope, scope))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(visibleScopes);
     }
 
     @GetMapping("/{adminId}")
@@ -207,10 +279,7 @@ public class AdminManagementController {
         String email = (String) body.get("email");
         String province = (String) body.get("province");
         String city = (String) body.get("city");
-        Long stationId = parseStationId(body.get("stationId"));
-        if (body.get("stationId") != null && stationId == null) {
-            return ResponseEntity.badRequest().body("站点ID必须为数字");
-        }
+        String station = (String) body.get("station");
 
         if (phone != null) {
             admin.setPhone(phone);
@@ -224,7 +293,7 @@ public class AdminManagementController {
         AdminRoleScope updateScope = new AdminRoleScope();
         updateScope.setProvince(province);
         updateScope.setCity(city);
-        updateScope.setStationId(stationId);
+        updateScope.setStation(station);
         AdminRoleScope savedScope = adminRoleScopeService.update(scope.getId(), updateScope);
 
         return ResponseEntity.ok(new AdminDetailView(savedAdmin, savedScope));
@@ -257,27 +326,6 @@ public class AdminManagementController {
         return ResponseEntity.noContent().build();
     }
 
-    private Long parseStationId(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
-        }
-        if (value instanceof String) {
-            String s = ((String) value).trim();
-            if (s.isEmpty()) {
-                return null;
-            }
-            try {
-                return Long.parseLong(s);
-            } catch (NumberFormatException ex) {
-                return null;
-            }
-        }
-        return null;
-    }
-
     static class AdminDetailView {
         private Long id;
         private String username;
@@ -287,7 +335,7 @@ public class AdminManagementController {
         private AdminRole role;
         private String province;
         private String city;
-        private Long stationId;
+        private String station;
 
         AdminDetailView(SysAdmin admin, AdminRoleScope scope) {
             this.id = admin.getId();
@@ -298,7 +346,7 @@ public class AdminManagementController {
             this.role = scope.getRole();
             this.province = scope.getProvince();
             this.city = scope.getCity();
-            this.stationId = scope.getStationId();
+            this.station = scope.getStation();
         }
 
         public Long getId() {
@@ -365,12 +413,12 @@ public class AdminManagementController {
             this.city = city;
         }
 
-        public Long getStationId() {
-            return stationId;
+        public String getStation() {
+            return station;
         }
 
-        public void setStationId(Long stationId) {
-            this.stationId = stationId;
+        public void setStation(String station) {
+            this.station = station;
         }
     }
 }

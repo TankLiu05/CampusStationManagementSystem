@@ -42,8 +42,8 @@ public class AdminRoleScope {
     @Column(name = "city", length = 50)
     private String city;
 
-    @Column(name = "station_id")
-    private Long stationId;
+    @Column(name = "station_id", nullable = true, length = 100)
+    private String station;
 
     @CreationTimestamp
     @Column(name = "create_time", nullable = false, updatable = false)
@@ -109,12 +109,12 @@ public class AdminRoleScope {
         this.city = city;
     }
 
-    public Long getStationId() {
-        return stationId;
+    public String getStation() {
+        return station;
     }
 
-    public void setStationId(Long stationId) {
-        this.stationId = stationId;
+    public void setStation(String station) {
+        this.station = station;
     }
 
     public LocalDateTime getCreateTime() {

@@ -136,15 +136,15 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCurrentUser, logout } from '@/api/sysUser'
-import type { SysUser } from '@/api/sysUser'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelApi } from '@/api/admin/parcel'
 import { listNotices } from '@/api/admin/notice'
 import { getUserList } from '@/api/admin/user'
+import { getAdminProfile } from '@/api/admin/profile'
+import type { UserProfile } from '@/api/admin/profile'
 
 const router = useRouter()
-const currentUser = ref<SysUser | null>(null)
+const currentUser = ref<UserProfile | null>(null)
 const userCount = ref(0)
 const parcelCount = ref(0)
 const signedCount = ref(0)
@@ -176,13 +176,12 @@ const handleNavigate = (path: string) => {
 
 onMounted(async () => {
   try {
-    currentUser.value = await getCurrentUser()
-    // 权限检查已由路由守卫处理，这里不再重复检查
-    
+    currentUser.value = await getAdminProfile()
+
     // 加载统计数据
     loadStatistics()
   } catch (err) {
-    console.error('获取用户信息失败:', err)
+    console.error('获取管理员信息失败:', err)
     router.replace('/login')
   }
 })
@@ -193,16 +192,16 @@ const loadStatistics = async () => {
     // 加载包裹总数
     const parcelResponse = await parcelApi.list(0, 1)
     parcelCount.value = parcelResponse.totalElements
-    
+
     // 计算今日签收数（从所有包裹中筛选已签收的）
     // 注意：这里暂时使用总签收数，如果需要今日签收需要后端提供专门接口
     const allParcelsResponse = await parcelApi.list(0, 999999)
     signedCount.value = allParcelsResponse.content.filter(p => p.isSigned === 1).length
-    
+
     // 加载公告数量
     const noticeResponse = await listNotices(0, 1)
     noticeCount.value = noticeResponse.totalElements
-    
+
     // 加载用户总数
     const userResponse = await getUserList(0, 1)
     userCount.value = userResponse.totalElements
@@ -494,24 +493,24 @@ const loadStatistics = async () => {
   .welcome-section h1 {
     font-size: 28px;
   }
-  
+
   .welcome-section p {
     font-size: 16px;
   }
-  
+
   .stat-card {
     padding: 20px;
   }
-  
+
   .stat-number {
     font-size: 24px;
   }
-  
+
   .stat-icon {
     width: 60px;
     height: 60px;
   }
-  
+
   .stat-icon img {
     width: 32px;
     height: 32px;
@@ -523,46 +522,46 @@ const loadStatistics = async () => {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .welcome-section {
     margin-bottom: 24px;
   }
-  
+
   .welcome-section h1 {
     font-size: 24px;
   }
-  
+
   .welcome-section p {
     font-size: 14px;
   }
-  
+
   .stats-cards {
     margin-bottom: 24px;
   }
-  
+
   .stat-card {
     padding: 16px;
     gap: 16px;
   }
-  
+
   .stat-icon {
     width: 50px;
     height: 50px;
   }
-  
+
   .stat-icon img {
     width: 28px;
     height: 28px;
   }
-  
+
   .stat-number {
     font-size: 22px;
   }
-  
+
   .section {
     padding: 20px;
   }
-  
+
   .section h2 {
     font-size: 18px;
     margin-bottom: 16px;
@@ -572,7 +571,7 @@ const loadStatistics = async () => {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
-  
+
   .action-btn {
     padding: 14px;
     font-size: 14px;
@@ -582,11 +581,11 @@ const loadStatistics = async () => {
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
   }
-  
+
   .warehouse-stat-item {
     padding: 12px;
   }
-  
+
   .warehouse-stat-item .stat-value {
     font-size: 16px;
   }
@@ -601,34 +600,34 @@ const loadStatistics = async () => {
   .welcome-section h1 {
     font-size: 22px;
   }
-  
+
   .stat-card {
     flex-direction: column;
     text-align: center;
     gap: 12px;
   }
-  
+
   .action-buttons {
     grid-template-columns: 1fr;
   }
-  
+
   .action-btn {
     padding: 12px;
     font-size: 13px;
   }
-  
+
   .warehouse-stats {
     grid-template-columns: 1fr;
   }
-  
+
   .warehouse-name {
     font-size: 16px;
   }
-  
+
   .warehouse-address {
     font-size: 13px;
   }
-  
+
   .warehouse-meta {
     font-size: 12px;
   }

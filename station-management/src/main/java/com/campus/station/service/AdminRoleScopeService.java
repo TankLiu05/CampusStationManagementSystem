@@ -10,10 +10,11 @@ public interface AdminRoleScopeService {
 
     List<AdminRoleScope> getByParentAdminId(Long parentAdminId);
 
+    List<AdminRoleScope> listAll();
+
     AdminRoleScope create(AdminRoleScope scope);
 
     AdminRoleScope update(Long id, AdminRoleScope update);
 
     void delete(Long id);
 }
-

@@ -49,18 +49,12 @@ public class AdminParcelController {
         this.adminRoleScopeService = adminRoleScopeService;
     }
 
-    private SysUser requireLoginUser() {
-        SysUser current = SessionUtil.getCurrentUser();
+    private SysAdmin requireCurrentAdmin() {
+        SysAdmin current = SessionUtil.getCurrentAdmin();
         if (current == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "未登录");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员未登录");
         }
         return current;
-    }
-
-    private SysAdmin requireCurrentAdmin() {
-        SysUser current = requireLoginUser();
-        return sysAdminService.getByUserId(current.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "非管理员，无权操作"));
     }
 
     private AdminRoleScope requireCurrentAdminScope() {

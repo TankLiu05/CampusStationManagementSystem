@@ -6,10 +6,10 @@
     <!-- 右侧主体区域 -->
     <div class="right-container">
       <!-- 顶部导航栏 -->
-      <Navbar 
-        :username="currentUser?.username" 
-        :current-page-name="currentPageName" 
-        @logout="handleLogout" 
+      <Navbar
+        :username="currentUser?.username"
+        :current-page-name="currentPageName"
+        @logout="handleLogout"
       />
 
       <!-- 主要内容区域 -->
@@ -23,14 +23,15 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getCurrentUser, logout } from '@/api/sysUser'
-import type { SysUser } from '@/api/sysUser'
+import { logout as userLogout } from '@/api/sysUser'
+import { getAdminProfile } from '@/api/admin/profile'
+import type { UserProfile } from '@/api/admin/profile'
 import Navbar from '@/components/admin/Navbar.vue'
 import Sidebar from '@/components/admin/Sidebar.vue'
 
 const router = useRouter()
 const route = useRoute()
-const currentUser = ref<SysUser | null>(null)
+const currentUser = ref<UserProfile | null>(null)
 
 // 菜单ID到名称的映射
 const menuNameMap: Record<string, string> = {
@@ -72,8 +73,7 @@ const activeMenu = computed(() => {
 
 onMounted(async () => {
   try {
-    currentUser.value = await getCurrentUser()
-    // 权限检查已由路由守卫处理，这里不再重复检查
+    currentUser.value = await getAdminProfile()
   } catch (err) {
     console.error('获取用户信息失败:', err)
     router.replace('/login')
@@ -82,7 +82,7 @@ onMounted(async () => {
 
 const handleLogout = async () => {
   try {
-    await logout()
+    await userLogout()
     router.replace('/login')
   } catch (err) {
     console.error('退出登录失败:', err)
@@ -114,7 +114,7 @@ const handleLogout = async () => {
   .right-container {
     margin-left: 220px;
   }
-  
+
   .main-content {
     padding: 30px;
   }
@@ -124,11 +124,11 @@ const handleLogout = async () => {
   .admin-layout {
     flex-direction: column;
   }
-  
+
   .right-container {
     margin-left: 0;
   }
-  
+
   .main-content {
     padding: 20px;
   }

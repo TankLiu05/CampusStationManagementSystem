@@ -2,6 +2,7 @@ package com.campus.station.service.impl;
 
 import com.campus.station.model.SysUser;
 import com.campus.station.repository.SysUserRepository;
+import com.campus.station.repository.SysAdminRepository;
 import com.campus.station.service.SysUserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,9 +15,11 @@ import java.util.Optional;
 public class SysUserServiceImpl implements SysUserService {
 
     private final SysUserRepository repository;
+    private final SysAdminRepository adminRepository;
 
-    public SysUserServiceImpl(SysUserRepository repository) {
+    public SysUserServiceImpl(SysUserRepository repository, SysAdminRepository adminRepository) {
         this.repository = repository;
+        this.adminRepository = adminRepository;
     }
 
     @Override
@@ -27,8 +30,12 @@ public class SysUserServiceImpl implements SysUserService {
             user.setUsername(user.getPhone());
         }
 
-        if (user.getUsername() != null && repository.existsByUsername(user.getUsername())) {
-            throw new IllegalArgumentException("用户名已存在");
+        if (user.getUsername() != null) {
+            boolean existsInUser = repository.existsByUsername(user.getUsername());
+            boolean existsInAdmin = adminRepository.existsByUsername(user.getUsername());
+            if (existsInUser || existsInAdmin) {
+                throw new IllegalArgumentException("用户名已存在");
+            }
         }
         if (user.getPhone() != null && repository.existsByPhone(user.getPhone())) {
             throw new IllegalArgumentException("手机号已存在");
@@ -59,7 +66,9 @@ public class SysUserServiceImpl implements SysUserService {
 
         // 如果更新用户名且与他人冲突，拦截
         if (update.getUsername() != null && !update.getUsername().equals(existing.getUsername())) {
-            if (repository.existsByUsername(update.getUsername())) {
+            boolean existsInUser = repository.existsByUsername(update.getUsername());
+            boolean existsInAdmin = adminRepository.existsByUsername(update.getUsername());
+            if (existsInUser || existsInAdmin) {
                 throw new IllegalArgumentException("用户名已存在");
             }
             existing.setUsername(update.getUsername());

@@ -13,7 +13,7 @@ export interface AdminDetail {
   role: AdminRole
   province: string | null
   city: string | null
-  stationId: number | null
+  station: string | null
 }
 
 // 管理员角色范围
@@ -24,7 +24,7 @@ export interface AdminRoleScope {
   role: AdminRole
   province: string | null
   city: string | null
-  stationId: number | null
+  station: string | null
 }
 
 // 创建管理员参数
@@ -36,7 +36,7 @@ export interface CreateAdminParams {
   role: AdminRole
   province?: string
   city?: string
-  stationId?: number
+  station?: string
 }
 
 // 更新管理员参数
@@ -45,7 +45,7 @@ export interface UpdateAdminParams {
   email?: string
   province?: string
   city?: string
-  stationId?: number
+  station?: string
 }
 
 // 获取可管理的管理员列表
@@ -84,7 +84,7 @@ export function deleteAdmin(adminId: number): Promise<void> {
 // 角色显示名称映射
 export const roleNameMap: Record<AdminRole, string> = {
   SUPERADMIN: '超级管理员',
-  MANAGER: '管理员',
-  CITY_ADMIN: '城市管理员',
+  MANAGER: '省级管理员',
+  CITY_ADMIN: '市级管理员',
   STREET_ADMIN: '站点管理员'
 }
