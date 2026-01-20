@@ -57,6 +57,19 @@ export interface ResetPasswordRequest {
   newPassword: string
 }
 
+export interface UserLocation {
+  id: number
+  userId: number
+  username: string
+  phone: string
+  province?: string
+  city?: string
+  street?: string
+  detailAddress: string
+  createTime: string
+  updateTime: string
+}
+
 /**
  * 分页查询用户列表
  * @param page 页码（从 0 开始）
@@ -120,4 +133,8 @@ export function getUserByPhone(phone: string) {
   return request<User>('/api/admin/user/byPhone', {
     params: { phone },
   })
+}
+
+export function getUserLocations(userId: number) {
+  return request<UserLocation[]>(`/api/admin/user/${userId}/locations`)
 }

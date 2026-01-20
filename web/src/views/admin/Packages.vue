@@ -76,16 +76,19 @@
             <th>快递公司</th>
             <th>收件人</th>
             <th>手机号</th>
+            <th>发货地</th>
+            <th>终点站</th>
             <th>存放位置</th>
             <th>取件码</th>
             <th>状态</th>
+            <th>是否签收</th>
             <th>到达时间</th>
             <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="packageList.length === 0">
-            <td :colspan="showCheckboxes ? 11 : 10" class="empty-row">暂无包裹数据</td>
+            <td :colspan="showCheckboxes ? 14 : 13" class="empty-row">暂无包裹数据</td>
           </tr>
           <tr v-for="pkg in packageList" :key="pkg.id">
             <td v-if="showCheckboxes">
@@ -96,6 +99,8 @@
             <td>{{ pkg.company }}</td>
             <td>{{ pkg.receiverName }}</td>
             <td>{{ pkg.receiverPhone }}</td>
+            <td>{{ pkg.origin || '-' }}</td>
+            <td>{{ pkg.destination || '-' }}</td>
             <td>{{ pkg.location }}</td>
             <td>
               <span class="pickup-code">{{ pkg.pickupCode }}</span>
@@ -105,6 +110,7 @@
                 {{ getStatusLabel(pkg.status) }}
               </span>
             </td>
+            <td>{{ pkg.isSigned === 1 ? '已签收' : '未签收' }}</td>
             <td>{{ pkg.arrivalTime }}</td>
             <td>
               <div class="action-btns">
@@ -123,10 +129,6 @@
                   v-if="pkg.status === 'STORED' && !pkg.hasStorageInfo" 
                   class="btn-storage" 
                   @click="setStorageInfo(pkg)">生成取件码</button>
-                <button 
-                  v-if="pkg.status === 'STORED' && pkg.hasStorageInfo && pkg.isSigned === 0" 
-                  class="btn-sign" 
-                  @click="signPackage(pkg.id)">签收</button>
                 <button 
                   v-if="pkg.status === 'RETURNED'" 
                   class="btn-reprocess" 
@@ -186,6 +188,16 @@
               <input type="tel" v-model="packageForm.receiverPhone" placeholder="通过手机号查找收件人">
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>起始站点 / 始发地</label>
+              <input type="text" v-model="packageForm.origin" placeholder="自动根据当前站点生成" readonly>
+            </div>
+            <div class="form-group">
+              <label>终点站 / 目的地</label>
+              <input type="text" v-model="packageForm.destination" placeholder="自动根据用户收货地址生成" readonly>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="btn-cancel" @click="closeModal">取消</button>
@@ -237,6 +249,19 @@
             </div>
           </div>
           <div class="detail-section">
+            <h4>起始与终点</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="label">发货地：</span>
+                <span class="value">{{ currentPackage?.origin || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">终点站：</span>
+                <span class="value">{{ currentPackage?.destination || '-' }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="detail-section">
             <h4>存储信息</h4>
             <div class="detail-grid">
               <div class="detail-item">
@@ -266,6 +291,8 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelApi, type Parcel, type ParcelCreateRequest, type ParcelUpdateRequest } from '@/api/admin/parcel'
+import { getUserByPhone, getUserLocations } from '@/api/admin/user'
+import { getCurrentAdminDetail } from '@/api/admin/management'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 
@@ -278,6 +305,8 @@ interface Package {
   company: string
   receiverName: string
   receiverPhone: string
+  origin?: string
+  destination?: string
   location: string
   pickupCode: string
   status: string // 前端状态：PENDING_SHIP, SHIPPED, STORED, RETURNED
@@ -293,6 +322,8 @@ interface PackageForm {
   company: string
   receiverName: string
   receiverPhone: string
+  origin: string
+  destination: string
   location: string
   pickupCode: string
   remark: string
@@ -326,6 +357,8 @@ const packageForm = reactive<PackageForm>({
   company: '',
   receiverName: '',
   receiverPhone: '',
+  origin: '',
+  destination: '',
   location: '',
   pickupCode: '',
   remark: ''
@@ -350,8 +383,10 @@ const convertBackendToUI = (parcel: Parcel): Package => {
     company: parcel.company,
     receiverName: parcel.receiverName,
     receiverPhone: parcel.receiverPhone,
-    location: parcel.location || '-', // 使用后端字段
-    pickupCode: parcel.pickupCode || '-', // 使用后端字段
+    origin: parcel.origin,
+    destination: parcel.destination,
+    location: parcel.location || '-',
+    pickupCode: parcel.pickupCode || '-',
     status: mapBackendStatusToUI(parcel.status),
     backendStatus: parcel.status,
     isSigned: parcel.isSigned,
@@ -496,6 +531,8 @@ const editPackage = (pkg: Package) => {
     company: pkg.company,
     receiverName: pkg.receiverName,
     receiverPhone: pkg.receiverPhone,
+    origin: '',
+    destination: '',
     location: pkg.location,
     pickupCode: pkg.pickupCode,
     remark: pkg.remark || ''
@@ -542,12 +579,47 @@ const submitPackage = async () => {
       await parcelApi.update(editingPackageId.value, updateData)
       success('更新成功')
     } else {
-      // 创建包裹 - 使用手机号查找用户
+      const phone = packageForm.receiverPhone.trim()
+      const user = await getUserByPhone(phone)
+      const locations = await getUserLocations(user.id)
+      if (!locations || locations.length === 0) {
+        warning('该用户没有收货地址，请先让用户在前端添加收货地址')
+        return
+      }
+      const location = locations[0]
+      const destinationParts = [
+        location.province,
+        location.city,
+        location.street,
+        location.detailAddress
+      ].filter(Boolean) as string[]
+      const destination = destinationParts.join('')
+      if (!destination) {
+        warning('无法根据用户地址生成终点站信息，请检查用户收货地址')
+        return
+      }
+      packageForm.destination = destination
+
+      const adminDetail = await getCurrentAdminDetail()
+      const originParts = [
+        adminDetail.province,
+        adminDetail.city,
+        adminDetail.station
+      ].filter(Boolean) as string[]
+      const origin = originParts.join('')
+      if (!origin) {
+        warning('无法根据当前站点生成起始站点信息，请检查管理员站点配置')
+        return
+      }
+      packageForm.origin = origin
+
       const createData: ParcelCreateRequest = {
         trackingNumber: packageForm.trackingNumber,
         company: packageForm.company,
         receiverPhone: packageForm.receiverPhone, // 通过手机号查找用户
         receiverName: packageForm.receiverName || undefined, // 可选，如果不填则使用用户的username
+        origin: packageForm.origin || undefined,
+        destination: packageForm.destination || undefined,
         status: 0, // 默认状态：待发货
         isSigned: 0 // 默认未签收
       }
@@ -572,6 +644,8 @@ const closeModal = () => {
     company: '',
     receiverName: '',
     receiverPhone: '',
+    origin: '',
+    destination: '',
     location: '',
     pickupCode: '',
     remark: ''
@@ -635,26 +709,6 @@ const setStorageInfo = async (pkg: Package) => {
   } catch (error) {
     console.error('生成存储信息失败:', error)
     showError('生成存储信息失败，请确认包裹状态为“已入库”且未签收')
-  }
-}
-
-// 签收功能：标记包裹已签收
-const signPackage = async (id: number) => {
-  if (!(await confirm({
-    title: '确认签收',
-    message: '确定该包裹已被签收吗？',
-    type: 'info'
-  }))) {
-    return
-  }
-  
-  try {
-    await parcelApi.update(id, { isSigned: 1 })
-    success('签收成功')
-    loadPackages()
-  } catch (error) {
-    console.error('签收失败:', error)
-    showError('签收失败，请重试')
   }
 }
 

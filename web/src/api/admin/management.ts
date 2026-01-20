@@ -58,6 +58,10 @@ export function getAdminDetail(adminId: number): Promise<AdminDetail> {
   return request(`/api/admin/management/${adminId}`, { method: 'GET' })
 }
 
+export function getCurrentAdminDetail(): Promise<AdminDetail> {
+  return request('/api/admin/management/me', { method: 'GET' })
+}
+
 // 创建管理员
 export function createAdmin(params: CreateAdminParams): Promise<AdminDetail> {
   return request('/api/admin/management', {

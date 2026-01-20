@@ -29,6 +29,8 @@ export interface Parcel {
   receiverId?: number
   receiverName: string
   receiverPhone: string
+  origin?: string
+  destination?: string
   location?: string // 存放位置
   pickupCode?: string // 取件码
   status: number // 0: 待发货, 1: 已发货, 2: 已入库, 3: 退回/异常
@@ -59,6 +61,8 @@ export interface ParcelCreateRequest {
   receiverUsername?: string // 收件人用户名（优先使用）
   receiverPhone?: string // 收件人手机号（备用查找方式）
   receiverName?: string // 收件人姓名（可选，默认使用用户的username）
+   origin?: string
+   destination?: string
   status?: number // 快递状态（可选）
   isSigned?: number // 是否签收（可选）
 }

@@ -3,9 +3,11 @@ package com.campus.station.api.admin;
 import com.campus.station.common.SessionUtil;
 import com.campus.station.model.SysAdmin;
 import com.campus.station.model.SysUser;
+import com.campus.station.model.Location;
 import com.campus.station.service.NoticeService;
 import com.campus.station.service.ParcelService;
 import com.campus.station.service.SysUserService;
+import com.campus.station.service.LocationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
@@ -32,11 +34,16 @@ public class AdminUserController {
     private final SysUserService service;
     private final ParcelService parcelService;
     private final NoticeService noticeService;
+    private final LocationService locationService;
 
-    public AdminUserController(SysUserService service, ParcelService parcelService, NoticeService noticeService) {
+    public AdminUserController(SysUserService service,
+                               ParcelService parcelService,
+                               NoticeService noticeService,
+                               LocationService locationService) {
         this.service = service;
         this.parcelService = parcelService;
         this.noticeService = noticeService;
+        this.locationService = locationService;
     }
 
     private SysAdmin requireAdmin() {
@@ -100,6 +107,14 @@ public class AdminUserController {
         }
         service.updatePassword(id, newPassword);
         return ResponseEntity.ok("密码重置成功");
+    }
+
+    @GetMapping("/{id}/locations")
+    @Operation(summary = "管理员查询用户收货地址列表")
+    public ResponseEntity<?> listUserLocations(@PathVariable Long id) {
+        requireAdmin();
+        java.util.List<Location> locations = locationService.listByUserId(id);
+        return ResponseEntity.ok(locations);
     }
 
     @DeleteMapping("/{id}")

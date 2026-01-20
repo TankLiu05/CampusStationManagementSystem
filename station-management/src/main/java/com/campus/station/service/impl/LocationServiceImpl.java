@@ -3,6 +3,7 @@ package com.campus.station.service.impl;
 import com.campus.station.model.Location;
 import com.campus.station.repository.LocationRepository;
 import com.campus.station.service.LocationService;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,5 +21,9 @@ public class LocationServiceImpl implements LocationService {
     public Location create(Location location) {
         return repository.save(location);
     }
-}
 
+    @Override
+    public List<Location> listByUserId(Long userId) {
+        return repository.findByUserId(userId);
+    }
+}

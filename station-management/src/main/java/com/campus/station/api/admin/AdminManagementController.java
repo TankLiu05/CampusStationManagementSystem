@@ -216,6 +216,23 @@ public class AdminManagementController {
         return ResponseEntity.ok(new AdminDetailView(createdAdmin, createdScope));
     }
 
+    @GetMapping("/me")
+    @Operation(summary = "获取当前管理员详情")
+    public ResponseEntity<?> getCurrentAdminDetail() {
+        AdminRoleScope currentScope = requireCurrentAdminScope();
+
+        SysAdmin admin = currentScope.getAdmin();
+        if (admin == null) {
+            Optional<SysAdmin> adminOpt = sysAdminService.getById(currentScope.getAdminId());
+            if (!adminOpt.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("管理员不存在");
+            }
+            admin = adminOpt.get();
+        }
+
+        return ResponseEntity.ok(new AdminDetailView(admin, currentScope));
+    }
+
     @GetMapping
     @Operation(summary = "查询当前管理员可管理的管理员列表")
     public ResponseEntity<?> listManageableAdmins() {
