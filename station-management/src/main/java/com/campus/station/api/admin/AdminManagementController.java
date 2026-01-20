@@ -89,7 +89,10 @@ public class AdminManagementController {
         String roleStr = (String) body.get("role");
         String province = (String) body.get("province");
         String city = (String) body.get("city");
-        Long stationId = body.get("stationId") == null ? null : ((Number) body.get("stationId")).longValue();
+        Long stationId = parseStationId(body.get("stationId"));
+        if (body.get("stationId") != null && stationId == null) {
+            return ResponseEntity.badRequest().body("站点ID必须为数字");
+        }
 
         if (username == null || username.isBlank() || password == null || password.isBlank() || roleStr == null) {
             return ResponseEntity.badRequest().body("用户名、密码和角色为必填项");
@@ -202,7 +205,10 @@ public class AdminManagementController {
         String email = (String) body.get("email");
         String province = (String) body.get("province");
         String city = (String) body.get("city");
-        Long stationId = body.get("stationId") == null ? null : ((Number) body.get("stationId")).longValue();
+        Long stationId = parseStationId(body.get("stationId"));
+        if (body.get("stationId") != null && stationId == null) {
+            return ResponseEntity.badRequest().body("站点ID必须为数字");
+        }
 
         if (phone != null) {
             admin.setPhone(phone);
@@ -247,6 +253,27 @@ public class AdminManagementController {
         sysAdminService.delete(adminId);
 
         return ResponseEntity.noContent().build();
+    }
+
+    private Long parseStationId(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value instanceof String) {
+            String s = ((String) value).trim();
+            if (s.isEmpty()) {
+                return null;
+            }
+            try {
+                return Long.parseLong(s);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+        return null;
     }
 
     static class AdminDetailView {
@@ -345,4 +372,3 @@ public class AdminManagementController {
         }
     }
 }
-
