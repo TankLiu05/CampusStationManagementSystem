@@ -2,6 +2,8 @@ package com.campus.station.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -37,6 +39,10 @@ public class SysAdmin {
 
     @Column(name = "status", nullable = false)
     private Byte status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 20)
+    private AdminRole role;
 
     @ManyToOne
     @JoinColumn(name = "admin_id", insertable = false, updatable = false)
@@ -104,6 +110,14 @@ public class SysAdmin {
 
     public void setStatus(Byte status) {
         this.status = status;
+    }
+
+    public AdminRole getRole() {
+        return role;
+    }
+
+    public void setRole(AdminRole role) {
+        this.role = role;
     }
 
     public SysUser getUser() {

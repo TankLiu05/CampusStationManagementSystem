@@ -28,6 +28,10 @@ public class SysUser {
     @Column(name = "status", nullable = false)
     private Byte status;
 
+    @Column(name = "role", length = 20)
+    @Enumerated(EnumType.STRING)
+    private AdminRole role;
+
     @CreationTimestamp
     @Column(name = "create_time", nullable = false, updatable = false)
     private LocalDateTime createTime;
@@ -82,6 +86,14 @@ public class SysUser {
 
     public void setStatus(Byte status) {
         this.status = status;
+    }
+
+    public AdminRole getRole() {
+        return role;
+    }
+
+    public void setRole(AdminRole role) {
+        this.role = role;
     }
 
     public LocalDateTime getCreateTime() {

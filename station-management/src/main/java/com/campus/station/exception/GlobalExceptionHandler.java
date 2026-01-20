@@ -32,7 +32,9 @@ public class GlobalExceptionHandler {
     /** 未捕获异常（500） */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
+        // 打印完整堆栈信息以便调试
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Internal server error"));
+                .body(ApiResponse.error("Internal server error: " + ex.getMessage()));
     }
 }

@@ -115,6 +115,7 @@ public class AdminManagementController {
         sysUser.setPhone(phone);
         sysUser.setEmail(email);
         sysUser.setStatus((byte) 1);
+        sysUser.setRole(targetRole);
 
         SysUser createdUser;
         try {
@@ -130,6 +131,7 @@ public class AdminManagementController {
         sysAdmin.setPhone(phone);
         sysAdmin.setEmail(email);
         sysAdmin.setStatus((byte) 1);
+        sysAdmin.setRole(targetRole);
 
         SysAdmin createdAdmin = sysAdminService.create(sysAdmin);
 
@@ -151,11 +153,7 @@ public class AdminManagementController {
     public ResponseEntity<?> listManageableAdmins() {
         AdminRoleScope currentScope = requireCurrentAdminScope();
 
-        if (currentScope.getRole() == AdminRole.SUPERADMIN) {
-            List<AdminRoleScope> allScopes = adminRoleScopeService.getByParentAdminId(null);
-            return ResponseEntity.ok(allScopes);
-        }
-
+        // 所有管理员（包括 SUPERADMIN）都查询自己创建的下级管理员
         List<AdminRoleScope> scopes = adminRoleScopeService.getByParentAdminId(currentScope.getAdminId());
         return ResponseEntity.ok(scopes);
     }

@@ -17,7 +17,7 @@ export interface RequestConfig extends RequestInit {
  * @param config 请求配置
  */
 export async function request<T = any>(url: string, config?: RequestConfig): Promise<T> {
-  const { params, skipErrorHandler, ...fetchConfig } = config || {}
+  const { params, skipErrorHandler, headers, ...restConfig } = config || {}
 
   // 构建完整 URL
   let fullUrl = url.startsWith('http') ? url : `${API_BASE}${url}`
@@ -37,14 +37,17 @@ export async function request<T = any>(url: string, config?: RequestConfig): Pro
     }
   }
 
+  // 合并 headers，确保 Content-Type 默认为 application/json
+  const mergedHeaders: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(headers as Record<string, string>),
+  }
+
   try {
     const response = await fetch(fullUrl, {
       credentials: 'include', // 重要：携带 Cookie（Session）
-      headers: {
-        'Content-Type': 'application/json',
-        ...fetchConfig.headers,
-      },
-      ...fetchConfig,
+      ...restConfig,
+      headers: mergedHeaders,
     })
 
     // 处理响应状态码
