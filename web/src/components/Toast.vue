@@ -64,7 +64,7 @@ const { toasts, removeToast } = useToast()
 
 /* 成功样式 - 绿色主题 */
 .toast-success {
-  background: linear-gradient(to right, #d1fae5, #ffffff);
+  background: #f0fdf4;
 }
 
 .toast-success .toast-message {
@@ -73,7 +73,7 @@ const { toasts, removeToast } = useToast()
 
 /* 错误样式 - 红色主题 */
 .toast-error {
-  background: linear-gradient(to right, #fee2e2, #ffffff);
+  background: #fef2f2;
 }
 
 .toast-error .toast-message {
@@ -82,7 +82,7 @@ const { toasts, removeToast } = useToast()
 
 /* 警告样式 - 橙色主题 */
 .toast-warning {
-  background: linear-gradient(to right, #fef3c7, #ffffff);
+  background: #fffbeb;
 }
 
 .toast-warning .toast-message {
@@ -91,7 +91,7 @@ const { toasts, removeToast } = useToast()
 
 /* 信息样式 - 灰色主题 */
 .toast-info {
-  background: linear-gradient(to right, #e5e5e5, #ffffff);
+  background: #f5f5f5;
 }
 
 .toast-info .toast-message {

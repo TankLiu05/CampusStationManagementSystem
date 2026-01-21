@@ -24,14 +24,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { getCurrentAdminDetail, type AdminRole } from '@/api/admin/management'
+import { useToast } from '@/composables/useToast'
+
+const { warning } = useToast()
+
+// 角色权限等级（数字越小权限越高）
+const roleLevel: Record<AdminRole, number> = {
+  SUPERADMIN: 1,
+  MANAGER: 2,
+  CITY_ADMIN: 3,
+  STREET_ADMIN: 4
+}
+
+// 角色显示名称
+const roleDisplayName: Record<AdminRole, string> = {
+  SUPERADMIN: '超级管理员',
+  MANAGER: '省级管理员',
+  CITY_ADMIN: '市级管理员',
+  STREET_ADMIN: '站点管理员'
+}
 
 interface MenuItem {
   id: string
   label: string
   icon: string
   route: string
+  requiredRole?: AdminRole // 所需的最低权限角色
 }
 
 interface Props {
@@ -46,20 +67,46 @@ const router = useRouter()
 const route = useRoute()
 
 const activeItem = ref(props.defaultActive)
+const currentRole = ref<AdminRole | null>(null)
 
+// 菜单项及其权限要求
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: '工作台', icon: 'dashboard', route: '/admin/home' },
-  { id: 'users', label: '用户管理', icon: 'users', route: '/admin/users' },
-  { id: 'admins', label: '管理员管理', icon: 'admins', route: '/admin/admins' },
+  { id: 'users', label: '用户管理', icon: 'users', route: '/admin/users', requiredRole: 'CITY_ADMIN' },
+  { id: 'admins', label: '管理员管理', icon: 'admins', route: '/admin/admins', requiredRole: 'CITY_ADMIN' },
   { id: 'packages', label: '包裹管理', icon: 'packages', route: '/admin/packages' },
   { id: 'warehouse', label: '仓库管理', icon: 'warehouse', route: '/admin/warehouse' },
   { id: 'warehouse-info', label: '仓库信息', icon: 'warehouse-info', route: '/admin/warehouse-info' },
   { id: 'returns', label: '退货申请', icon: 'returns', route: '/admin/returns' },
-  { id: 'logistics', label: '物流管理', icon: 'logistics', route: '/admin/logistics' },
+  { id: 'logistics', label: '物流管理', icon: 'logistics', route: '/admin/logistics', requiredRole: 'CITY_ADMIN' },
   { id: 'messages', label: '留言管理', icon: 'messages', route: '/admin/messages' },
-  { id: 'announcements', label: '公告管理', icon: 'announcements', route: '/admin/announcements' },
+  { id: 'announcements', label: '公告管理', icon: 'announcements', route: '/admin/announcements', requiredRole: 'MANAGER' },
   { id: 'settings', label: '个人设置', icon: 'settings', route: '/admin/settings' },
 ]
+
+// 检查当前用户是否有权限访问指定菜单
+const hasPermission = (item: MenuItem): boolean => {
+  // 没有权限要求的菜单，所有人可访问
+  if (!item.requiredRole) return true
+  // 未获取到当前角色时，暂时放行（等待加载）
+  if (!currentRole.value) return true
+  
+  const currentLevel = roleLevel[currentRole.value]
+  const requiredLevel = roleLevel[item.requiredRole]
+  
+  // 当前角色等级 <= 要求等级时有权限（数字越小权限越高）
+  return currentLevel <= requiredLevel
+}
+
+// 获取当前管理员角色
+const loadCurrentAdminRole = async () => {
+  try {
+    const detail = await getCurrentAdminDetail()
+    currentRole.value = detail.role
+  } catch (error) {
+    console.error('获取管理员角色失败:', error)
+  }
+}
 
 // 监听路由变化，自动更新激活状态
 watch(
@@ -74,9 +121,22 @@ watch(
 )
 
 const handleNavClick = (item: MenuItem) => {
+  // 检查权限
+  if (!hasPermission(item)) {
+    const requiredRoleName = item.requiredRole ? roleDisplayName[item.requiredRole] : ''
+    const currentRoleName = currentRole.value ? roleDisplayName[currentRole.value] : ''
+    warning(`权限不足：「${item.label}」需要${requiredRoleName}及以上权限，您当前是${currentRoleName}`)
+    return
+  }
+  
   activeItem.value = item.id
   router.push(item.route)
 }
+
+// 组件挂载时加载角色
+onMounted(() => {
+  loadCurrentAdminRole()
+})
 
 const getIconPath = (icon: string): string | undefined => {
   const iconMap: Record<string, string> = {

@@ -126,6 +126,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import {
   getAdminList,
@@ -133,6 +134,7 @@ import {
   createAdmin,
   updateAdmin,
   deleteAdmin,
+  getCurrentAdminDetail,
   roleNameMap,
   type AdminRoleScope,
   type AdminDetail,
@@ -141,8 +143,42 @@ import {
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 
+const router = useRouter()
 const { success, error: showError, warning } = useToast()
 const { confirm } = useConfirm()
+
+// 权限检查：需要市级管理员及以上权限
+const REQUIRED_ROLE: AdminRole = 'CITY_ADMIN'
+const roleLevel: Record<AdminRole, number> = {
+  SUPERADMIN: 1,
+  MANAGER: 2,
+  CITY_ADMIN: 3,
+  STREET_ADMIN: 4
+}
+const roleDisplayName: Record<AdminRole, string> = {
+  SUPERADMIN: '超级管理员',
+  MANAGER: '省级管理员',
+  CITY_ADMIN: '市级管理员',
+  STREET_ADMIN: '站点管理员'
+}
+
+const checkPermission = async () => {
+  try {
+    const detail = await getCurrentAdminDetail()
+    const currentLevel = roleLevel[detail.role]
+    const requiredLevel = roleLevel[REQUIRED_ROLE]
+    if (currentLevel > requiredLevel) {
+      warning(`权限不足：「管理员管理」需要${roleDisplayName[REQUIRED_ROLE]}及以上权限，您当前是${roleDisplayName[detail.role]}`)
+      router.replace('/admin/home')
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('权限检查失败:', error)
+    router.replace('/admin/home')
+    return false
+  }
+}
 
 interface AdminForm {
   username: string
@@ -379,8 +415,11 @@ const handleDeleteAdmin = async (adminId: number) => {
 }
 
 // 初始化加载
-onMounted(() => {
-  loadAdmins()
+onMounted(async () => {
+  const hasPermission = await checkPermission()
+  if (hasPermission) {
+    loadAdmins()
+  }
 })
 </script>
 
