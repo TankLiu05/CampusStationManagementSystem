@@ -113,9 +113,6 @@ public class AdminParcelController {
         requireCurrentAdmin();
         return service.getById(id)
                 .map(parcel -> {
-                    if (parcel.getStatus() == null || parcel.getStatus() != 2) {
-                        return ResponseEntity.status(400).body("快递未入库，不能创建取件信息");
-                    }
                     if (parcel.getIsSigned() != null && parcel.getIsSigned() == 1) {
                         return ResponseEntity.status(400).body("快递已签收，不能创建取件信息");
                     }
@@ -134,7 +131,7 @@ public class AdminParcelController {
                     Parcel update = new Parcel();
                     update.setLocation(location);
                     update.setPickupCode(pickupCode);
-                    update.setStatus(null);
+                    update.setStatus(2);
                     update.setIsSigned(null);
                     Parcel updated = service.update(id, update);
                     return ResponseEntity.ok(updated);
