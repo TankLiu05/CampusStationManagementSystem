@@ -279,6 +279,45 @@
         </div>
       </div>
     </div>
+    <!-- 重新处理状态选择弹窗 -->
+    <div class="modal" v-if="showReprocessModal" @click="cancelReprocess">
+      <div class="modal-content reprocess-modal" @click.stop>
+        <div class="modal-header">
+          <h3>重新处理包裹</h3>
+          <button class="close-btn" @click="cancelReprocess">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="reprocess-tip">请选择该包裹重新处理后的目标状态：</p>
+          <div class="status-options">
+            <label class="status-option">
+              <input type="radio" v-model="reprocessTargetStatus" :value="0">
+              <span class="option-content">
+                <span class="option-label">待发货</span>
+                <span class="option-desc">包裹需要重新发货</span>
+              </span>
+            </label>
+            <label class="status-option">
+              <input type="radio" v-model="reprocessTargetStatus" :value="1">
+              <span class="option-content">
+                <span class="option-label">运输中</span>
+                <span class="option-desc">包裹正在运输途中</span>
+              </span>
+            </label>
+            <label class="status-option">
+              <input type="radio" v-model="reprocessTargetStatus" :value="2">
+              <span class="option-content">
+                <span class="option-label">已入库</span>
+                <span class="option-desc">包裹已到达驿站，等待取件</span>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="cancelReprocess">取消</button>
+          <button class="btn-submit" @click="confirmReprocess">确定</button>
+        </div>
+      </div>
+    </div>
     </div>
   </AdminLayout>
 </template>
@@ -336,6 +375,9 @@ const selectedIds = ref<number[]>([])
 const showAddPackage = ref(false)
 const showEditPackage = ref(false)
 const showPackageDetail = ref(false)
+const showReprocessModal = ref(false) // 重新处理状态选择弹窗
+const reprocessTargetId = ref<number | null>(null) // 要重新处理的包裹ID
+const reprocessTargetStatus = ref<number>(2) // 默认选择已入库
 const currentPackage = ref<Package | null>(null)
 const editingPackageId = ref<number | null>(null)
 const showCheckboxes = ref(false) // 控制勾选框显示状态
@@ -728,24 +770,39 @@ const markAbnormal = async (id: number) => {
   }
 }
 
-// 重新处理：将异常包裹重新置为待发货
-const reprocessPackage = async (id: number) => {
-  if (!(await confirm({
-    title: '重新处理',
-    message: '确定要重新处理该包裹吗？状态将重置为待发货',
-    type: 'warning'
-  }))) {
-    return
+// 重新处理：打开状态选择弹窗
+const reprocessPackage = (id: number) => {
+  reprocessTargetId.value = id
+  reprocessTargetStatus.value = 2 // 默认选择已入库
+  showReprocessModal.value = true
+}
+
+// 确认重新处理
+const confirmReprocess = async () => {
+  if (!reprocessTargetId.value) return
+  
+  const statusLabels: Record<number, string> = {
+    0: '待发货',
+    1: '运输中',
+    2: '已入库'
   }
   
   try {
-    await parcelApi.changeStatus(id, 0) // 状态改为0：待发货
-    success('已重新处理，状态已重置为待发货')
+    await parcelApi.changeStatus(reprocessTargetId.value, reprocessTargetStatus.value)
+    success(`已重新处理，状态已重置为${statusLabels[reprocessTargetStatus.value]}`)
+    showReprocessModal.value = false
+    reprocessTargetId.value = null
     loadPackages()
   } catch (error) {
     console.error('重新处理失败:', error)
     showError('重新处理失败，请重试')
   }
+}
+
+// 取消重新处理
+const cancelReprocess = () => {
+  showReprocessModal.value = false
+  reprocessTargetId.value = null
 }
 
 // 监听分页变化
@@ -1237,6 +1294,66 @@ tr {
 /* 详情弹窗 */
 .detail-modal {
   max-width: 600px;
+}
+
+/* 重新处理弹窗 */
+.reprocess-modal {
+  max-width: 450px;
+}
+
+.reprocess-tip {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.status-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-option {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.status-option:hover {
+  border-color: #808080;
+  background: #fafafa;
+}
+
+.status-option input[type="radio"] {
+  margin-right: 12px;
+  margin-top: 2px;
+  accent-color: #808080;
+}
+
+.status-option input[type="radio"]:checked + .option-content .option-label {
+  color: #808080;
+  font-weight: 600;
+}
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.option-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+}
+
+.option-desc {
+  font-size: 13px;
+  color: #999;
 }
 
 .detail-section {
