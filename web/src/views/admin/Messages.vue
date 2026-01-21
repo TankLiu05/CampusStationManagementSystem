@@ -40,7 +40,7 @@
 
       <!-- 统计卡片 -->
       <div class="stats-cards">
-        <div class="stat-card" @click="filterStatus = 'pending'">
+        <div class="stat-card" @click="filterStatus = 'pending'; loadMessages()">
           <div class="stat-icon pending">
             <img src="@/assets/icons/16.png" alt="待回复" class="icon-img" />
           </div>
@@ -49,7 +49,7 @@
             <div class="stat-label">待回复</div>
           </div>
         </div>
-        <div class="stat-card" @click="filterStatus = 'replied'">
+        <div class="stat-card" @click="filterStatus = 'replied'; loadMessages()">
           <div class="stat-icon replied">
             <img src="@/assets/icons/17.png" alt="已回复" class="icon-img" />
           </div>
@@ -58,7 +58,7 @@
             <div class="stat-label">已回复</div>
           </div>
         </div>
-        <div class="stat-card" @click="filterType = 'complaint'">
+        <div class="stat-card" @click="filterType = 'complaint'; loadMessages()">
           <div class="stat-icon complaint">
             <img src="@/assets/icons/9.png" alt="投诉待处理" class="icon-img" />
           </div>
@@ -126,21 +126,20 @@
                 class="btn-close" 
                 @click="closeMessage(message)"
               >关闭</button>
-              <button class="btn-delete" @click="deleteMessage(message.id)">删除</button>
+              <button class="btn-delete" @click="deleteMessageHandler(message.id)">删除</button>
             </div>
           </div>
         </div>
 
         <div class="empty-state" v-if="filteredMessages.length === 0">
-          <span>📭</span>
           <p>暂无留言数据</p>
         </div>
 
         <!-- 分页 -->
         <div class="pagination" v-if="filteredMessages.length > 0">
-          <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">上一页</button>
-          <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页，共 {{ total }} 条</span>
-          <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">下一页</button>
+          <button class="page-btn" :disabled="currentPage === 0" @click="currentPage--; loadMessages()">上一页</button>
+          <span class="page-info">第 {{ currentPage + 1 }} / {{ totalPages }} 页,共 {{ total }} 条</span>
+          <button class="page-btn" :disabled="currentPage >= totalPages - 1" @click="currentPage++; loadMessages()">下一页</button>
         </div>
       </div>
 
@@ -193,7 +192,7 @@
               <h4>附件图片</h4>
               <div class="image-gallery">
                 <div class="image-item" v-for="(img, idx) in currentMessage.images" :key="idx">
-                  <span>📷 图片 {{ idx + 1 }}</span>
+                  <span>图片 {{ idx + 1 }}</span>
                 </div>
               </div>
             </div>
@@ -256,10 +255,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { 
+  getMessageList, 
+  replyMessage as apiReplyMessage, 
+  deleteMessage as apiDeleteMessage,
+  type Message as ApiMessage,
+  type PageResponse
+} from '@/api/admin/message'
 
 const { success, warning, info } = useToast()
 const { confirm } = useConfirm()
@@ -280,9 +286,11 @@ interface Message {
 const searchKeyword = ref('')
 const filterType = ref('')
 const filterStatus = ref('')
-const currentPage = ref(1)
-const totalPages = ref(2)
-const total = ref(15)
+const currentPage = ref(0) // 后端分页从0开始
+const totalPages = ref(0)
+const total = ref(0)
+const pageSize = ref(10)
+const loading = ref(false)
 
 const showMessageDetail = ref(false)
 const showReplyModal = ref(false)
@@ -304,91 +312,63 @@ const quickReplies = [
   '您的建议非常宝贵，我们会认真考虑并改进。'
 ]
 
-// 模拟数据
-const messageList = ref<Message[]>([
-  {
-    id: 1,
-    userName: '张三',
-    userPhone: '138****1001',
-    type: 'complaint',
-    content: '今天取件的时候等了很久，工作人员态度也不好，希望能改善服务质量。包裹放在架子上找了好久才找到，建议优化一下取件流程。',
-    images: ['img1.jpg', 'img2.jpg'],
-    status: 'pending',
-    createTime: '2026-01-19 14:30',
-  },
-  {
-    id: 2,
-    userName: '李四',
-    userPhone: '139****2002',
-    type: 'inquiry',
-    content: '请问周末驿站营业吗？营业时间是几点到几点？',
-    status: 'replied',
-    createTime: '2026-01-19 10:20',
-    reply: '您好，驿站周末正常营业，营业时间为08:00-21:00，欢迎您前来取件。',
-    replyTime: '2026-01-19 11:00'
-  },
-  {
-    id: 3,
-    userName: '王五',
-    userPhone: '137****3003',
-    type: 'feedback',
-    content: '建议增加短信提醒功能，每次有快递到了能收到短信通知就更方便了。',
-    status: 'replied',
-    createTime: '2026-01-18 16:45',
-    reply: '感谢您的建议，我们正在开发短信通知功能，预计下个月上线，届时会第一时间通知您。',
-    replyTime: '2026-01-18 18:00'
-  },
-  {
-    id: 4,
-    userName: '赵六',
-    userPhone: '136****4004',
-    type: 'praise',
-    content: '今天取件非常快，工作人员服务态度很好，点个赞！希望继续保持！',
-    status: 'replied',
-    createTime: '2026-01-18 12:30',
-    reply: '非常感谢您的认可和鼓励，我们会继续努力，为大家提供更好的服务！',
-    replyTime: '2026-01-18 14:00'
-  },
-  {
-    id: 5,
-    userName: '钱七',
-    userPhone: '135****5005',
-    type: 'complaint',
-    content: '我的包裹显示已到站3天了，但是一直没收到取件码，也联系不上客服，很着急！',
-    images: ['img3.jpg'],
-    status: 'pending',
-    createTime: '2026-01-19 09:15',
-  },
-  {
-    id: 6,
-    userName: '孙八',
-    userPhone: '134****6006',
-    type: 'inquiry',
-    content: '请问大件包裹怎么取？我的包裹比较重，一个人搬不动。',
-    status: 'pending',
-    createTime: '2026-01-19 15:00',
-  },
-  {
-    id: 7,
-    userName: '周九',
-    userPhone: '133****7007',
-    type: 'other',
-    content: '想咨询一下驿站是否招聘兼职？我是本校学生，想利用课余时间打工。',
-    status: 'closed',
-    createTime: '2026-01-17 11:20',
-    reply: '您好，目前暂无兼职岗位招聘，后续如有需要会在校园公告栏发布招聘信息，请关注。',
-    replyTime: '2026-01-17 15:00'
-  },
-  {
-    id: 8,
-    userName: '吴十',
-    userPhone: '132****8008',
-    type: 'feedback',
-    content: '希望能增加代收服务，有时候上课时间快递员来了没法取，如果能放到驿站就好了。',
-    status: 'pending',
-    createTime: '2026-01-19 08:30',
-  },
-])
+const messageList = ref<Message[]>([])
+
+// 转换API数据为页面数据格式
+const convertApiToMessage = (apiMsg: ApiMessage): Message => {
+  return {
+    id: apiMsg.id,
+    userName: apiMsg.username || '未知用户',
+    userPhone: apiMsg.phone || '未提供',
+    type: 'feedback', // 后端没有type字段,统一设为feedback
+    content: apiMsg.content,
+    status: apiMsg.status === 0 ? 'pending' : 'replied',
+    createTime: apiMsg.createTime,
+    reply: apiMsg.replyContent,
+    replyTime: apiMsg.replyContent ? apiMsg.updateTime : undefined
+  }
+}
+
+// 加载留言列表
+const loadMessages = async () => {
+  loading.value = true
+  try {
+    const statusFilter = filterStatus.value === 'pending' ? 0 : filterStatus.value === 'replied' ? 1 : undefined
+    const response = await getMessageList(currentPage.value, pageSize.value, statusFilter)
+    messageList.value = response.content.map(convertApiToMessage)
+    total.value = response.totalElements
+    totalPages.value = response.totalPages
+    
+    // 更新统计数据
+    updateStats()
+  } catch (error) {
+    warning('加载留言列表失败')
+    console.error(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 更新统计数据
+const updateStats = async () => {
+  try {
+    const pendingRes = await getMessageList(0, 1, 0)
+    stats.pending = pendingRes.totalElements
+    
+    const repliedRes = await getMessageList(0, 1, 1)
+    stats.replied = repliedRes.totalElements
+    
+    // 投诉和今日新增暂时使用模拟数据,后端可能需要额外接口
+    stats.complaints = 0
+    stats.todayNew = 0
+  } catch (error) {
+    console.error('更新统计数据失败', error)
+  }
+}
+
+onMounted(() => {
+  loadMessages()
+})
 
 const filteredMessages = computed(() => {
   let result = messageList.value
@@ -429,14 +409,16 @@ const getStatusLabel = (status?: string) => {
 }
 
 const searchMessages = () => {
-  currentPage.value = 1
+  currentPage.value = 0
+  loadMessages()
 }
 
 const resetFilters = () => {
   searchKeyword.value = ''
   filterType.value = ''
   filterStatus.value = ''
-  currentPage.value = 1
+  currentPage.value = 0
+  loadMessages()
 }
 
 const viewMessage = (message: Message) => {
@@ -450,14 +432,23 @@ const replyMessage = (message: Message) => {
   showReplyModal.value = true
 }
 
-const submitReply = () => {
+const submitReply = async () => {
   if (!replyContent.value.trim()) {
     warning('请输入回复内容')
     return
   }
-  success('回复成功（模拟）')
-  showReplyModal.value = false
-  replyContent.value = ''
+  if (!currentMessage.value) return
+  
+  try {
+    await apiReplyMessage(currentMessage.value.id, { replyContent: replyContent.value })
+    success('回复成功')
+    showReplyModal.value = false
+    replyContent.value = ''
+    loadMessages()
+  } catch (error) {
+    warning('回复失败')
+    console.error(error)
+  }
 }
 
 const closeMessage = async (message: Message) => {
@@ -471,14 +462,21 @@ const closeMessage = async (message: Message) => {
   }
 }
 
-const deleteMessage = async (id: number) => {
+const deleteMessageHandler = async (id: number) => {
   const confirmed = await confirm({
     title: '删除留言',
-    message: '确定要删除该留言吗？',
+    message: '确定要删除该留言吗?',
     type: 'danger'
   })
   if (confirmed) {
-    success('删除成功（模拟）')
+    try {
+      await apiDeleteMessage(id)
+      success('删除成功')
+      loadMessages()
+    } catch (error) {
+      warning('删除失败')
+      console.error(error)
+    }
   }
 }
 

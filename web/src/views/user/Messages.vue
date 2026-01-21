@@ -9,19 +9,10 @@
       <!-- 操作栏 -->
       <div class="action-bar">
         <div class="filter-section">
-          <select v-model="filterType" class="filter-select">
-            <option value="">全部类型</option>
-            <option value="feedback">意见反馈</option>
-            <option value="complaint">投诉建议</option>
-            <option value="inquiry">咨询问题</option>
-            <option value="praise">表扬感谢</option>
-            <option value="other">其他</option>
-          </select>
           <select v-model="filterStatus" class="filter-select">
             <option value="">全部状态</option>
             <option value="pending">待回复</option>
             <option value="replied">已回复</option>
-            <option value="closed">已关闭</option>
           </select>
         </div>
         <button class="btn-primary" @click="showNewMessageModal = true">
@@ -40,7 +31,7 @@
             <div class="stat-label">全部留言</div>
           </div>
         </div>
-        <div class="stat-card" @click="filterStatus = 'pending'">
+        <div class="stat-card" style="cursor: pointer;" @click="filterStatus = filterStatus === 'pending' ? '' : 'pending'">
           <div class="stat-icon pending">
             <img src="@/assets/icons/16.png" alt="待回复" class="icon-img" />
           </div>
@@ -49,7 +40,7 @@
             <div class="stat-label">待回复</div>
           </div>
         </div>
-        <div class="stat-card" @click="filterStatus = 'replied'">
+        <div class="stat-card" style="cursor: pointer;" @click="filterStatus = filterStatus === 'replied' ? '' : 'replied'">
           <div class="stat-icon replied">
             <img src="@/assets/icons/17.png" alt="已回复" class="icon-img" />
           </div>
@@ -65,7 +56,6 @@
         <div class="message-card" v-for="message in filteredMessages" :key="message.id">
           <div class="message-header">
             <div class="message-info">
-              <span :class="['type-tag', message.type]">{{ getTypeLabel(message.type) }}</span>
               <span :class="['status-badge', message.status]">{{ getStatusLabel(message.status) }}</span>
             </div>
             <span class="message-time">{{ message.createTime }}</span>
@@ -89,9 +79,7 @@
         </div>
 
         <div class="empty-state" v-if="filteredMessages.length === 0">
-          <span>📭</span>
           <p>暂无留言记录</p>
-          <button class="btn-primary" @click="showNewMessageModal = true">发表第一条留言</button>
         </div>
       </div>
 
@@ -104,22 +92,11 @@
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label>留言类型 *</label>
-              <select v-model="newMessage.type">
-                <option value="">请选择类型</option>
-                <option value="feedback">意见反馈</option>
-                <option value="complaint">投诉建议</option>
-                <option value="inquiry">咨询问题</option>
-                <option value="praise">表扬感谢</option>
-                <option value="other">其他</option>
-              </select>
-            </div>
-            <div class="form-group">
               <label>留言内容 *</label>
               <textarea 
                 v-model="newMessage.content" 
                 placeholder="请输入您的留言内容..." 
-                rows="5"
+                rows="8"
               ></textarea>
             </div>
           </div>
@@ -139,12 +116,6 @@
           </div>
           <div class="modal-body">
             <div class="detail-section">
-              <div class="detail-row">
-                <span class="label">留言类型：</span>
-                <span :class="['type-tag', currentMessage?.type]">
-                  {{ getTypeLabel(currentMessage?.type) }}
-                </span>
-              </div>
               <div class="detail-row">
                 <span class="label">当前状态：</span>
                 <span :class="['status-badge', currentMessage?.status]">
@@ -185,15 +156,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import { useToast } from '@/composables/useToast'
+import { 
+  getMyMessages, 
+  createMessage,
+  type Message as ApiMessage
+} from '@/api/user/message'
 
 const { success, warning } = useToast()
 
 interface Message {
   id: number
-  type: string
   content: string
   status: string
   createTime: string
@@ -201,96 +176,72 @@ interface Message {
   replyTime?: string
 }
 
-const filterType = ref('')
 const filterStatus = ref('')
+const loading = ref(false)
 
 const showNewMessageModal = ref(false)
 const showMessageDetail = ref(false)
 const currentMessage = ref<Message | null>(null)
 
 const newMessage = reactive({
-  type: '',
   content: ''
 })
 
 const stats = reactive({
-  total: 5,
-  pending: 2,
-  replied: 3
+  total: 0,
+  pending: 0,
+  replied: 0
 })
 
-// 模拟数据
-const messageList = ref<Message[]>([
-  {
-    id: 1,
-    type: 'inquiry',
-    content: '请问周末驿站营业吗？营业时间是几点到几点？',
-    status: 'replied',
-    createTime: '2026-01-19 10:20',
-    reply: '您好，驿站周末正常营业，营业时间为08:00-21:00，欢迎您前来取件。',
-    replyTime: '2026-01-19 11:00'
-  },
-  {
-    id: 2,
-    type: 'feedback',
-    content: '建议增加短信提醒功能，每次有快递到了能收到短信通知就更方便了。',
-    status: 'replied',
-    createTime: '2026-01-18 16:45',
-    reply: '感谢您的建议，我们正在开发短信通知功能，预计下个月上线，届时会第一时间通知您。',
-    replyTime: '2026-01-18 18:00'
-  },
-  {
-    id: 3,
-    type: 'praise',
-    content: '今天取件非常快，工作人员服务态度很好，点个赞！希望继续保持！',
-    status: 'replied',
-    createTime: '2026-01-18 12:30',
-    reply: '非常感谢您的认可和鼓励，我们会继续努力，为大家提供更好的服务！',
-    replyTime: '2026-01-18 14:00'
-  },
-  {
-    id: 4,
-    type: 'complaint',
-    content: '今天取件的时候等了很久，希望能改善服务效率。',
-    status: 'pending',
-    createTime: '2026-01-19 14:30',
-  },
-  {
-    id: 5,
-    type: 'inquiry',
-    content: '请问大件包裹怎么取？我的包裹比较重，一个人搬不动。',
-    status: 'pending',
-    createTime: '2026-01-19 15:00',
-  },
-])
+const messageList = ref<Message[]>([])
+
+// 转换API数据为页面数据格式
+const convertApiToMessage = (apiMsg: ApiMessage): Message => {
+  return {
+    id: apiMsg.id,
+    content: apiMsg.content,
+    status: apiMsg.status === 0 ? 'pending' : 'replied',
+    createTime: apiMsg.createTime,
+    reply: apiMsg.replyContent,
+    replyTime: apiMsg.replyContent ? apiMsg.updateTime : undefined
+  }
+}
+
+// 加载留言列表
+const loadMessages = async () => {
+  loading.value = true
+  try {
+    const response = await getMyMessages()
+    messageList.value = response.map(convertApiToMessage)
+    
+    // 更新统计数据
+    stats.total = messageList.value.length
+    stats.pending = messageList.value.filter(m => m.status === 'pending').length
+    stats.replied = messageList.value.filter(m => m.status === 'replied').length
+  } catch (error) {
+    warning('加载留言列表失败')
+    console.error(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  loadMessages()
+})
 
 const filteredMessages = computed(() => {
   let result = messageList.value
-  if (filterType.value) {
-    result = result.filter(m => m.type === filterType.value)
-  }
   if (filterStatus.value) {
     result = result.filter(m => m.status === filterStatus.value)
   }
   return result
 })
 
-const getTypeLabel = (type?: string) => {
-  const labels: Record<string, string> = {
-    'feedback': '意见反馈',
-    'complaint': '投诉建议',
-    'inquiry': '咨询问题',
-    'praise': '表扬感谢',
-    'other': '其他'
-  }
-  return labels[type || ''] || '未知'
-}
-
 const getStatusLabel = (status?: string) => {
   const labels: Record<string, string> = {
     'pending': '待回复',
-    'replied': '已回复',
-    'closed': '已关闭'
+    'replied': '已回复'
   }
   return labels[status || ''] || '未知'
 }
@@ -300,19 +251,22 @@ const viewMessage = (message: Message) => {
   showMessageDetail.value = true
 }
 
-const submitMessage = () => {
-  if (!newMessage.type) {
-    warning('请选择留言类型')
-    return
-  }
+const submitMessage = async () => {
   if (!newMessage.content.trim()) {
     warning('请输入留言内容')
     return
   }
-  success('留言提交成功（模拟）')
-  showNewMessageModal.value = false
-  newMessage.type = ''
-  newMessage.content = ''
+  
+  try {
+    await createMessage({ content: newMessage.content })
+    success('留言提交成功')
+    showNewMessageModal.value = false
+    newMessage.content = ''
+    loadMessages()
+  } catch (error) {
+    warning('留言提交失败')
+    console.error(error)
+  }
 }
 </script>
 
