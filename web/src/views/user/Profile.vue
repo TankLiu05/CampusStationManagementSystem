@@ -63,6 +63,34 @@
         </div>
       </div>
 
+      <!-- 收货地址 -->
+      <div class="address-card">
+        <div class="card-header">
+          <h2>收货地址</h2>
+          <button class="add-btn" @click="showAddAddress = true">添加地址</button>
+        </div>
+        <div class="card-body">
+          <!-- 地址列表 -->
+          <div v-if="addressList.length > 0" class="address-list">
+            <div v-for="(addr, index) in addressList" :key="index" class="address-item">
+              <div class="address-info">
+                <div class="address-name-phone">
+                  <span class="name">{{ addr.username }}</span>
+                  <span class="phone">{{ addr.phone }}</span>
+                </div>
+                <div class="address-detail">
+                  {{ [addr.province, addr.city, addr.street, addr.detailAddress].filter(Boolean).join(' ') }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 无地址提示 -->
+          <div v-else class="address-tip">
+            <p>添加收货地址后，管理员可以更方便地为您发送快递</p>
+          </div>
+        </div>
+      </div>
+
       <!-- 账户安全 -->
       <div class="security-card">
         <div class="card-header">
@@ -81,6 +109,48 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- 添加收货地址弹窗 -->
+    <div class="modal" v-if="showAddAddress" @click="showAddAddress = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>添加收货地址</h3>
+          <button class="close-btn" @click="showAddAddress = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>收件人姓名</label>
+            <input type="text" v-model="addressForm.username" placeholder="默认使用当前用户名">
+          </div>
+          <div class="form-group">
+            <label>手机号</label>
+            <input type="tel" v-model="addressForm.phone" placeholder="默认使用当前手机号">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>省份</label>
+              <input type="text" v-model="addressForm.province" placeholder="如：广东省">
+            </div>
+            <div class="form-group">
+              <label>城市</label>
+              <input type="text" v-model="addressForm.city" placeholder="如：深圳市">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>街道/区域</label>
+            <input type="text" v-model="addressForm.street" placeholder="如：南山区">
+          </div>
+          <div class="form-group">
+            <label>详细地址 <span class="required">*</span></label>
+            <input type="text" v-model="addressForm.detailAddress" placeholder="如：xx路xx号xx栋xx室">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showAddAddress = false">取消</button>
+          <button class="btn-submit" @click="addAddress">确认添加</button>
+        </div>
+      </div>
     </div>
 
     <!-- 修改密码弹窗 -->
@@ -118,6 +188,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import { getUserProfile, updateUserProfile, changeUserPassword, type UserProfile as UserProfileType, type ChangePasswordRequest } from '@/api/user/profile'
+import { createLocation, type CreateLocationRequest } from '@/api/user/location'
 import { useToast } from '@/composables/useToast'
 
 const { success, error: showError, warning } = useToast()
@@ -144,6 +215,7 @@ interface PasswordForm {
 
 const isEditing = ref(false)
 const showChangePassword = ref(false)
+const showAddAddress = ref(false)
 
 const userInfo = reactive<UserInfo>({
   username: 'user123',
@@ -164,6 +236,27 @@ const passwordForm = reactive<PasswordForm>({
   newPassword: '',
   confirmPassword: ''
 })
+
+// 收货地址表单
+const addressForm = reactive<CreateLocationRequest>({
+  username: '',
+  phone: '',
+  province: '',
+  city: '',
+  street: '',
+  detailAddress: ''
+})
+
+// 已添加的收货地址列表
+interface AddressItem {
+  username: string
+  phone: string
+  province?: string
+  city?: string
+  street?: string
+  detailAddress: string
+}
+const addressList = ref<AddressItem[]>([])
 
 // 页面加载时获取用户信息
 onMounted(async () => {
@@ -252,6 +345,49 @@ const changePassword = async () => {
     showError('修改密码失败，请检查旧密码是否正确')
   }
 }
+
+// 添加收货地址
+const addAddress = async () => {
+  if (!addressForm.detailAddress || !addressForm.detailAddress.trim()) {
+    warning('请填写详细地址')
+    return
+  }
+  
+  try {
+    const result = await createLocation({
+      username: addressForm.username || undefined,
+      phone: addressForm.phone || undefined,
+      province: addressForm.province || undefined,
+      city: addressForm.city || undefined,
+      street: addressForm.street || undefined,
+      detailAddress: addressForm.detailAddress.trim()
+    })
+    
+    // 添加到地址列表中显示
+    addressList.value.push({
+      username: result.username || addressForm.username || userInfo.username,
+      phone: result.phone || addressForm.phone || userInfo.phone || '',
+      province: result.province || addressForm.province,
+      city: result.city || addressForm.city,
+      street: result.street || addressForm.street,
+      detailAddress: result.detailAddress || addressForm.detailAddress.trim()
+    })
+    
+    // 清空表单
+    addressForm.username = ''
+    addressForm.phone = ''
+    addressForm.province = ''
+    addressForm.city = ''
+    addressForm.street = ''
+    addressForm.detailAddress = ''
+    
+    showAddAddress.value = false
+    success('收货地址添加成功')
+  } catch (error) {
+    console.error('添加收货地址失败:', error)
+    showError('添加收货地址失败，请稍后重试')
+  }
+}
 </script>
 
 <style scoped>
@@ -280,7 +416,8 @@ const changePassword = async () => {
 }
 
 .info-card,
-.security-card {
+.security-card,
+.address-card {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -309,15 +446,14 @@ const changePassword = async () => {
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
-}
-
-.edit-btn {
   background: white;
   border: 1px solid #e0e0e0;
   color: #333;
 }
 
-.edit-btn:hover {
+.edit-btn:hover,
+.save-btn:hover,
+.cancel-btn:hover {
   border-color: #10b981;
   color: #10b981;
 }
@@ -325,26 +461,6 @@ const changePassword = async () => {
 .edit-actions {
   display: flex;
   gap: 12px;
-}
-
-.save-btn {
-  background: #10b981;
-  color: white;
-  border: none;
-}
-
-.save-btn:hover {
-  background: #059669;
-}
-
-.cancel-btn {
-  background: white;
-  border: 1px solid #e0e0e0;
-  color: #333;
-}
-
-.cancel-btn:hover {
-  background: #f5f5f5;
 }
 
 .card-body {
@@ -460,8 +576,99 @@ const changePassword = async () => {
 }
 
 .action-btn:hover {
-  border-color: #666;
+  border-color: #10b981;
+  color: #10b981;
+}
+
+/* 添加地址按钮 */
+.add-btn {
+  padding: 8px 20px;
+  background: white;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.add-btn:hover {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+/* 地址列表 */
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.address-item {
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.address-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.address-name-phone {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.address-name-phone .name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.address-name-phone .phone {
+  font-size: 14px;
   color: #666;
+}
+
+.address-detail {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* 地址提示 */
+.address-tip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  color: #666;
+}
+
+.address-tip p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* 表单行 */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-row .form-group {
+  margin-bottom: 20px;
+}
+
+.required {
+  color: #ef4444;
 }
 
 /* 弹窗样式 */
@@ -557,22 +764,15 @@ const changePassword = async () => {
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
-}
-
-.btn-cancel {
   background: white;
   border: 1px solid #e0e0e0;
   color: #333;
 }
 
-.btn-submit {
-  background: #666;
-  color: white;
-  border: none;
-}
-
+.btn-cancel:hover,
 .btn-submit:hover {
-  background: #555;
+  border-color: #10b981;
+  color: #10b981;
 }
 
 @media (max-width: 768px) {

@@ -3,7 +3,6 @@
     <div v-if="state.visible" class="confirm-overlay" @click="handleCancel">
       <div class="confirm-dialog" @click.stop>
         <div class="confirm-header">
-          <span :class="['confirm-icon', state.type]">{{ getIcon(state.type) }}</span>
           <h3 class="confirm-title">{{ state.title }}</h3>
         </div>
         <div class="confirm-body">
@@ -27,14 +26,7 @@ import { useConfirm } from '@/composables/useConfirm'
 
 const { state, handleConfirm, handleCancel } = useConfirm()
 
-const getIcon = (type: string) => {
-  const icons: Record<string, string> = {
-    info: '?',
-    warning: '!',
-    danger: '✕',
-  }
-  return icons[type] || '?'
-}
+// 图标已移除
 </script>
 
 <style scoped>
@@ -63,40 +55,10 @@ const getIcon = (type: string) => {
 }
 
 .confirm-header {
-  padding: 28px 24px 16px;
+  padding: 24px 24px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-}
-
-.confirm-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-/* 信息类型 - 灰色 */
-.confirm-icon.info {
-  background: linear-gradient(135deg, #808080 0%, #666666 100%);
-  color: white;
-}
-
-/* 警告类型 - 橙色 */
-.confirm-icon.warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: white;
-}
-
-/* 危险类型 - 红色 */
-.confirm-icon.danger {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
 }
 
 .confirm-title {
@@ -149,31 +111,31 @@ const getIcon = (type: string) => {
   color: white;
 }
 
-/* 信息按钮 */
+/* 信息按钮 - 莫兰迪灰蓝色 */
 .confirm-btn.primary.info {
-  background: linear-gradient(135deg, #808080 0%, #666666 100%);
+  background: #8D9B9F;
 }
 
 .confirm-btn.primary.info:hover {
-  background: linear-gradient(135deg, #666666 0%, #555555 100%);
+  background: #7A8A8E;
 }
 
-/* 警告按钮 */
+/* 警告按钮 - 莫兰迪棕橙色 */
 .confirm-btn.primary.warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: #C9A68C;
 }
 
 .confirm-btn.primary.warning:hover {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  background: #B8957B;
 }
 
-/* 危险按钮 */
+/* 危险按钮 - 莫兰迪红色 */
 .confirm-btn.primary.danger {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: #C17C74;
 }
 
 .confirm-btn.primary.danger:hover {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  background: #B06B63;
 }
 
 /* 响应式适配 */
@@ -185,13 +147,7 @@ const getIcon = (type: string) => {
   }
 
   .confirm-header {
-    padding: 24px 20px 12px;
-  }
-
-  .confirm-icon {
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
+    padding: 20px 20px 10px;
   }
 
   .confirm-body {

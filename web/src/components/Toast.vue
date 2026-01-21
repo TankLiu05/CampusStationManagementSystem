@@ -8,7 +8,6 @@
           :class="['toast', `toast-${t.type}`]"
           @click="removeToast(t.id)"
         >
-          <span class="toast-icon">{{ getIcon(t.type) }}</span>
           <span class="toast-message">{{ t.message }}</span>
         </div>
       </TransitionGroup>
@@ -17,19 +16,9 @@
 </template>
 
 <script setup lang="ts">
-import { useToast, type ToastType } from '@/composables/useToast'
+import { useToast } from '@/composables/useToast'
 
 const { toasts, removeToast } = useToast()
-
-const getIcon = (type: ToastType) => {
-  const icons: Record<ToastType, string> = {
-    success: '✓',
-    error: '✕',
-    warning: '⚠',
-    info: 'ℹ',
-  }
-  return icons[type]
-}
 </script>
 
 <style scoped>
@@ -47,7 +36,6 @@ const getIcon = (type: ToastType) => {
 .toast {
   display: flex;
   align-items: center;
-  gap: 12px;
   padding: 14px 20px;
   border-radius: 12px;
   background: #ffffff;
@@ -68,18 +56,6 @@ const getIcon = (type: ToastType) => {
     0 3px 6px rgba(0, 0, 0, 0.06);
 }
 
-.toast-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
 .toast-message {
   flex: 1;
   word-break: break-word;
@@ -88,12 +64,7 @@ const getIcon = (type: ToastType) => {
 
 /* 成功样式 - 绿色主题 */
 .toast-success {
-  background: linear-gradient(to right, #ecfdf5, #ffffff);
-}
-
-.toast-success .toast-icon {
-  background: #10b981;
-  color: white;
+  background: linear-gradient(to right, #d1fae5, #ffffff);
 }
 
 .toast-success .toast-message {
@@ -102,12 +73,7 @@ const getIcon = (type: ToastType) => {
 
 /* 错误样式 - 红色主题 */
 .toast-error {
-  background: linear-gradient(to right, #fef2f2, #ffffff);
-}
-
-.toast-error .toast-icon {
-  background: #ef4444;
-  color: white;
+  background: linear-gradient(to right, #fee2e2, #ffffff);
 }
 
 .toast-error .toast-message {
@@ -116,12 +82,7 @@ const getIcon = (type: ToastType) => {
 
 /* 警告样式 - 橙色主题 */
 .toast-warning {
-  background: linear-gradient(to right, #fffbeb, #ffffff);
-}
-
-.toast-warning .toast-icon {
-  background: #f59e0b;
-  color: white;
+  background: linear-gradient(to right, #fef3c7, #ffffff);
 }
 
 .toast-warning .toast-message {
@@ -130,12 +91,7 @@ const getIcon = (type: ToastType) => {
 
 /* 信息样式 - 灰色主题 */
 .toast-info {
-  background: linear-gradient(to right, #f5f5f5, #ffffff);
-}
-
-.toast-info .toast-icon {
-  background: #808080;
-  color: white;
+  background: linear-gradient(to right, #e5e5e5, #ffffff);
 }
 
 .toast-info .toast-message {

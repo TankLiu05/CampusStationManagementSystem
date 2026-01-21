@@ -15,7 +15,7 @@ const toasts = ref<Toast[]>([])
 let toastId = 0
 
 // 添加 toast
-const addToast = (message: string, type: ToastType = 'info', duration: number = 3000) => {
+const addToast = (message: string, type: ToastType = 'info', duration: number = 4000) => {
   const id = ++toastId
   const toast: Toast = { id, message, type, duration }
   toasts.value.push(toast)

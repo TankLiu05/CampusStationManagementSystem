@@ -20,9 +20,7 @@
         <div class="card-content">
           <p>{{ item.content }}</p>
         </div>
-        <div class="card-footer">
-          <button class="detail-btn" @click="viewDetail(item.id)">查看详情</button>
-        </div>
+
       </div>
     </div>
 
@@ -47,9 +45,6 @@
           <div class="card-content">
             <p>{{ item.content }}</p>
           </div>
-          <div class="card-footer">
-            <button class="detail-btn" @click="viewDetail(item.id)">查看详情</button>
-          </div>
         </div>
       </div>
 
@@ -67,10 +62,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
-import { listNotices, getNoticeById, type Notice } from '@/api/user/notice'
-import { useToast } from '@/composables/useToast'
+import { listNotices, type Notice } from '@/api/user/notice'
 
-const { info, error: showError } = useToast()
 
 interface Announcement {
   id: number
@@ -168,25 +161,6 @@ const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
     loadAnnouncements()
-  }
-}
-
-// 查看详情
-const viewDetail = async (id: number) => {
-  try {
-    const notice = await getNoticeById(id)
-    // TODO: 可以使用更好的弹窗组件来显示详情
-    console.log('公告详情:', notice)
-    info(`公告详情
-
-标题：${notice.title}
-
-内容：${notice.content}
-
-发布时间：${formatDateTime(notice.createTime)}`)
-  } catch (error) {
-    console.error('查看公告详情失败:', error)
-    showError('查看详情失败，请稍后重试')
   }
 }
 
@@ -313,28 +287,6 @@ onMounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.detail-btn {
-  padding: 6px 20px;
-  background: white;
-  color: #666;
-  border: 1px solid #666;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.detail-btn:hover {
-  background: #666;
-  color: white;
 }
 
 .empty-state {
@@ -480,9 +432,5 @@ onMounted(() => {
     -webkit-line-clamp: 2;
   }
   
-  .detail-btn {
-    padding: 6px 16px;
-    font-size: 13px;
-  }
 }
 </style>
