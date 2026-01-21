@@ -319,21 +319,21 @@ const submitAdmin = async () => {
 
     if (adminForm.role === 'MANAGER') {
       if (!adminForm.province.trim()) {
-        alert('省级管理员必须填写省份')
+        warning('省级管理员必须填写省份')
         return
       }
     }
 
     if (adminForm.role === 'CITY_ADMIN') {
       if (!adminForm.province.trim() || !adminForm.city.trim()) {
-        alert('市级管理员必须填写省份和城市')
+        warning('市级管理员必须填写省份和城市')
         return
       }
     }
 
     if (adminForm.role === 'STREET_ADMIN') {
       if (!adminForm.province.trim() || !adminForm.city.trim() || !adminForm.station.trim()) {
-        alert('站点管理员必须填写省份、城市和站点信息')
+        warning('站点管理员必须填写省份、城市和站点信息')
         return
       }
     }

@@ -76,8 +76,6 @@
             <th>快递公司</th>
             <th>收件人</th>
             <th>手机号</th>
-            <th>发货地</th>
-            <th>终点站</th>
             <th>存放位置</th>
             <th>取件码</th>
             <th>状态</th>
@@ -88,7 +86,7 @@
         </thead>
         <tbody>
           <tr v-if="packageList.length === 0">
-            <td :colspan="showCheckboxes ? 14 : 13" class="empty-row">暂无包裹数据</td>
+            <td :colspan="showCheckboxes ? 12 : 11" class="empty-row">暂无包裹数据</td>
           </tr>
           <tr v-for="pkg in packageList" :key="pkg.id">
             <td v-if="showCheckboxes">
@@ -99,8 +97,6 @@
             <td>{{ pkg.company }}</td>
             <td>{{ pkg.receiverName }}</td>
             <td>{{ pkg.receiverPhone }}</td>
-            <td>{{ pkg.origin || '-' }}</td>
-            <td>{{ pkg.destination || '-' }}</td>
             <td>{{ pkg.location }}</td>
             <td>
               <span class="pickup-code">{{ pkg.pickupCode }}</span>
@@ -112,32 +108,32 @@
             </td>
             <td>{{ pkg.isSigned === 1 ? '已签收' : '未签收' }}</td>
             <td>{{ pkg.arrivalTime }}</td>
-            <td>
+            <td class="action-cell">
               <div class="action-btns">
-                <button class="btn-view" @click="viewPackage(pkg)">详情</button>
-                <button class="btn-edit" @click="editPackage(pkg)">编辑</button>
+                <button class="btn-action btn-action-primary" @click="viewPackage(pkg)">详情</button>
+                <button class="btn-action btn-action-default" @click="editPackage(pkg)">编辑</button>
                 <!-- 根据状态显示下一步操作 -->
                 <button 
                   v-if="pkg.status === 'PENDING_SHIP'" 
-                  class="btn-ship" 
+                  class="btn-action btn-action-success" 
                   @click="shipPackage(pkg.id)">发货</button>
                 <button 
                   v-if="pkg.status === 'SHIPPED'" 
-                  class="btn-store" 
+                  class="btn-action btn-action-success" 
                   @click="storePackage(pkg.id)">入库</button>
                 <button 
                   v-if="pkg.status === 'STORED' && !pkg.hasStorageInfo" 
-                  class="btn-storage" 
+                  class="btn-action btn-action-warning" 
                   @click="setStorageInfo(pkg)">生成取件码</button>
                 <button 
                   v-if="pkg.status === 'RETURNED'" 
-                  class="btn-reprocess" 
+                  class="btn-action btn-action-warning" 
                   @click="reprocessPackage(pkg.id)">重新处理</button>
                 <button 
                   v-if="pkg.status !== 'RETURNED'" 
-                  class="btn-abnormal" 
+                  class="btn-action btn-action-warning" 
                   @click="markAbnormal(pkg.id)">标记异常</button>
-                <button class="btn-delete" @click="deletePackage(pkg.id)">删除</button>
+                <button class="btn-action btn-action-danger" @click="deletePackage(pkg.id)">删除</button>
               </div>
             </td>
           </tr>
@@ -586,7 +582,7 @@ const submitPackage = async () => {
         warning('该用户没有收货地址，请先让用户在前端添加收货地址')
         return
       }
-      const location = locations[0]
+      const location = locations[0]!
       const destinationParts = [
         location.province,
         location.city,
@@ -954,10 +950,15 @@ th {
 }
 
 td {
-  padding: 16px;
+  padding: 12px 16px;
   border-top: 1px solid #f0f0f0;
   font-size: 14px;
   color: #333;
+  vertical-align: middle;
+}
+
+tr {
+  height: 56px;
 }
 
 .empty-row {
@@ -974,10 +975,12 @@ td {
 }
 
 .status-badge {
+  display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .status-badge.PENDING_SHIP {
@@ -1000,122 +1003,83 @@ td {
   color: #f5222d;
 }
 
-.action-btns {
-  display: flex;
-  gap: 8px;
+/* 操作列固定宽度 */
+.action-cell {
+  min-width: 320px;
+  width: 320px;
 }
 
-.btn-view,
-.btn-edit,
-.btn-ship,
-.btn-store,
-.btn-storage,
-.btn-status,
-.btn-delete {
-  padding: 6px 12px;
+.action-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* 统一操作按钮基础样式 */
+.btn-action {
+  padding: 4px 10px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
   white-space: nowrap;
-}
-
-.btn-view {
+  border: 1px solid;
   background: white;
-  color: #1890ff;
-  border: 1px solid #1890ff;
 }
 
-.btn-view:hover {
+/* 主要按钮 - 蓝色 (详情) */
+.btn-action-primary {
+  color: #1890ff;
+  border-color: #1890ff;
+}
+
+.btn-action-primary:hover {
   background: #1890ff;
   color: white;
 }
 
-.btn-edit {
-  background: white;
-  color: #808080;
-  border: 1px solid #808080;
+/* 默认按钮 - 灰色 (编辑) */
+.btn-action-default {
+  color: #666;
+  border-color: #d9d9d9;
 }
 
-.btn-edit:hover {
-  background: #808080;
-  color: white;
+.btn-action-default:hover {
+  color: #1890ff;
+  border-color: #1890ff;
 }
 
-.btn-delete {
-  background: white;
-  color: #f5222d;
-  border: 1px solid #f5222d;
-}
-
-.btn-delete:hover {
-  background: #f5222d;
-  color: white;
-}
-
-.btn-ship {
-  background: white;
+/* 成功按钮 - 绿色 (发货/入库) */
+.btn-action-success {
   color: #52c41a;
-  border: 1px solid #52c41a;
+  border-color: #52c41a;
 }
 
-.btn-ship:hover {
+.btn-action-success:hover {
   background: #52c41a;
   color: white;
 }
 
-.btn-store {
-  background: white;
-  color: #13c2c2;
-  border: 1px solid #13c2c2;
-}
-
-.btn-store:hover {
-  background: #13c2c2;
-  color: white;
-}
-
-.btn-storage {
-  background: white;
-  color: #fa8c16;
-  border: 1px solid #fa8c16;
-}
-
-.btn-storage:hover {
-  background: #fa8c16;
-  color: white;
-}
-
-.btn-sign {
-  background: white;
-  color: #52c41a;
-  border: 1px solid #52c41a;
-}
-
-.btn-sign:hover {
-  background: #52c41a;
-  color: white;
-}
-
-.btn-abnormal {
-  background: white;
+/* 警告按钮 - 橙色 (取件码/异常/重处理) */
+.btn-action-warning {
   color: #faad14;
-  border: 1px solid #faad14;
+  border-color: #faad14;
 }
 
-.btn-abnormal:hover {
+.btn-action-warning:hover {
   background: #faad14;
   color: white;
 }
 
-.btn-reprocess {
-  background: white;
-  color: #722ed1;
-  border: 1px solid #722ed1;
+/* 危险按钮 - 红色 (删除) */
+.btn-action-danger {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
 }
 
-.btn-reprocess:hover {
-  background: #722ed1;
+.btn-action-danger:hover {
+  background: #ff4d4f;
   color: white;
 }
 

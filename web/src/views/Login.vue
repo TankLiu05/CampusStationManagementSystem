@@ -157,6 +157,15 @@
       </div>
     </div>
 
+    <!-- 登录错误提示弹窗 -->
+    <div v-if="showLoginError" class="error-dialog-overlay">
+      <div class="error-dialog">
+        <h2 class="error-dialog-title">登录失败</h2>
+        <p class="error-dialog-text">{{ loginErrorMsg }}</p>
+        <button type="button" class="error-dialog-btn" @click="showLoginError = false">确 定</button>
+      </div>
+    </div>
+
     <div v-if="showRoleDialog" class="role-dialog-overlay">
       <div class="role-dialog">
         <h2 class="role-dialog-title">选择登录身份</h2>
@@ -199,6 +208,10 @@ const showPassword = ref(false)
 const showRoleDialog = ref(false)
 const { success, error } = useToast()
 
+// 登录错误弹窗
+const showLoginError = ref(false)
+const loginErrorMsg = ref('')
+
 const handleLogin = async () => {
   console.log('开始登录...')
   // 登录前清除旧的角色缓存
@@ -237,14 +250,28 @@ const handleLogin = async () => {
       return
     }
 
-    window.alert('登录失败，请检查账号或密码')
+    // 获取具体的错误信息
+    let errorMessage = '登录失败，请检查账号或密码'
+    if (userResult.status === 'rejected' && userResult.reason?.message) {
+      const msg = userResult.reason.message
+      if (msg === '账号已禁用') {
+        errorMessage = '账号已禁用，请联系管理员'
+      } else if (msg === '用户名或密码错误') {
+        errorMessage = '用户名或密码错误'
+      } else if (msg === '用户不存在') {
+        errorMessage = '用户不存在'
+      }
+    }
+    loginErrorMsg.value = errorMessage
+    showLoginError.value = true
   } catch (err: any) {
     console.error('登录失败:', err)
     let msg = '登录失败，请检查账号或密码'
     if (err && err.message) {
       msg = err.message
     }
-    error(msg)
+    loginErrorMsg.value = msg
+    showLoginError.value = true
   }
 }
 
@@ -600,6 +627,56 @@ const loginAsAdmin = () => {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+/* 登录错误弹窗样式 */
+.error-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.error-dialog {
+  width: 360px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+  text-align: center;
+}
+
+.error-dialog-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 12px 0;
+}
+
+.error-dialog-text {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+}
+
+.error-dialog-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background: #6b7280;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.error-dialog-btn:hover {
+  background: #4b5563;
 }
 
 .role-dialog-overlay {
