@@ -63,6 +63,34 @@
         </div>
       </div>
 
+      <!-- 位置信息 -->
+      <div class="address-card">
+        <div class="card-header">
+          <h2>位置信息</h2>
+          <button class="add-btn" @click="showAddAddress = true">添加地址</button>
+        </div>
+        <div class="card-body">
+          <!-- 地址列表 -->
+          <div v-if="addressList.length > 0" class="address-list">
+            <div v-for="(addr, index) in addressList" :key="index" class="address-item">
+              <div class="address-info">
+                <div class="address-name-phone">
+                  <span class="name">{{ addr.username }}</span>
+                  <span class="phone">{{ addr.phone }}</span>
+                </div>
+                <div class="address-detail">
+                  {{ [addr.province, addr.city, addr.street, addr.detailAddress].filter(Boolean).join(' ') }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 无地址提示 -->
+          <div v-else class="address-tip">
+            <p>添加位置信息后，可以更方便地管理快递分配</p>
+          </div>
+        </div>
+      </div>
+
       <!-- 账户安全 -->
       <div class="security-card">
         <div class="card-header">
@@ -78,6 +106,48 @@
             </div>
             <button class="action-btn" @click="showChangePassword = true">修改密码</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加地址弹窗 -->
+    <div class="modal" v-if="showAddAddress" @click="showAddAddress = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>添加位置信息</h3>
+          <button class="close-btn" @click="showAddAddress = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>管理员姓名</label>
+            <input type="text" v-model="addressForm.username" :placeholder="`默认：${adminInfo.username}`">
+          </div>
+          <div class="form-group">
+            <label>管理员手机号</label>
+            <input type="tel" v-model="addressForm.phone" :placeholder="adminInfo.phone ? `默认：${adminInfo.phone}` : '请输入手机号'">
+          </div>
+          <div class="form-row">
+            <div class="form-group half">
+              <label>省份</label>
+              <input type="text" v-model="addressForm.province" placeholder="请输入省份">
+            </div>
+            <div class="form-group half">
+              <label>城市</label>
+              <input type="text" v-model="addressForm.city" placeholder="请输入城市">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>站点</label>
+            <input type="text" v-model="addressForm.street" placeholder="请输入街道">
+          </div>
+          <div class="form-group">
+            <label>详细地址 <span class="required">*</span></label>
+            <input type="text" v-model="addressForm.detailAddress" placeholder="请输入详细地址">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showAddAddress = false">取消</button>
+          <button class="btn-submit" @click="addAddress">确认添加</button>
         </div>
       </div>
     </div>
@@ -117,6 +187,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { getAdminProfile, updateAdminProfile, changeAdminPassword, type UserProfile, type ChangePasswordRequest } from '@/api/admin/profile'
+import { createLocation, type CreateLocationRequest, type UserLocation } from '@/api/user/location'
 import { useToast } from '@/composables/useToast'
 
 const { success, error: showError, warning } = useToast()
@@ -149,6 +220,7 @@ interface Preferences {
 
 const isEditing = ref(false)
 const showChangePassword = ref(false)
+const showAddAddress = ref(false)
 
 const adminInfo = reactive<AdminInfo>({
   username: 'admin',
@@ -175,6 +247,36 @@ const preferences = reactive<Preferences>({
   emailNotifications: true,
   smsNotifications: false
 })
+
+// 地址表单
+interface AddressForm {
+  username: string
+  phone: string
+  province: string
+  city: string
+  street: string
+  detailAddress: string
+}
+
+const addressForm = reactive<AddressForm>({
+  username: '',
+  phone: '',
+  province: '',
+  city: '',
+  street: '',
+  detailAddress: ''
+})
+
+// 已添加的地址列表
+interface AddressItem {
+  username: string
+  phone: string
+  province?: string
+  city?: string
+  street?: string
+  detailAddress: string
+}
+const addressList = ref<AddressItem[]>([])
 
 // 页面加载时获取管理员信息
 onMounted(async () => {
@@ -263,6 +365,49 @@ const changePassword = async () => {
     showError('修改密码失败，请检查旧密码是否正确')
   }
 }
+
+// 添加地址
+const addAddress = async () => {
+  if (!addressForm.detailAddress || !addressForm.detailAddress.trim()) {
+    warning('请填写详细地址')
+    return
+  }
+  
+  try {
+    const result = await createLocation({
+      username: addressForm.username || undefined,
+      phone: addressForm.phone || undefined,
+      province: addressForm.province || undefined,
+      city: addressForm.city || undefined,
+      street: addressForm.street || undefined,
+      detailAddress: addressForm.detailAddress.trim()
+    })
+    
+    // 添加到地址列表中显示
+    addressList.value.push({
+      username: result.username || addressForm.username || adminInfo.username,
+      phone: result.phone || addressForm.phone || adminInfo.phone || '',
+      province: result.province || addressForm.province,
+      city: result.city || addressForm.city,
+      street: result.street || addressForm.street,
+      detailAddress: result.detailAddress || addressForm.detailAddress.trim()
+    })
+    
+    // 清空表单
+    addressForm.username = ''
+    addressForm.phone = ''
+    addressForm.province = ''
+    addressForm.city = ''
+    addressForm.street = ''
+    addressForm.detailAddress = ''
+    
+    showAddAddress.value = false
+    success('位置信息添加成功')
+  } catch (error) {
+    console.error('添加位置信息失败:', error)
+    showError('添加位置信息失败，请稍后重试')
+  }
+}
 </script>
 
 <style scoped>
@@ -292,7 +437,8 @@ const changePassword = async () => {
 
 .info-card,
 .security-card,
-.preference-card {
+.preference-card,
+.address-card {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -620,27 +766,102 @@ input:checked + .slider:before {
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
-}
-
-.btn-cancel {
   background: white;
   border: 1px solid #e0e0e0;
   color: #333;
 }
 
-.btn-submit {
-  background: #333;
-  color: white;
-  border: none;
+.btn-cancel:hover,
+.btn-submit:hover {
+  border-color: #666;
+  color: #666;
 }
 
-.btn-submit:hover {
-  background: #555;
+/* 地址列表样式 */
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.address-item {
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
+.address-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.address-name-phone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.address-name-phone .name {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.address-name-phone .phone {
+  color: #666;
+  font-size: 14px;
+}
+
+.address-detail {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.address-tip {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+}
+
+.add-btn {
+  padding: 8px 20px;
+  background: white;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.add-btn:hover {
+  border-color: #666;
+  color: #666;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-group.half {
+  flex: 1;
+}
+
+.required {
+  color: #ef4444;
 }
 
 @media (max-width: 768px) {
   .info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
   }
 }
 </style>
