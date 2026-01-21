@@ -13,8 +13,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "location")
-public class Location {
+@Table(name = "message")
+public class Message {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,26 +23,23 @@ public class Location {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "username", nullable = false, length = 50)
+    @Column(name = "username", length = 50)
     private String username;
 
     @Column(name = "phone", length = 20)
     private String phone;
 
-    @Column(name = "province", length = 50)
-    private String province;
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    private String content;
 
-    @Column(name = "city", length = 50)
-    private String city;
+    @Column(name = "reply_content", columnDefinition = "TEXT")
+    private String replyContent;
 
-    @Column(name = "street", length = 100)
-    private String street;
-
-    @Column(name = "detail_address", length = 255)
-    private String detailAddress;
-
-    @Column(name = "is_default")
-    private Boolean isDefault;
+    /**
+     * 0: 待回复, 1: 已回复
+     */
+    @Column(name = "status", nullable = false)
+    private Integer status = 0;
 
     @ManyToOne
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
@@ -88,44 +85,28 @@ public class Location {
         this.phone = phone;
     }
 
-    public String getProvince() {
-        return province;
+    public String getContent() {
+        return content;
     }
 
-    public void setProvince(String province) {
-        this.province = province;
+    public void setContent(String content) {
+        this.content = content;
     }
 
-    public String getCity() {
-        return city;
+    public String getReplyContent() {
+        return replyContent;
     }
 
-    public void setCity(String city) {
-        this.city = city;
+    public void setReplyContent(String replyContent) {
+        this.replyContent = replyContent;
     }
 
-    public String getStreet() {
-        return street;
+    public Integer getStatus() {
+        return status;
     }
 
-    public void setStreet(String street) {
-        this.street = street;
-    }
-
-    public String getDetailAddress() {
-        return detailAddress;
-    }
-
-    public void setDetailAddress(String detailAddress) {
-        this.detailAddress = detailAddress;
-    }
-
-    public Boolean getIsDefault() {
-        return isDefault;
-    }
-
-    public void setIsDefault(Boolean isDefault) {
-        this.isDefault = isDefault;
+    public void setStatus(Integer status) {
+        this.status = status;
     }
 
     public SysUser getUser() {
