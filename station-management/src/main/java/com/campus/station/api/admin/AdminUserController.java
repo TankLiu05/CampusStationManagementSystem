@@ -109,12 +109,13 @@ public class AdminUserController {
         return ResponseEntity.ok("密码重置成功");
     }
 
-    @GetMapping("/{id}/locations")
-    @Operation(summary = "管理员查询用户收货地址列表")
-    public ResponseEntity<?> listUserLocations(@PathVariable Long id) {
+    @GetMapping("/{id}/location/default")
+    @Operation(summary = "管理员查询用户默认收货地址")
+    public ResponseEntity<?> getUserDefaultLocation(@PathVariable Long id) {
         requireAdmin();
-        java.util.List<Location> locations = locationService.listByUserId(id);
-        return ResponseEntity.ok(locations);
+        return locationService.getDefaultByUserId(id)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body("该用户未设置默认收货地址"));
     }
 
     @DeleteMapping("/{id}")
