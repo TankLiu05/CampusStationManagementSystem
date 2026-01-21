@@ -326,7 +326,8 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelApi, type Parcel, type ParcelCreateRequest, type ParcelUpdateRequest } from '@/api/admin/parcel'
-import { getUserByPhone, getUserLocations } from '@/api/admin/user'
+import { parcelRouteApi, type ParcelRouteCreateRequest } from '@/api/admin/parcelRoute'
+import { getUserByPhone, getUserDefaultLocation } from '@/api/admin/user'
 import { getCurrentAdminDetail } from '@/api/admin/management'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -617,52 +618,85 @@ const submitPackage = async () => {
       await parcelApi.update(editingPackageId.value, updateData)
       success('更新成功')
     } else {
-      const phone = packageForm.receiverPhone.trim()
-      const user = await getUserByPhone(phone)
-      const locations = await getUserLocations(user.id)
-      if (!locations || locations.length === 0) {
-        warning('该用户没有收货地址，请先让用户在前端添加收货地址')
-        return
-      }
-      const location = locations[0]!
-      const destinationParts = [
-        location.province,
-        location.city,
-        location.street,
-        location.detailAddress
-      ].filter(Boolean) as string[]
-      const destination = destinationParts.join('')
-      if (!destination) {
-        warning('无法根据用户地址生成终点站信息，请检查用户收货地址')
-        return
-      }
-      packageForm.destination = destination
-
+      // 获取当前管理员站点信息
       const adminDetail = await getCurrentAdminDetail()
-      const originParts = [
+      const currentStationParts = [
         adminDetail.province,
         adminDetail.city,
         adminDetail.station
       ].filter(Boolean) as string[]
-      const origin = originParts.join('')
-      if (!origin) {
-        warning('无法根据当前站点生成起始站点信息，请检查管理员站点配置')
+      const currentStation = currentStationParts.join('')
+      if (!currentStation) {
+        warning('无法获取当前站点信息，请检查管理员站点配置')
         return
       }
-      packageForm.origin = origin
 
-      const createData: ParcelCreateRequest = {
-        trackingNumber: packageForm.trackingNumber,
-        company: packageForm.company,
-        receiverPhone: packageForm.receiverPhone, // 通过手机号查找用户
-        receiverName: packageForm.receiverName || undefined, // 可选，如果不填则使用用户的username
-        origin: packageForm.origin || undefined,
-        destination: packageForm.destination || undefined,
-        status: 0, // 默认状态：待发货
-        isSigned: 0 // 默认未签收
+      // 先查询快递单号是否已存在
+      let existingParcel: Parcel | null = null
+      try {
+        existingParcel = await parcelApi.searchByTrackingNumber(packageForm.trackingNumber)
+      } catch (e) {
+        // 404 表示不存在，继续创建新包裹
+        existingParcel = null
       }
-      await parcelApi.create(createData)
-      success('创建成功')
+
+      if (existingParcel) {
+        // 快递已存在，添加流转记录并更新状态
+        const routeData: ParcelRouteCreateRequest = {
+          trackingNumber: packageForm.trackingNumber,
+          currentStation: currentStation,
+          nextStation: existingParcel.destination || '目的地',
+          etaNextStation: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 预计明天到达
+          etaDelivered: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() // 预计后天送达
+        }
+        await parcelRouteApi.create(routeData)
+        
+        // 更新包裹状态为运输中
+        await parcelApi.changeStatus(existingParcel.id, 1)
+        
+        success('包裹已到达本站点，已添加流转记录')
+      } else {
+        // 快递不存在，创建新包裹
+        const phone = packageForm.receiverPhone.trim()
+        const user = await getUserByPhone(phone)
+        let location
+        try {
+          location = await getUserDefaultLocation(user.id)
+        } catch (e) {
+          warning('该用户没有设置默认收货地址，请先让用户在前端设置默认收货地址')
+          return
+        }
+        if (!location) {
+          warning('该用户没有设置默认收货地址，请先让用户在前端设置默认收货地址')
+          return
+        }
+        const destinationParts = [
+          location.province,
+          location.city,
+          location.street,
+          location.detailAddress
+        ].filter(Boolean) as string[]
+        const destination = destinationParts.join('')
+        if (!destination) {
+          warning('无法根据用户地址生成终点站信息，请检查用户收货地址')
+          return
+        }
+        packageForm.destination = destination
+        packageForm.origin = currentStation
+
+        const createData: ParcelCreateRequest = {
+          trackingNumber: packageForm.trackingNumber,
+          company: packageForm.company,
+          receiverPhone: packageForm.receiverPhone,
+          receiverName: packageForm.receiverName || undefined,
+          origin: packageForm.origin || undefined,
+          destination: packageForm.destination || undefined,
+          status: 0, // 默认状态：待发货
+          isSigned: 0 // 默认未签收
+        }
+        await parcelApi.create(createData)
+        success('创建成功')
+      }
     }
     
     closeModal()

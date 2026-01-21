@@ -135,6 +135,10 @@ export function getUserByPhone(phone: string) {
   })
 }
 
-export function getUserLocations(userId: number) {
-  return request<UserLocation[]>(`/api/admin/user/${userId}/locations`)
+/**
+ * 获取用户默认收货地址
+ * @param userId 用户ID
+ */
+export function getUserDefaultLocation(userId: number) {
+  return request<UserLocation>(`/api/admin/user/${userId}/location/default`)
 }

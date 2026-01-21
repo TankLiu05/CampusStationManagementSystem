@@ -328,11 +328,11 @@ const submitAdmin = async () => {
 
     try {
       await updateAdmin(editingAdminId.value, {
-        phone: adminForm.phone || undefined,
-        email: adminForm.email || undefined,
-        province: adminForm.province || undefined,
-        city: adminForm.city || undefined,
-        station: adminForm.station || undefined
+        phone: adminForm.phone,
+        email: adminForm.email,
+        province: adminForm.province,
+        city: adminForm.city,
+        station: adminForm.station
       })
       success('更新成功')
       closeModal()

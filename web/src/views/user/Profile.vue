@@ -72,15 +72,21 @@
         <div class="card-body">
           <!-- 地址列表 -->
           <div v-if="addressList.length > 0" class="address-list">
-            <div v-for="(addr, index) in addressList" :key="index" class="address-item">
+            <div v-for="addr in addressList" :key="addr.id" class="address-item" :class="{ 'is-default': addr.isDefault }">
               <div class="address-info">
                 <div class="address-name-phone">
                   <span class="name">{{ addr.username }}</span>
                   <span class="phone">{{ addr.phone }}</span>
+                  <span v-if="addr.isDefault" class="default-tag">默认</span>
                 </div>
                 <div class="address-detail">
                   {{ [addr.province, addr.city, addr.street, addr.detailAddress].filter(Boolean).join(' ') }}
                 </div>
+              </div>
+              <div class="address-actions">
+                <button v-if="!addr.isDefault" class="action-link" @click="handleSetDefault(addr.id)">设为默认</button>
+                <button class="action-link" @click="openEditAddress(addr)">编辑</button>
+                <button class="action-link delete" @click="handleDeleteAddress(addr.id)">删除</button>
               </div>
             </div>
           </div>
@@ -145,10 +151,64 @@
             <label>详细地址 <span class="required">*</span></label>
             <input type="text" v-model="addressForm.detailAddress" placeholder="如：xx路xx号xx栋xx室">
           </div>
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="addressForm.isDefault">
+              <span>设为默认地址</span>
+            </label>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="btn-cancel" @click="showAddAddress = false">取消</button>
           <button class="btn-submit" @click="addAddress">确认添加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 编辑收货地址弹窗 -->
+    <div class="modal" v-if="showEditAddress" @click="showEditAddress = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>编辑收货地址</h3>
+          <button class="close-btn" @click="showEditAddress = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>收件人姓名</label>
+            <input type="text" v-model="editAddressForm.username" placeholder="收件人姓名">
+          </div>
+          <div class="form-group">
+            <label>手机号</label>
+            <input type="tel" v-model="editAddressForm.phone" placeholder="手机号">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>省份</label>
+              <input type="text" v-model="editAddressForm.province" placeholder="如：广东省">
+            </div>
+            <div class="form-group">
+              <label>城市</label>
+              <input type="text" v-model="editAddressForm.city" placeholder="如：深圳市">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>街道/区域</label>
+            <input type="text" v-model="editAddressForm.street" placeholder="如：南山区">
+          </div>
+          <div class="form-group">
+            <label>详细地址 <span class="required">*</span></label>
+            <input type="text" v-model="editAddressForm.detailAddress" placeholder="如：xx路xx号xx栋xx室">
+          </div>
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="editAddressForm.isDefault">
+              <span>设为默认地址</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showEditAddress = false">取消</button>
+          <button class="btn-submit" @click="updateAddress">保存修改</button>
         </div>
       </div>
     </div>
@@ -188,7 +248,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import { getUserProfile, updateUserProfile, changeUserPassword, type UserProfile as UserProfileType, type ChangePasswordRequest } from '@/api/user/profile'
-import { createLocation, type CreateLocationRequest } from '@/api/user/location'
+import { 
+  createLocation, 
+  getLocationList, 
+  updateLocation, 
+  deleteLocation, 
+  setDefaultLocation,
+  type CreateLocationRequest,
+  type UpdateLocationRequest,
+  type UserLocation 
+} from '@/api/user/location'
 import { useToast } from '@/composables/useToast'
 
 const { success, error: showError, warning } = useToast()
@@ -244,23 +313,29 @@ const addressForm = reactive<CreateLocationRequest>({
   province: '',
   city: '',
   street: '',
-  detailAddress: ''
+  detailAddress: '',
+  isDefault: false
+})
+
+// 编辑地址弹窗
+const showEditAddress = ref(false)
+const editingAddressId = ref<number | null>(null)
+const editAddressForm = reactive<UpdateLocationRequest>({
+  username: '',
+  phone: '',
+  province: '',
+  city: '',
+  street: '',
+  detailAddress: '',
+  isDefault: false
 })
 
 // 已添加的收货地址列表
-interface AddressItem {
-  username: string
-  phone: string
-  province?: string
-  city?: string
-  street?: string
-  detailAddress: string
-}
-const addressList = ref<AddressItem[]>([])
+const addressList = ref<UserLocation[]>([])
 
-// 页面加载时获取用户信息
+// 页面加载时获取用户信息和地址列表
 onMounted(async () => {
-  await loadProfile()
+  await Promise.all([loadProfile(), loadAddressList()])
 })
 
 // 加载用户个人信息
@@ -346,6 +421,16 @@ const changePassword = async () => {
   }
 }
 
+// 加载地址列表
+const loadAddressList = async () => {
+  try {
+    const data = await getLocationList()
+    addressList.value = data
+  } catch (error) {
+    console.error('获取地址列表失败:', error)
+  }
+}
+
 // 添加收货地址
 const addAddress = async () => {
   if (!addressForm.detailAddress || !addressForm.detailAddress.trim()) {
@@ -354,24 +439,18 @@ const addAddress = async () => {
   }
   
   try {
-    const result = await createLocation({
+    await createLocation({
       username: addressForm.username || undefined,
       phone: addressForm.phone || undefined,
       province: addressForm.province || undefined,
       city: addressForm.city || undefined,
       street: addressForm.street || undefined,
-      detailAddress: addressForm.detailAddress.trim()
+      detailAddress: addressForm.detailAddress.trim(),
+      isDefault: addressForm.isDefault
     })
     
-    // 添加到地址列表中显示
-    addressList.value.push({
-      username: result.username || addressForm.username || userInfo.username,
-      phone: result.phone || addressForm.phone || userInfo.phone || '',
-      province: result.province || addressForm.province,
-      city: result.city || addressForm.city,
-      street: result.street || addressForm.street,
-      detailAddress: result.detailAddress || addressForm.detailAddress.trim()
-    })
+    // 重新加载地址列表
+    await loadAddressList()
     
     // 清空表单
     addressForm.username = ''
@@ -380,12 +459,81 @@ const addAddress = async () => {
     addressForm.city = ''
     addressForm.street = ''
     addressForm.detailAddress = ''
+    addressForm.isDefault = false
     
     showAddAddress.value = false
     success('收货地址添加成功')
   } catch (error) {
     console.error('添加收货地址失败:', error)
     showError('添加收货地址失败，请稍后重试')
+  }
+}
+
+// 打开编辑地址弹窗
+const openEditAddress = (addr: UserLocation) => {
+  editingAddressId.value = addr.id
+  editAddressForm.username = addr.username
+  editAddressForm.phone = addr.phone
+  editAddressForm.province = addr.province
+  editAddressForm.city = addr.city
+  editAddressForm.street = addr.street
+  editAddressForm.detailAddress = addr.detailAddress
+  editAddressForm.isDefault = addr.isDefault
+  showEditAddress.value = true
+}
+
+// 更新地址
+const updateAddress = async () => {
+  if (!editAddressForm.detailAddress || !editAddressForm.detailAddress.trim()) {
+    warning('请填写详细地址')
+    return
+  }
+  
+  if (!editingAddressId.value) return
+  
+  try {
+    await updateLocation(editingAddressId.value, {
+      username: editAddressForm.username,
+      phone: editAddressForm.phone,
+      province: editAddressForm.province,
+      city: editAddressForm.city,
+      street: editAddressForm.street,
+      detailAddress: editAddressForm.detailAddress.trim(),
+      isDefault: editAddressForm.isDefault
+    })
+    
+    await loadAddressList()
+    showEditAddress.value = false
+    success('地址修改成功')
+  } catch (error) {
+    console.error('修改地址失败:', error)
+    showError('修改地址失败，请稍后重试')
+  }
+}
+
+// 删除地址
+const handleDeleteAddress = async (id: number) => {
+  if (!confirm('确定要删除这个地址吗？')) return
+  
+  try {
+    await deleteLocation(id)
+    await loadAddressList()
+    success('地址删除成功')
+  } catch (error) {
+    console.error('删除地址失败:', error)
+    showError('删除地址失败，请稍后重试')
+  }
+}
+
+// 设为默认地址
+const handleSetDefault = async (id: number) => {
+  try {
+    await setDefaultLocation(id)
+    await loadAddressList()
+    success('已设为默认地址')
+  } catch (error) {
+    console.error('设置默认地址失败:', error)
+    showError('设置默认地址失败，请稍后重试')
   }
 }
 </script>
@@ -609,6 +757,14 @@ const addAddress = async () => {
   background: #f9f9f9;
   border-radius: 8px;
   border: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.address-item.is-default {
+  border-color: #10b981;
+  background: #f0fdf4;
 }
 
 .address-info {
@@ -638,6 +794,66 @@ const addAddress = async () => {
   font-size: 14px;
   color: #666;
   line-height: 1.5;
+}
+
+.default-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #10b981;
+  color: white;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.address-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.action-link {
+  background: none;
+  border: none;
+  color: #10b981;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.action-link:hover {
+  text-decoration: underline;
+}
+
+.action-link.delete {
+  color: #ef4444;
+}
+
+.action-link.delete:hover {
+  color: #dc2626;
+}
+
+/* 复选框样式 */
+.checkbox-group {
+  margin-top: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  font-size: 14px;
+  color: #333;
 }
 
 /* 地址提示 */

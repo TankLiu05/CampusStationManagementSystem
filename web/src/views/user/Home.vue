@@ -21,12 +21,12 @@
       <!-- 快捷功能卡片 -->
       <div class="function-cards">
         <div class="card" @click="router.push('/user/packages')">
-          <img src="@/assets/icons/2.png" alt="我的包裹" class="card-icon" />
+          <img src="@/assets/icons/2.png" alt="在途包裹" class="card-icon" />
           <div class="card-text">
-            <h3>我的包裹</h3>
-            <p>查看待取包裹</p>
+            <h3>在途包裹</h3>
+            <p>查看运输中的包裹</p>
           </div>
-          <div class="card-count">{{ pendingParcelCount }} 件</div>
+          <div class="card-count">{{ inTransitParcelCount }} 件</div>
         </div>
 
         <div class="card" @click="router.push('/user/packages')">
@@ -50,28 +50,27 @@
 
       <!-- 详细信息展示区域 -->
       <div class="detail-sections">
-        <!-- 待取包裹列表 -->
+        <!-- 在途包裹列表 -->
         <div class="detail-section">
           <div class="section-header">
-            <h2>待取包裹</h2>
+            <h2>在途包裹</h2>
             <button class="view-more-btn" @click="router.push('/user/packages')">
               查看全部
             </button>
           </div>
           <div class="section-content">
-            <div v-if="recentPendingParcels.length === 0" class="empty-state">
-              <span>暂无待取包裹</span>
+            <div v-if="recentInTransitParcels.length === 0" class="empty-state">
+              <span>暂无在途包裹</span>
             </div>
             <div v-else class="parcel-list">
-              <div v-for="parcel in recentPendingParcels" :key="parcel.id" class="parcel-item">
+              <div v-for="parcel in recentInTransitParcels" :key="parcel.id" class="parcel-item">
                 <div class="parcel-info">
                   <div class="parcel-company">{{ parcel.company }}</div>
                   <div class="parcel-tracking">单号：{{ parcel.trackingNumber }}</div>
-                  <div class="parcel-location">存放位置：{{ parcel.location || '暂无' }}</div>
+                  <div class="parcel-location">当前位置：{{ parcel.location || '运输途中' }}</div>
                 </div>
-                <div class="parcel-code">
-                  <span class="code-label">取件码</span>
-                  <span class="code-value">{{ parcel.pickupCode || '-' }}</span>
+                <div class="parcel-transit-badge">
+                  <span class="transit-text">运输中</span>
                 </div>
               </div>
             </div>
@@ -144,11 +143,11 @@ import type { Parcel } from '@/api/user/parcel'
 const router = useRouter()
 const currentUser = ref<SysUser | null>(null)
 const noticeCount = ref(0)
-const pendingParcelCount = ref(0) // 待取包裹数量（未签收）
+const inTransitParcelCount = ref(0) // 在途包裹数量（运输中）
 const signedParcelCount = ref(0) // 已签收包裹数量
 
 // 最近数据列表
-const recentPendingParcels = ref<Parcel[]>([]) // 最近待取包裹
+const recentInTransitParcels = ref<Parcel[]>([]) // 最近在途包裹
 const recentSignedParcels = ref<Parcel[]>([]) // 最近已签收包裹
 const recentNotices = ref<Notice[]>([]) // 最新公告
 
@@ -192,13 +191,15 @@ const loadParcelCounts = async () => {
     const response = await listMyParcels(0, 1000)
     const parcels = response.content
     
-    // 筛选待取包裹：已入库且未签收（status=2 且 isSigned=0）
-    const pendingParcels = parcels.filter(
-      (p) => p.status === 2 && p.isSigned === 0
+    // 筛选在途包裹：已发货/运输中（status=1 且 isSigned=0）
+    const inTransitParcels = parcels.filter(
+      (p) => p.status === 1 && p.isSigned === 0
     )
-    pendingParcelCount.value = pendingParcels.length
-    // 取最近5条待取包裹
-    recentPendingParcels.value = pendingParcels.slice(0, 5)
+    inTransitParcelCount.value = inTransitParcels.length
+    // 按更新时间排序后取最近5条在途包裹
+    recentInTransitParcels.value = inTransitParcels
+      .sort((a, b) => new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime())
+      .slice(0, 5)
     
     // 筛选已签收包裹：isSigned=1
     const signedParcels = parcels.filter((p) => p.isSigned === 1)
@@ -209,9 +210,9 @@ const loadParcelCounts = async () => {
       .slice(0, 5)
   } catch (error) {
     console.error('加载包裹数量失败:', error)
-    pendingParcelCount.value = 0
+    inTransitParcelCount.value = 0
     signedParcelCount.value = 0
-    recentPendingParcels.value = []
+    recentInTransitParcels.value = []
     recentSignedParcels.value = []
   }
 }
@@ -449,9 +450,25 @@ const truncateContent = (content: string, maxLen = 80) => {
 }
 
 .parcel-location,
-.parcel-time {
+.parcel-time,
+.parcel-status-text {
   font-size: 12px;
   color: #999;
+}
+
+.parcel-transit-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 14px;
+  background: #e6f7ff;
+  border-radius: 8px;
+}
+
+.transit-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #1890ff;
 }
 
 .parcel-code {
