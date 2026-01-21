@@ -22,10 +22,14 @@ public class ParcelServiceImpl implements ParcelService {
 
     private final ParcelRepository repository;
     private final ParcelRouteRepository parcelRouteRepository;
+    private final com.campus.station.service.StationStorageService stationStorageService;
 
-    public ParcelServiceImpl(ParcelRepository repository, ParcelRouteRepository parcelRouteRepository) {
+    public ParcelServiceImpl(ParcelRepository repository, 
+                             ParcelRouteRepository parcelRouteRepository,
+                             com.campus.station.service.StationStorageService stationStorageService) {
         this.repository = repository;
         this.parcelRouteRepository = parcelRouteRepository;
+        this.stationStorageService = stationStorageService;
     }
 
     @Override
@@ -128,21 +132,34 @@ public class ParcelServiceImpl implements ParcelService {
         }
         if (update.getIsSigned() != null) {
             existing.setIsSigned(update.getIsSigned());
+            stationStorageService.updateSignStatus(existing.getTrackingNumber(), update.getIsSigned());
         }
 
-        return repository.save(existing);
+        Parcel saved = repository.save(existing);
+        
+        // 当更新包裹信息且有取件码和位置时，同步到仓库
+        if (saved.getPickupCode() != null && saved.getLocation() != null) {
+            stationStorageService.syncFromParcel(saved);
+        }
+        
+        return saved;
     }
 
     @Override
     @Transactional
     public void delete(Long id) {
-        repository.deleteById(id);
+        repository.findById(id).ifPresent(parcel -> {
+            stationStorageService.deleteByTrackingNumber(parcel.getTrackingNumber());
+            repository.delete(parcel);
+        });
     }
 
     @Override
     @Transactional
     public void deleteBatch(Iterable<Long> ids) {
-        repository.deleteAllById(ids);
+        for (Long id : ids) {
+            delete(id);
+        }
     }
 
     @Override
@@ -161,6 +178,9 @@ public class ParcelServiceImpl implements ParcelService {
                 .orElseThrow(() -> new IllegalArgumentException("快递不存在"));
         existing.setIsSigned(1);
         existing.setStatus(2);
+        
+        stationStorageService.updateSignStatus(existing.getTrackingNumber(), 1);
+        
         return repository.save(existing);
     }
 
