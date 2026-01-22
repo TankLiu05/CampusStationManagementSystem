@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelApi } from '@/api/admin/parcel'
@@ -142,6 +142,7 @@ import { listNotices } from '@/api/admin/notice'
 import { getUserList } from '@/api/admin/user'
 import { getAdminProfile } from '@/api/admin/profile'
 import type { UserProfile } from '@/api/admin/profile'
+import { searchStorage, type StationStorage } from '@/api/admin/stationStorage'
 
 const router = useRouter()
 const currentUser = ref<UserProfile | null>(null)
@@ -149,6 +150,13 @@ const userCount = ref(0)
 const parcelCount = ref(0)
 const signedCount = ref(0)
 const noticeCount = ref(0)
+const storageList = ref<StationStorage[]>([])
+
+// 货架配置常量
+const AREAS = ['A', 'B', 'C', 'D']
+const SHELVES_PER_AREA = 10
+const MAX_CAPACITY_PER_SHELF = 50
+const TOTAL_CAPACITY = AREAS.length * SHELVES_PER_AREA * MAX_CAPACITY_PER_SHELF // 2000件
 
 // 仓库基本信息
 const warehouseInfo = reactive({
@@ -158,15 +166,48 @@ const warehouseInfo = reactive({
   businessHours: '08:00 - 21:00'
 })
 
-// 容量统计
-const capacityStats = reactive({
-  totalCapacity: 500,
-  usedCapacity: 356,
-  remainCapacity: 144,
-  usageRate: 71,
-  todayIn: 45,
-  todayOut: 32,
-  overdueParcels: 15
+// 容量统计（基于实际数据计算）
+const capacityStats = computed(() => {
+  const inStockList = storageList.value.filter(s => s.isSigned !== 1)
+  const usedCapacity = inStockList.length
+  const remainCapacity = TOTAL_CAPACITY - usedCapacity
+  const usageRate = Math.round((usedCapacity / TOTAL_CAPACITY) * 100)
+  
+  // 获取今天的日期
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  const todayIn = storageList.value.filter(s => {
+    if (!s.createTime) return false
+    const createDate = new Date(s.createTime)
+    createDate.setHours(0, 0, 0, 0)
+    return createDate.getTime() === today.getTime()
+  }).length
+  
+  const todayOut = storageList.value.filter(s => {
+    if (!s.updateTime || s.isSigned !== 1) return false
+    const updateDate = new Date(s.updateTime)
+    updateDate.setHours(0, 0, 0, 0)
+    return updateDate.getTime() === today.getTime()
+  }).length
+  
+  // 计算滞留包裹（超过7天未取）
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const overdueParcels = inStockList.filter(s => {
+    if (!s.createTime) return false
+    return new Date(s.createTime) < sevenDaysAgo
+  }).length
+  
+  return {
+    totalCapacity: TOTAL_CAPACITY,
+    usedCapacity,
+    remainCapacity,
+    usageRate,
+    todayIn,
+    todayOut,
+    overdueParcels
+  }
 })
 
 // 导航处理函数
@@ -180,11 +221,22 @@ onMounted(async () => {
 
     // 加载统计数据
     loadStatistics()
+    // 加载仓库数据
+    loadWarehouseData()
   } catch (err) {
     console.error('获取管理员信息失败:', err)
     router.replace('/login')
   }
 })
+
+// 加载仓库数据
+const loadWarehouseData = async () => {
+  try {
+    storageList.value = await searchStorage()
+  } catch (error) {
+    console.error('加载仓库数据失败:', error)
+  }
+}
 
 // 加载统计数据
 const loadStatistics = async () => {

@@ -115,6 +115,18 @@
                 <span class="detail-label">当前状态：</span>
                 <span :class="['detail-status', selectedPackage.statusClass]">{{ selectedPackage.status }}</span>
               </div>
+              <div v-if="returnRequestedTrackingNumbers.has(selectedPackage.trackingNumber)" class="detail-row">
+                <span class="detail-label">退货状态：</span>
+                <span class="detail-value return-pending-badge">待审核</span>
+              </div>
+              <div v-else-if="returnRejectedTrackingNumbers.has(selectedPackage.trackingNumber)" class="detail-row">
+                <span class="detail-label">退货状态：</span>
+                <span class="detail-value return-rejected-badge">已拒绝</span>
+              </div>
+              <div v-else-if="selectedPackage.rawData.isReturned === 1" class="detail-row">
+                <span class="detail-label">退货状态：</span>
+                <span class="detail-value returned-badge">已同意退货</span>
+              </div>
             </div>
 
             <div class="detail-section">
@@ -181,7 +193,6 @@
             <div class="detail-section" v-if="selectedPackage.rawData.isSigned === 0">
               <h3>取件提示</h3>
               <div class="pickup-notice">
-                <p>请携带有效证件到校园驿站取件</p>
                 <p>如长时间未取件可能会被退回</p>
               </div>
             </div>
@@ -189,12 +200,93 @@
           <div class="dialog-footer">
             <button class="dialog-btn cancel" @click="closeDetailDialog">关闭</button>
             <button 
-              v-if="selectedPackage?.canPickup" 
+              v-if="selectedPackage?.canPickup && 
+                    !returnRequestedTrackingNumbers.has(selectedPackage.trackingNumber)"
               class="dialog-btn confirm" 
               @click="handleSignFromDialog"
               :disabled="signing"
             >
               {{ signing ? '确认中...' : '确认收货' }}
+            </button>
+            <button 
+              v-if="selectedPackage?.rawData.isSigned === 0 && 
+                    selectedPackage?.rawData.isReturned !== 1 && 
+                    !returnRequestedTrackingNumbers.has(selectedPackage.trackingNumber)"
+              class="dialog-btn return-request" 
+              @click="showReturnRequestDialog"
+              :disabled="signing"
+            >
+              申请退货
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 退货申请弹窗 -->
+      <div v-if="showReturnDialog" class="dialog-overlay" @click="closeReturnDialog">
+        <div class="dialog-content" @click.stop>
+          <div class="dialog-header">
+            <h2>申请退货</h2>
+            <button class="close-btn" @click="closeReturnDialog">×</button>
+          </div>
+          <div class="dialog-body">
+            <div class="return-form">
+              <div class="form-group">
+                <label>快递单号</label>
+                <input 
+                  type="text" 
+                  v-model="returnForm.trackingNumber" 
+                  disabled
+                  class="form-input"
+                />
+              </div>
+              <div class="form-group">
+                <label>退货原因 <span class="required">*</span></label>
+                <textarea 
+                  v-model="returnForm.reason" 
+                  placeholder="请详细说明退货原因（如：商品损坏、质量问题、错发货物等）"
+                  rows="5"
+                  class="form-textarea"
+                  maxlength="500"
+                ></textarea>
+                <div class="char-count">{{ returnForm.reason.length }}/500</div>
+              </div>
+              <div class="form-group">
+                <label>联系人（可选）</label>
+                <input 
+                  type="text" 
+                  v-model="returnForm.username" 
+                  placeholder="默认使用当前用户名"
+                  class="form-input"
+                />
+              </div>
+              <div class="form-group">
+                <label>联系电话（可选）</label>
+                <input 
+                  type="text" 
+                  v-model="returnForm.phone" 
+                  placeholder="默认使用当前用户电话"
+                  class="form-input"
+                />
+              </div>
+              <div class="form-notice">
+                <p>温馨提示：</p>
+                <ul>
+                  <li>请确保包裹完好无损</li>
+                  <li>退货申请提交后，管理员将在 1-2 个工作日内审核</li>
+                  <li>审核通过后，请按照指示办理退货手续</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="dialog-footer">
+            <button class="dialog-btn cancel" @click="closeReturnDialog" :disabled="submittingReturn">取消</button>
+            <button 
+              class="dialog-btn confirm" 
+              @click="submitReturnRequest"
+              :disabled="submittingReturn || !returnForm.reason.trim()"
+            >
+              {{ submittingReturn ? '提交中...' : '提交申请' }}
             </button>
           </div>
         </div>
@@ -216,6 +308,12 @@ import {
   type Parcel,
   type ParcelRoute
 } from '@/api/user/parcel'
+import { 
+  createReturnRequest,
+  getMyReturnRequests,
+  type CreateReturnRequestRequest,
+  type ReturnRequest
+} from '@/api/user/returnRequest'
 import { useToast } from '@/composables/useToast'
 
 const { success, error: showError } = useToast()
@@ -250,12 +348,28 @@ const selectedPackage = ref<Package | null>(null)
 const signing = ref(false)
 const loadingRoutes = ref(false)
 const parcelRoutes = ref<ParcelRoute[]>([])
+const showReturnDialog = ref(false)
+const submittingReturn = ref(false)
+const returnForm = ref<CreateReturnRequestRequest>({
+  trackingNumber: '',
+  reason: '',
+  username: '',
+  phone: ''
+})
+
+// 存储已申请退货的快递单号集合
+const returnRequestedTrackingNumbers = ref<Set<string>>(new Set())
+// 存储被拒绝退货的快递单号集合
+const returnRejectedTrackingNumbers = ref<Set<string>>(new Set())
 
 // 存储各个标签的真实计数
 const tabCounts = ref({
   all: 0,
   pending: 0,
   picked: 0,
+  returnRequested: 0,
+  returnRejected: 0,
+  returned: 0,
   overdue: 0
 })
 
@@ -273,6 +387,9 @@ const tabs = computed<Tab[]>(() => {
     { label: '全部', value: 'all', count: tabCounts.value.all },
     { label: '待取件', value: 'pending', count: tabCounts.value.pending },
     { label: '已取件', value: 'picked', count: tabCounts.value.picked },
+    { label: '申请退货', value: 'returnRequested', count: tabCounts.value.returnRequested },
+    { label: '拒绝退货', value: 'returnRejected', count: tabCounts.value.returnRejected },
+    { label: '已退货', value: 'returned', count: tabCounts.value.returned },
     { label: '已超期', value: 'overdue', count: tabCounts.value.overdue }
   ]
 })
@@ -283,7 +400,23 @@ function transformParcel(parcel: Parcel): Package {
   let status = '未知'
   let statusClass = ''
   
-  if (parcel.isSigned === 1) {
+  // 优先检查是否有待审核的退货申请
+  if (returnRequestedTrackingNumbers.value.has(parcel.trackingNumber)) {
+    status = '待审核'
+    statusClass = 'pending-review'
+  }
+  // 检查是否被拒绝退货（拒绝后恢复到原始状态）
+  else if (returnRejectedTrackingNumbers.value.has(parcel.trackingNumber)) {
+    status = '退货失败'
+    statusClass = 'return-rejected'
+  }
+  // 检查是否已退货（只有 isReturned=1 且没有被拒绝的才算已退货）
+  else if (parcel.isReturned === 1) {
+    status = '已退货'
+    statusClass = 'returned'
+  }
+  // 根据签收状态判断
+  else if (parcel.isSigned === 1) {
     status = '已取件'
     statusClass = 'picked'
   } else if (parcel.status === 2) {
@@ -334,10 +467,115 @@ async function loadParcels() {
     // 根据当前激活标签调用不同的API
     switch (activeTab.value) {
       case 'pending':
-        response = await listUnsignedParcels(currentPage.value, pageSize.value)
+        // 待取件：未签收且未退货的包裹
+        const unsignedResponse = await listUnsignedParcels(currentPage.value, pageSize.value)
+        // 过滤掉已退货和有退货申请的包裹
+        const allReturnRequests = await getMyReturnRequests(0, 9999)
+        const returnRelatedTrackingNumbers = new Set(
+          allReturnRequests.content.map(req => req.trackingNumber)
+        )
+        response = {
+          ...unsignedResponse,
+          content: unsignedResponse.content.filter(p => 
+            p.isReturned !== 1 && !returnRelatedTrackingNumbers.has(p.trackingNumber)
+          )
+        }
+        response.totalElements = response.content.length
         break
       case 'picked':
-        response = await listSignedParcels(currentPage.value, pageSize.value)
+        // 已取件：已签收且未退货的包裹
+        const signedResponse = await listSignedParcels(currentPage.value, pageSize.value)
+        response = {
+          ...signedResponse,
+          content: signedResponse.content.filter(p => p.isReturned !== 1)
+        }
+        response.totalElements = response.content.length
+        break
+      case 'returnRequested':
+        // 查询已提交退货申请的包裹（待审核）
+        const returnRequests = await getMyReturnRequests(currentPage.value, pageSize.value)
+        // 根据退货申请中的快递单号查询对应的包裹
+        const trackingNumbers = returnRequests.content
+          .filter(req => req.status === 0) // 只显示待审核的
+          .map(req => req.trackingNumber)
+        
+        if (trackingNumbers.length === 0) {
+          allParcels.value = []
+          totalElements.value = 0
+          return
+        }
+        
+        // 获取所有包裹然后过滤
+        const allParcelsResponse = await listMyParcels(0, 9999)
+        response = {
+          content: allParcelsResponse.content.filter(p => 
+            trackingNumbers.includes(p.trackingNumber)
+          ),
+          totalElements: 0,
+          totalPages: 0,
+          size: pageSize.value,
+          number: currentPage.value,
+          first: true,
+          last: true,
+          empty: false
+        }
+        response.totalElements = response.content.length
+        response.totalPages = Math.ceil(response.totalElements / pageSize.value)
+        break
+      case 'returnRejected':
+        // 查询被拒绝的退货申请
+        const rejectedRequests = await getMyReturnRequests(currentPage.value, pageSize.value)
+        // 根据退货申请中的快递单号查询对应的包裹
+        const rejectedTrackingNumbers = rejectedRequests.content
+          .filter(req => req.status === 2) // 只显示已拒绝的
+          .map(req => req.trackingNumber)
+        
+        if (rejectedTrackingNumbers.length === 0) {
+          allParcels.value = []
+          totalElements.value = 0
+          return
+        }
+        
+        // 获取所有包裹然后过滤
+        const rejectedParcelsResponse = await listMyParcels(0, 9999)
+        response = {
+          content: rejectedParcelsResponse.content.filter(p => 
+            rejectedTrackingNumbers.includes(p.trackingNumber)
+          ),
+          totalElements: 0,
+          totalPages: 0,
+          size: pageSize.value,
+          number: currentPage.value,
+          first: true,
+          last: true,
+          empty: false
+        }
+        response.totalElements = response.content.length
+        response.totalPages = Math.ceil(response.totalElements / pageSize.value)
+        break
+      case 'returned':
+        // 筛选已退货的包裹（已同意退货且未被拒绝）
+        const returnedAllParcels = await listMyParcels(0, 9999)
+        const returnedAllRequests = await getMyReturnRequests(0, 9999)
+        const rejectedTrackingNumbersForReturned = new Set(
+          returnedAllRequests.content
+            .filter(req => req.status === 2) // 已拒绝的
+            .map(req => req.trackingNumber)
+        )
+        response = {
+          content: returnedAllParcels.content.filter(p => 
+            p.isReturned === 1 && !rejectedTrackingNumbersForReturned.has(p.trackingNumber)
+          ),
+          totalElements: 0,
+          totalPages: 0,
+          size: pageSize.value,
+          number: currentPage.value,
+          first: true,
+          last: true,
+          empty: false
+        }
+        response.totalElements = response.content.length
+        response.totalPages = Math.ceil(response.totalElements / pageSize.value)
         break
       case 'overdue':
         // TODO: 如果后端有超期快递接口，在此调用
@@ -438,7 +676,58 @@ function formatTime(time: string): string {
   })
 }
 
-// 从详情对话框签收
+// 显示退货申请对话框
+function showReturnRequestDialog() {
+  if (!selectedPackage.value) return
+  
+  // 初始化表单
+  returnForm.value = {
+    trackingNumber: selectedPackage.value.trackingNumber,
+    reason: '',
+    username: '',
+    phone: ''
+  }
+  
+  showReturnDialog.value = true
+}
+
+// 关闭退货申请对话框
+function closeReturnDialog() {
+  showReturnDialog.value = false
+  returnForm.value = {
+    trackingNumber: '',
+    reason: '',
+    username: '',
+    phone: ''
+  }
+}
+
+// 提交退货申请
+async function submitReturnRequest() {
+  if (!returnForm.value.reason.trim()) {
+    showError('请填写退货原因')
+    return
+  }
+  
+  try {
+    submittingReturn.value = true
+    await createReturnRequest(returnForm.value)
+    success('退货申请提交成功，请等待管理员审核')
+    
+    // 关闭退货对话框和详情对话框
+    closeReturnDialog()
+    closeDetailDialog()
+    
+    // 重新加载数据
+    await loadAllTabCounts()
+    await loadParcels()
+  } catch (err: any) {
+    console.error('提交退货申请失败:', err)
+    showError(err.message || '提交失败，请重试')
+  } finally {
+    submittingReturn.value = false
+  }
+}
 async function handleSignFromDialog() {
   if (!selectedPackage.value) return
   
@@ -472,7 +761,35 @@ async function loadAllTabCounts() {
     tabCounts.value.all = allResponse.totalElements
     tabCounts.value.pending = pendingResponse.totalElements
     tabCounts.value.picked = pickedResponse.totalElements
-    tabCounts.value.overdue = 0 // TODO: 如果后端有超期接口，在此更新
+    
+    // 统计退货相关数量
+    const allParcels = await listMyParcels(0, 9999)
+    const returnRequests = await getMyReturnRequests(0, 9999)
+    
+    // 申请退货：待审核的退货申请
+    tabCounts.value.returnRequested = returnRequests.content.filter(req => req.status === 0).length
+    
+    // 拒绝退货：已拒绝的退货申请
+    tabCounts.value.returnRejected = returnRequests.content.filter(req => req.status === 2).length
+    
+    // 已退货：已标记为退货的包裹
+    tabCounts.value.returned = allParcels.content.filter(p => p.isReturned === 1).length
+    
+    // 更新已申请退货的快递单号集合
+    returnRequestedTrackingNumbers.value = new Set(
+      returnRequests.content
+        .filter(req => req.status === 0) // 待审核
+        .map(req => req.trackingNumber)
+    )
+    
+    // 更新被拒绝退货的快递单号集合
+    returnRejectedTrackingNumbers.value = new Set(
+      returnRequests.content
+        .filter(req => req.status === 2) // 已拒绝
+        .map(req => req.trackingNumber)
+    )
+    
+    tabCounts.value.overdue = 0
   } catch (error) {
     console.error('加载标签计数失败:', error)
   }
@@ -660,6 +977,21 @@ onMounted(async () => {
 .package-status.overdue {
   background: #fff1f0;
   color: #f5222d;
+}
+
+.package-status.returned {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.package-status.pending-review {
+  background: #f0f5ff;
+  color: #597ef7;
+}
+
+.package-status.return-rejected {
+  background: #fff1f0;
+  color: #cf1322;
 }
 
 .package-body {
@@ -870,6 +1202,32 @@ onMounted(async () => {
   color: #f5222d;
 }
 
+.detail-status.returned {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.returned-badge {
+  display: inline-block;
+  color: #1890ff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.return-pending-badge {
+  display: inline-block;
+  color: #597ef7;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.return-rejected-badge {
+  display: inline-block;
+  color: #cf1322;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .pickup-notice {
   background: #f5f5f5;
   border: 1px solid #d9d9d9;
@@ -922,6 +1280,118 @@ onMounted(async () => {
 .dialog-btn.confirm:disabled {
   background: #ccc;
   cursor: not-allowed;
+}
+
+.dialog-btn.return-request {
+  background: #fa8c16;
+  color: white;
+}
+
+.dialog-btn.return-request:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* 退货表单样式 */
+.return-form {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-group label .required {
+  color: #f5222d;
+  margin-left: 2px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #666;
+  box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.1);
+}
+
+.form-input:disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #666;
+  box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.1);
+}
+
+.char-count {
+  text-align: right;
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.form-notice {
+  background: #E8EBE4;
+  border: 1px solid #B8C5B0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.form-notice p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #5C6B5E;
+}
+
+.form-notice ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.form-notice li {
+  font-size: 13px;
+  color: #6B7869;
+  line-height: 1.8;
+  margin-bottom: 4px;
+}
+
+.form-notice li:last-child {
+  margin-bottom: 0;
 }
 
 /* 分页样式 */
@@ -1141,6 +1611,19 @@ onMounted(async () => {
   
   .detail-label {
     min-width: 80px;
+  }
+  
+  .form-group {
+    margin-bottom: 16px;
+  }
+  
+  .dialog-footer {
+    flex-wrap: wrap;
+  }
+  
+  .dialog-btn {
+    flex: 1;
+    min-width: 100px;
   }
 }
 

@@ -3,48 +3,87 @@
     <div class="warehouse-info">
       <div class="page-header">
         <h1>仓库信息</h1>
-        <p>查看驿站仓库基本信息与容量统计</p>
+        <p>查看驿站仓库容量统计与快递搜索</p>
       </div>
 
-      <!-- 仓库基本信息卡片 -->
-      <div class="info-card">
+      <!-- 搜索功能 -->
+      <div class="search-card">
         <div class="card-header">
-          <h2><img src="@/assets/icons/2.png" alt="" class="title-icon" /> 基本信息</h2>
-          <button class="btn-edit" @click="showEditInfo = true">编辑信息</button>
+          <h2><img src="@/assets/icons/2.png" alt="" class="title-icon" /> 快递搜索</h2>
+          <button class="btn-reset" @click="resetSearch">重置</button>
         </div>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="label">仓库名称</span>
-            <span class="value">{{ warehouseInfo.name }}</span>
+        <div class="search-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>区域</label>
+              <select v-model="searchForm.area">
+                <option value="">全部</option>
+                <option value="A">A区</option>
+                <option value="B">B区</option>
+                <option value="C">C区</option>
+                <option value="D">D区</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>货架号</label>
+              <input type="text" v-model="searchForm.shelf" placeholder="如：01、02、03">
+            </div>
+            <div class="form-group">
+              <label>位置码</label>
+              <input type="text" v-model="searchForm.position" placeholder="四位数位置码">
+            </div>
           </div>
-          <div class="info-item">
-            <span class="label">仓库编号</span>
-            <span class="value">{{ warehouseInfo.code }}</span>
+          <div class="form-row">
+            <div class="form-group">
+              <label>收件人姓名</label>
+              <input type="text" v-model="searchForm.receiverName" placeholder="输入收件人姓名">
+            </div>
+            <div class="form-group">
+              <label>收件人电话</label>
+              <input type="text" v-model="searchForm.receiverPhone" placeholder="输入收件人电话">
+            </div>
+            <div class="form-group">
+              <button class="btn-search" @click="handleSearch">搜索</button>
+            </div>
           </div>
-          <div class="info-item">
-            <span class="label">所属校区</span>
-            <span class="value">{{ warehouseInfo.campus }}</span>
+        </div>
+        
+        <!-- 搜索结果 -->
+        <div class="search-results" v-if="searchResults.length > 0">
+          <h3>搜索结果（{{ searchResults.length }} 条）</h3>
+          <div class="results-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>快递单号</th>
+                  <th>收件人</th>
+                  <th>电话</th>
+                  <th>取件码</th>
+                  <th>位置</th>
+                  <th>状态</th>
+                  <th>入库时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in searchResults" :key="item.id">
+                  <td>{{ item.trackingNumber }}</td>
+                  <td>{{ item.receiverName || '-' }}</td>
+                  <td>{{ item.receiverPhone || '-' }}</td>
+                  <td><span class="pickup-code">{{ item.pickupCode || '-' }}</span></td>
+                  <td>{{ item.area }}区-{{ item.shelf }}号货架-{{ item.position }}</td>
+                  <td>
+                    <span :class="['status-badge', item.isSigned === 1 ? 'signed' : 'waiting']">
+                      {{ item.isSigned === 1 ? '已取件' : '待取件' }}
+                    </span>
+                  </td>
+                  <td>{{ formatTime(item.createTime) }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div class="info-item">
-            <span class="label">详细地址</span>
-            <span class="value">{{ warehouseInfo.address }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">联系电话</span>
-            <span class="value">{{ warehouseInfo.phone }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">营业时间</span>
-            <span class="value">{{ warehouseInfo.businessHours }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">负责人</span>
-            <span class="value">{{ warehouseInfo.manager }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">创建时间</span>
-            <span class="value">{{ warehouseInfo.createTime }}</span>
-          </div>
+        </div>
+        <div class="no-results" v-else-if="hasSearched">
+          <p>未找到符合条件的快递</p>
         </div>
       </div>
 
@@ -132,85 +171,7 @@
         </div>
       </div>
 
-      <!-- 近期数据趋势 -->
-      <div class="trend-section">
-        <h2><img src="@/assets/icons/8.png" alt="" class="title-icon" />近7天数据趋势</h2>
-        <div class="trend-table">
-          <table>
-            <thead>
-              <tr>
-                <th>日期</th>
-                <th>入库量</th>
-                <th>出库量</th>
-                <th>在库量</th>
-                <th>使用率</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in trendData" :key="item.date">
-                <td>{{ item.date }}</td>
-                <td class="num-cell">+{{ item.inCount }}</td>
-                <td class="num-cell">-{{ item.outCount }}</td>
-                <td class="num-cell">{{ item.stockCount }}</td>
-                <td>
-                  <div class="mini-bar">
-                    <div class="mini-fill" :style="{ width: item.usageRate + '%' }"></div>
-                  </div>
-                  <span>{{ item.usageRate }}%</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      <!-- 编辑信息弹窗 -->
-      <div class="modal" v-if="showEditInfo" @click="showEditInfo = false">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h3>编辑仓库信息</h3>
-            <button class="close-btn" @click="showEditInfo = false">×</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>仓库名称</label>
-              <input type="text" v-model="editForm.name">
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>仓库编号</label>
-                <input type="text" v-model="editForm.code" disabled>
-              </div>
-              <div class="form-group">
-                <label>所属校区</label>
-                <input type="text" v-model="editForm.campus">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>详细地址</label>
-              <input type="text" v-model="editForm.address">
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>联系电话</label>
-                <input type="text" v-model="editForm.phone">
-              </div>
-              <div class="form-group">
-                <label>负责人</label>
-                <input type="text" v-model="editForm.manager">
-              </div>
-            </div>
-            <div class="form-group">
-              <label>营业时间</label>
-              <input type="text" v-model="editForm.businessHours" placeholder="如：08:00-21:00">
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn-cancel" @click="showEditInfo = false">取消</button>
-            <button class="btn-submit" @click="saveInfo">保存</button>
-          </div>
-        </div>
-      </div>
     </div>
   </AdminLayout>
 </template>
@@ -221,18 +182,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
 import { searchStorage, type StationStorage } from '@/api/admin/stationStorage'
 
-const { success, error } = useToast()
-
-interface WarehouseInfo {
-  name: string
-  code: string
-  campus: string
-  address: string
-  phone: string
-  businessHours: string
-  manager: string
-  createTime: string
-}
+const { error } = useToast()
 
 interface ZoneCapacity {
   id: number
@@ -244,46 +194,25 @@ interface ZoneCapacity {
   status: string
 }
 
-interface TrendItem {
-  date: string
-  inCount: number
-  outCount: number
-  stockCount: number
-  usageRate: number
-}
-
-const showEditInfo = ref(false)
 const storageList = ref<StationStorage[]>([])
 const loading = ref(false)
+const searchResults = ref<StationStorage[]>([])
+const hasSearched = ref(false)
+
+// 搜索表单
+const searchForm = reactive({
+  area: '',
+  shelf: '',
+  position: '',
+  receiverName: '',
+  receiverPhone: ''
+})
 
 // 货架配置常量
 const AREAS = ['A', 'B', 'C', 'D'] // 固定4个区域
 const SHELVES_PER_AREA = 10 // 每个区域10个货架
 const MAX_CAPACITY_PER_SHELF = 50 // 每个货架最大容量50件
 const TOTAL_CAPACITY = AREAS.length * SHELVES_PER_AREA * MAX_CAPACITY_PER_SHELF // 总容量 = 2000件
-
-// 仓库基本信息
-const warehouseInfo = reactive<WarehouseInfo>({
-  name: '东校区快递驿站',
-  code: 'WH-EAST-001',
-  campus: '东校区',
-  address: '东校区学生生活区A栋1楼',
-  phone: '010-12345678',
-  businessHours: '08:00 - 21:00',
-  manager: '张管理员',
-  createTime: '2024-01-01'
-})
-
-// 编辑表单
-const editForm = reactive({
-  name: warehouseInfo.name,
-  code: warehouseInfo.code,
-  campus: warehouseInfo.campus,
-  address: warehouseInfo.address,
-  phone: warehouseInfo.phone,
-  businessHours: warehouseInfo.businessHours,
-  manager: warehouseInfo.manager
-})
 
 // 加载仓库数据
 const loadWarehouseData = async () => {
@@ -367,16 +296,49 @@ const zoneCapacities = computed<ZoneCapacity[]>(() => {
   })
 })
 
-// 近7天趋势数据（模拟数据，需要后端提供历史统计接口）
-const trendData = ref<TrendItem[]>([
-  { date: '01-13', inCount: 42, outCount: 38, stockCount: 352, usageRate: 70 },
-  { date: '01-14', inCount: 55, outCount: 41, stockCount: 366, usageRate: 73 },
-  { date: '01-15', inCount: 38, outCount: 45, stockCount: 359, usageRate: 72 },
-  { date: '01-16', inCount: 48, outCount: 52, stockCount: 355, usageRate: 71 },
-  { date: '01-17', inCount: 61, outCount: 44, stockCount: 372, usageRate: 74 },
-  { date: '01-18', inCount: 40, outCount: 36, stockCount: 376, usageRate: 75 },
-  { date: '01-19', inCount: 45, outCount: 32, stockCount: 356, usageRate: 71 },
-])
+// 搜索功能
+const handleSearch = async () => {
+  loading.value = true
+  hasSearched.value = true
+  try {
+    const params: any = {}
+    if (searchForm.area) params.area = searchForm.area
+    if (searchForm.shelf) params.shelf = searchForm.shelf
+    if (searchForm.position) params.position = searchForm.position
+    if (searchForm.receiverName) params.receiverName = searchForm.receiverName
+    if (searchForm.receiverPhone) params.receiverPhone = searchForm.receiverPhone
+    
+    searchResults.value = await searchStorage(params)
+  } catch (e) {
+    error('搜索失败')
+    searchResults.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+// 重置搜索
+const resetSearch = () => {
+  searchForm.area = ''
+  searchForm.shelf = ''
+  searchForm.position = ''
+  searchForm.receiverName = ''
+  searchForm.receiverPhone = ''
+  searchResults.value = []
+  hasSearched.value = false
+}
+
+// 格式化时间
+const formatTime = (time?: string) => {
+  if (!time) return '-'
+  const date = new Date(time)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
 
 onMounted(() => {
   loadWarehouseData()
@@ -389,12 +351,6 @@ const getZoneStatusLabel = (status: string) => {
     'warning': '紧张'
   }
   return labels[status] || '未知'
-}
-
-const saveInfo = () => {
-  Object.assign(warehouseInfo, editForm)
-  showEditInfo.value = false
-  success('保存成功（模拟）')
 }
 </script>
 
@@ -435,7 +391,7 @@ h2 {
   vertical-align: middle;
 }
 
-.info-card {
+.search-card {
   background: white;
   border-radius: 16px;
   padding: 24px;
@@ -454,43 +410,134 @@ h2 {
   margin-bottom: 0;
 }
 
-.btn-edit {
+.btn-reset {
   padding: 8px 16px;
   background: white;
-  color: #808080;
-  border: 1px solid #808080;
+  color: #666;
+  border: 1px solid #e0e0e0;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
 }
 
-.btn-edit:hover {
+.btn-reset:hover {
+  background: #f5f5f5;
+}
+
+.search-form {
+  margin-bottom: 24px;
+}
+
+.search-form .form-group {
+  flex: 1;
+}
+
+.search-form label {
+  display: block;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.search-form input,
+.search-form select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.btn-search {
+  width: 100%;
+  margin-top: 28px;
+  padding: 10px 24px;
   background: #808080;
   color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+.btn-search:hover {
+  background: #666666;
 }
 
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.search-results {
+  margin-top: 24px;
 }
 
-.info-item .label {
-  font-size: 13px;
-  color: #999;
+.search-results h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 16px;
 }
 
-.info-item .value {
-  font-size: 15px;
+.results-table {
+  overflow-x: auto;
+}
+
+.results-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.results-table thead {
+  background: #f5f7fa;
+}
+
+.results-table th,
+.results-table td {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 14px;
+}
+
+.results-table th {
+  font-weight: 600;
+  color: #666;
+}
+
+.results-table td {
+  border-top: 1px solid #f0f0f0;
   color: #333;
+}
+
+.pickup-code {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: #808080;
+  background: #f5f5f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 500;
+}
+
+.status-badge.waiting {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.status-badge.signed {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px;
+  color: #999;
 }
 
 .stats-section {
@@ -696,192 +743,26 @@ h2 {
   color: #999;
 }
 
-.trend-section {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.trend-table {
-  overflow-x: auto;
-}
-
-.trend-table table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.trend-table thead {
-  background: #f5f7fa;
-}
-
-.trend-table th,
-.trend-table td {
-  padding: 14px 16px;
-  text-align: left;
-  font-size: 14px;
-}
-
-.trend-table th {
-  font-weight: 600;
-  color: #666;
-}
-
-.trend-table td {
-  border-top: 1px solid #f0f0f0;
-  color: #333;
-}
-
-.num-cell {
-  font-family: 'Courier New', monospace;
-  font-weight: 500;
-}
-
-.mini-bar {
-  width: 60px;
-  height: 6px;
-  background: #e0e0e0;
-  border-radius: 3px;
-  overflow: hidden;
-  display: inline-block;
-  vertical-align: middle;
-  margin-right: 8px;
-}
-
-.mini-fill {
-  height: 100%;
-  background: #52c41a;
-}
-
-/* Modal Styles */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 600px;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: #f5f5f5;
-  border-radius: 50%;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid #f0f0f0;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  color: #333;
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.form-group input:disabled {
-  background: #f5f5f5;
-  color: #999;
-}
-
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-}
-
-.btn-cancel, .btn-submit {
-  padding: 10px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel {
-  background: white;
-  color: #666;
-  border: 1px solid #e0e0e0;
-}
-
-.btn-submit {
-  background: #808080;
-  color: white;
-  border: none;
-}
-
-.btn-submit:hover {
-  background: #666666;
+  margin-bottom: 16px;
 }
 
 @media (max-width: 1200px) {
-  .info-grid,
   .capacity-cards,
   .zone-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .form-row {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .info-grid,
   .capacity-cards,
-  .zone-cards {
-    grid-template-columns: 1fr;
-  }
+  .zone-cards,
   .form-row {
     grid-template-columns: 1fr;
   }
