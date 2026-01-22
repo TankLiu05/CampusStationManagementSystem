@@ -38,15 +38,18 @@ public class AdminParcelController {
     private final SysUserService sysUserService;
     private final SysAdminService sysAdminService;
     private final AdminRoleScopeService adminRoleScopeService;
+    private final com.campus.station.service.StationStorageService stationStorageService;
 
     public AdminParcelController(ParcelService service,
                                  SysUserService sysUserService,
                                  SysAdminService sysAdminService,
-                                 AdminRoleScopeService adminRoleScopeService) {
+                                 AdminRoleScopeService adminRoleScopeService,
+                                 com.campus.station.service.StationStorageService stationStorageService) {
         this.service = service;
         this.sysUserService = sysUserService;
         this.sysAdminService = sysAdminService;
         this.adminRoleScopeService = adminRoleScopeService;
+        this.stationStorageService = stationStorageService;
     }
 
     private SysAdmin requireCurrentAdmin() {
@@ -134,6 +137,10 @@ public class AdminParcelController {
                     update.setStatus(2);
                     update.setIsSigned(null);
                     Parcel updated = service.update(id, update);
+                    
+                    // Explicitly sync to warehouse storage
+                    stationStorageService.syncFromParcel(updated);
+                    
                     return ResponseEntity.ok(updated);
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
