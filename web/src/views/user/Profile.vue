@@ -560,14 +560,14 @@ const handleSetDefault = async (id: number) => {
 
 .profile-container {
   display: grid;
-  gap: 24px;
+  gap: 10px;
 }
 
 .info-card,
 .security-card,
 .address-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   overflow: hidden;
 }
@@ -602,8 +602,8 @@ const handleSetDefault = async (id: number) => {
 .edit-btn:hover,
 .save-btn:hover,
 .cancel-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #a8c4a2;
+  color: #a8c4a2;
 }
 
 .edit-actions {
@@ -724,8 +724,8 @@ const handleSetDefault = async (id: number) => {
 }
 
 .action-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #a8c4a2;
+  color: #a8c4a2;
 }
 
 /* 添加地址按钮 */
@@ -741,8 +741,8 @@ const handleSetDefault = async (id: number) => {
 }
 
 .add-btn:hover {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #a8c4a2;
+  color: #a8c4a2;
 }
 
 /* 地址列表 */
@@ -763,8 +763,8 @@ const handleSetDefault = async (id: number) => {
 }
 
 .address-item.is-default {
-  border-color: #10b981;
-  background: #f0fdf4;
+  border-color: #a8c4a2;
+  background: #f5f5f0;
 }
 
 .address-info {
@@ -799,7 +799,7 @@ const handleSetDefault = async (id: number) => {
 .default-tag {
   display: inline-block;
   padding: 2px 8px;
-  background: #10b981;
+  background: #a8c4a2;
   color: white;
   font-size: 12px;
   border-radius: 4px;
@@ -814,7 +814,7 @@ const handleSetDefault = async (id: number) => {
 .action-link {
   background: none;
   border: none;
-  color: #10b981;
+  color: #2196F3;
   font-size: 13px;
   cursor: pointer;
   padding: 0;
@@ -824,12 +824,20 @@ const handleSetDefault = async (id: number) => {
   text-decoration: underline;
 }
 
+.action-link:first-child {
+  color: #4CAF50;
+}
+
+.action-link:first-child:hover {
+  color: #45a049;
+}
+
 .action-link.delete {
-  color: #ef4444;
+  color: #f44336;
 }
 
 .action-link.delete:hover {
-  color: #dc2626;
+  color: #d32f2f;
 }
 
 /* 复选框样式 */
@@ -987,8 +995,8 @@ const handleSetDefault = async (id: number) => {
 
 .btn-cancel:hover,
 .btn-submit:hover {
-  border-color: #10b981;
-  color: #10b981;
+  border-color: #a8c4a2;
+  color: #a8c4a2;
 }
 
 @media (max-width: 768px) {

@@ -16,14 +16,6 @@
             class="search-input"
             @keyup.enter="searchMessages"
           >
-          <select v-model="filterType" class="filter-select">
-            <option value="">全部类型</option>
-            <option value="feedback">意见反馈</option>
-            <option value="complaint">投诉建议</option>
-            <option value="inquiry">咨询问题</option>
-            <option value="praise">表扬感谢</option>
-            <option value="other">其他</option>
-          </select>
           <select v-model="filterStatus" class="filter-select">
             <option value="">全部状态</option>
             <option value="pending">待回复</option>
@@ -32,9 +24,6 @@
           </select>
           <button class="search-btn" @click="searchMessages">搜索</button>
           <button class="reset-btn" @click="resetFilters">重置</button>
-        </div>
-        <div class="action-buttons">
-          <button class="btn-secondary" @click="exportMessages">导出数据</button>
         </div>
       </div>
 
@@ -56,15 +45,6 @@
           <div class="stat-content">
             <div class="stat-value">{{ stats.replied }}</div>
             <div class="stat-label">已回复</div>
-          </div>
-        </div>
-        <div class="stat-card" @click="filterType = 'complaint'; loadMessages()">
-          <div class="stat-icon complaint">
-            <img src="@/assets/icons/9.png" alt="投诉待处理" class="icon-img" />
-          </div>
-          <div class="stat-content">
-            <div class="stat-value">{{ stats.complaints }}</div>
-            <div class="stat-label">投诉待处理</div>
           </div>
         </div>
         <div class="stat-card">
@@ -90,7 +70,6 @@
               </div>
             </div>
             <div class="message-meta">
-              <span :class="['type-tag', message.type]">{{ getTypeLabel(message.type) }}</span>
               <span :class="['status-badge', message.status]">{{ getStatusLabel(message.status) }}</span>
             </div>
           </div>
@@ -161,12 +140,6 @@
                 <div class="detail-item">
                   <span class="label">联系电话：</span>
                   <span class="value">{{ currentMessage?.userPhone }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="label">留言类型：</span>
-                  <span :class="['type-tag', currentMessage?.type]">
-                    {{ getTypeLabel(currentMessage?.type) }}
-                  </span>
                 </div>
                 <div class="detail-item">
                   <span class="label">当前状态：</span>
@@ -274,7 +247,6 @@ interface Message {
   id: number
   userName: string
   userPhone: string
-  type: string
   content: string
   images?: string[]
   status: string
@@ -284,7 +256,6 @@ interface Message {
 }
 
 const searchKeyword = ref('')
-const filterType = ref('')
 const filterStatus = ref('')
 const currentPage = ref(0) // 后端分页从0开始
 const totalPages = ref(0)
@@ -300,7 +271,6 @@ const replyContent = ref('')
 const stats = reactive({
   pending: 12,
   replied: 45,
-  complaints: 3,
   todayNew: 8
 })
 
@@ -320,7 +290,6 @@ const convertApiToMessage = (apiMsg: ApiMessage): Message => {
     id: apiMsg.id,
     userName: apiMsg.username || '未知用户',
     userPhone: apiMsg.phone || '未提供',
-    type: 'feedback', // 后端没有type字段,统一设为feedback
     content: apiMsg.content,
     status: apiMsg.status === 0 ? 'pending' : 'replied',
     createTime: apiMsg.createTime,
@@ -358,8 +327,7 @@ const updateStats = async () => {
     const repliedRes = await getMessageList(0, 1, 1)
     stats.replied = repliedRes.totalElements
     
-    // 投诉和今日新增暂时使用模拟数据,后端可能需要额外接口
-    stats.complaints = 0
+    // 今日新增暂时使用模拟数据,后端可能需要额外接口
     stats.todayNew = 0
   } catch (error) {
     console.error('更新统计数据失败', error)
@@ -372,9 +340,6 @@ onMounted(() => {
 
 const filteredMessages = computed(() => {
   let result = messageList.value
-  if (filterType.value) {
-    result = result.filter(m => m.type === filterType.value)
-  }
   if (filterStatus.value) {
     result = result.filter(m => m.status === filterStatus.value)
   }
@@ -387,17 +352,6 @@ const filteredMessages = computed(() => {
   }
   return result
 })
-
-const getTypeLabel = (type?: string) => {
-  const labels: Record<string, string> = {
-    'feedback': '意见反馈',
-    'complaint': '投诉建议',
-    'inquiry': '咨询问题',
-    'praise': '表扬感谢',
-    'other': '其他'
-  }
-  return labels[type || ''] || '未知'
-}
 
 const getStatusLabel = (status?: string) => {
   const labels: Record<string, string> = {
@@ -415,7 +369,6 @@ const searchMessages = () => {
 
 const resetFilters = () => {
   searchKeyword.value = ''
-  filterType.value = ''
   filterStatus.value = ''
   currentPage.value = 0
   loadMessages()
@@ -567,11 +520,6 @@ const exportMessages = () => {
   border: 1px solid #e0e0e0;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 12px;
-}
-
 .btn-secondary {
   padding: 10px 20px;
   border-radius: 8px;
@@ -585,7 +533,7 @@ const exportMessages = () => {
 
 .stats-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   margin-bottom: 20px;
 }
@@ -654,13 +602,13 @@ const exportMessages = () => {
 .messages-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .message-card {
   background: white;
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
@@ -711,38 +659,6 @@ const exportMessages = () => {
   display: flex;
   gap: 10px;
   align-items: center;
-}
-
-.type-tag {
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.type-tag.feedback {
-  background: #e6f7ff;
-  color: #1890ff;
-}
-
-.type-tag.complaint {
-  background: #fff1f0;
-  color: #f5222d;
-}
-
-.type-tag.inquiry {
-  background: #fff7e6;
-  color: #fa8c16;
-}
-
-.type-tag.praise {
-  background: #f6ffed;
-  color: #52c41a;
-}
-
-.type-tag.other {
-  background: #f0f0f0;
-  color: #666;
 }
 
 .status-badge {
@@ -914,14 +830,14 @@ const exportMessages = () => {
 }
 
 .pagination {
-  padding: 20px;
+  padding: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 10px;
   background: white;
-  border-radius: 12px;
-  margin-top: 16px;
+  border-radius: 10px;
+  margin-top: 5px;
 }
 
 .page-btn {

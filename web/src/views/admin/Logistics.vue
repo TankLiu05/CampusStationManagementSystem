@@ -38,7 +38,6 @@
         </div>
         <div class="action-buttons">
           <button class="btn-primary" @click="showAddRoute = true">添加物流信息</button>
-          <button class="btn-secondary" @click="batchUpdateEta">批量更新ETA</button>
         </div>
       </div>
 
@@ -123,7 +122,6 @@
                 <div class="action-btns">
                   <button class="btn-view" @click="viewLogistics(item)">轨迹</button>
                   <button class="btn-edit" :disabled="!!item.pickupCode" :class="{ disabled: !!item.pickupCode }" @click="updateRoute(item)">更新</button>
-                  <button class="btn-refresh" @click="refreshLogistics(item)">刷新</button>
                 </div>
               </td>
             </tr>
@@ -549,10 +547,6 @@ const updateRoute = (item: LogisticsItem) => {
   showUpdateRoute.value = true
 }
 
-const refreshLogistics = (item: LogisticsItem) => {
-  info(`刷新物流信息：${item.trackingNumber}（模拟）`)
-}
-
 const submitRoute = async () => {
   if (!routeForm.trackingNumber || !routeForm.currentStation) {
     warning('请填写快递单号和当前站点')
@@ -609,10 +603,6 @@ const submitUpdate = async () => {
   } catch (error: any) {
     showError(error.message || '更新失败')
   }
-}
-
-const batchUpdateEta = () => {
-  info('批量更新ETA功能开发中')
 }
 
 // 监听分页变化
@@ -733,12 +723,6 @@ onMounted(async () => {
 
 .btn-primary:hover {
   background: #666666;
-}
-
-.btn-secondary {
-  background: white;
-  color: #333;
-  border: 1px solid #e0e0e0;
 }
 
 .stats-cards {
@@ -930,17 +914,6 @@ td {
 .btn-edit.disabled:hover {
   background: white;
   color: #d9d9d9;
-}
-
-.btn-refresh {
-  background: white;
-  color: #52c41a;
-  border: 1px solid #52c41a;
-}
-
-.btn-refresh:hover {
-  background: #52c41a;
-  color: white;
 }
 
 .pagination {

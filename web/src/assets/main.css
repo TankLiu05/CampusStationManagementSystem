@@ -1,5 +1,22 @@
 @import './base.css';
 
+/* 全局移除按钮和输入框的 outline */
+button,
+input,
+select,
+textarea,
+a {
+  outline: none;
+}
+
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+a:focus {
+  outline: none;
+}
+
 #app {
   width: 100%;
   min-height: 100vh;

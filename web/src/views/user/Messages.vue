@@ -732,7 +732,7 @@ const submitMessage = async () => {
 }
 
 .waiting-reply {
-  background: #fffbe6;
+  background: #f5f0e8;
   padding: 16px;
   border-radius: 8px;
   text-align: center;
@@ -740,7 +740,7 @@ const submitMessage = async () => {
 
 .waiting-reply p {
   font-size: 14px;
-  color: #fa8c16;
+  color: #b8a089;
   margin: 0;
 }
 

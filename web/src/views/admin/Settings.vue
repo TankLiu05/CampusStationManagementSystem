@@ -272,13 +272,13 @@ const changePassword = async () => {
 
 .settings-container {
   display: grid;
-  gap: 24px;
+  gap: 10px;
 }
 
 .info-card,
 .security-card {
   background: white;
-  border-radius: 12px;
+  border-radius: 5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   overflow: hidden;
 }

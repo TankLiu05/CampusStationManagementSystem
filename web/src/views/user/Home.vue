@@ -254,7 +254,7 @@ const truncateContent = (content: string, maxLen = 80) => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
-  margin-bottom: 40px;
+  margin-bottom: 20px;
 }
 
 /* 公告走马灯 */
@@ -360,7 +360,7 @@ const truncateContent = (content: string, maxLen = 80) => {
 .detail-sections {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 20px;
   margin-top: 20px;
 }
 

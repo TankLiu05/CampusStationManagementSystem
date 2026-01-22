@@ -95,8 +95,7 @@
             <div class="warehouse-basic">
               <div class="warehouse-name">{{ warehouseInfo.name }}</div>
               <div class="warehouse-address">{{ warehouseInfo.address }}</div>
-              <div class="warehouse-meta">
-                <span>营业时间：{{ warehouseInfo.businessHours }}</span>
+              <div class="warehouse-meta" v-if="warehouseInfo.phone !== '暂无联系方式'">
                 <span>联系电话：{{ warehouseInfo.phone }}</span>
               </div>
             </div>
@@ -143,9 +142,11 @@ import { getUserList } from '@/api/admin/user'
 import { getAdminProfile } from '@/api/admin/profile'
 import type { UserProfile } from '@/api/admin/profile'
 import { searchStorage, type StationStorage } from '@/api/admin/stationStorage'
+import { getCurrentAdminDetail, type AdminDetail } from '@/api/admin/management'
 
 const router = useRouter()
 const currentUser = ref<UserProfile | null>(null)
+const currentAdmin = ref<AdminDetail | null>(null)
 const userCount = ref(0)
 const parcelCount = ref(0)
 const signedCount = ref(0)
@@ -158,12 +159,30 @@ const SHELVES_PER_AREA = 10
 const MAX_CAPACITY_PER_SHELF = 50
 const TOTAL_CAPACITY = AREAS.length * SHELVES_PER_AREA * MAX_CAPACITY_PER_SHELF // 2000件
 
-// 仓库基本信息
-const warehouseInfo = reactive({
-  name: '东校区快递驿站',
-  address: '东校区学生生活区A栋1楼',
-  phone: '010-12345678',
-  businessHours: '08:00 - 21:00'
+// 仓库基本信息（基于当前管理员站点）
+const warehouseInfo = computed(() => {
+  if (!currentAdmin.value) {
+    return {
+      name: '快递驿站',
+      address: '暂无地址信息',
+      phone: '暂无联系方式'
+    }
+  }
+  
+  const parts = [
+    currentAdmin.value.province,
+    currentAdmin.value.city,
+    currentAdmin.value.station
+  ].filter(Boolean)
+  
+  const stationName = parts.length > 0 ? parts.join('') : '快递驿站'
+  const stationAddress = parts.length > 0 ? parts.join('') : '暂无地址信息'
+  
+  return {
+    name: stationName,
+    address: stationAddress,
+    phone: currentAdmin.value.phone || '暂无联系方式'
+  }
 })
 
 // 容量统计（基于实际数据计算）
@@ -218,6 +237,7 @@ const handleNavigate = (path: string) => {
 onMounted(async () => {
   try {
     currentUser.value = await getAdminProfile()
+    currentAdmin.value = await getCurrentAdminDetail()
 
     // 加载统计数据
     loadStatistics()

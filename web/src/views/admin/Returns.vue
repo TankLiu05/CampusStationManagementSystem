@@ -25,9 +25,6 @@
           <button class="search-btn" @click="searchReturns">搜索</button>
           <button class="reset-btn" @click="resetFilters">重置</button>
         </div>
-        <div class="action-buttons">
-          <button class="btn-secondary" @click="exportData">导出数据</button>
-        </div>
       </div>
 
       <!-- 统计卡片 -->
@@ -64,7 +61,7 @@
             <img src="@/assets/icons/17.png" alt="全部" class="icon-img" />
           </div>
           <div class="stat-content">
-            <div class="stat-value">{{ totalElements }}</div>
+            <div class="stat-value">{{ stats.total }}</div>
             <div class="stat-label">全部</div>
           </div>
         </div>
@@ -264,7 +261,8 @@ const currentReturn = ref<ReturnRequest | null>(null)
 const stats = reactive({
   pending: 0,
   approved: 0,
-  rejected: 0
+  rejected: 0,
+  total: 0  // 新增总数统计
 })
 
 // 退货申请列表
@@ -303,8 +301,8 @@ const loadReturnRequests = async () => {
     totalPages.value = response.totalPages
     totalElements.value = response.totalElements
     
-    // 更新统计数据
-    updateStats()
+    // 更新统计数据（独立获取，不受筛选影响）
+    await updateStats()
   } catch (err: any) {
     // 处理特殊错误：数据库唯一性约束冲突
     if (err.message && err.message.includes('Query did not return a unique result')) {
@@ -335,11 +333,24 @@ const loadReturnRequests = async () => {
   }
 }
 
-// 更新统计数据
-const updateStats = () => {
-  stats.pending = returnList.value.filter(r => r.status === 0).length
-  stats.approved = returnList.value.filter(r => r.status === 1).length
-  stats.rejected = returnList.value.filter(r => r.status === 2).length
+// 更新统计数据（独立获取所有状态的数量，不受当前筛选影响）
+const updateStats = async () => {
+  try {
+    // 分别获取各状态的数量
+    const [pendingRes, approvedRes, rejectedRes, allRes] = await Promise.all([
+      getReturnRequestList(0, 1, 0),  // 待审核
+      getReturnRequestList(0, 1, 1),  // 已同意
+      getReturnRequestList(0, 1, 2),  // 已拒绝
+      getReturnRequestList(0, 1)      // 全部
+    ])
+    
+    stats.pending = pendingRes.totalElements
+    stats.approved = approvedRes.totalElements
+    stats.rejected = rejectedRes.totalElements
+    stats.total = allRes.totalElements
+  } catch (err) {
+    console.error('更新统计数据失败:', err)
+  }
 }
 
 const searchReturns = () => {
@@ -410,10 +421,6 @@ const confirmProcess = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const exportData = () => {
-  info('导出功能开发中')
 }
 
 // 页面加载时获取数据
@@ -504,11 +511,6 @@ onMounted(() => {
   border: 1px solid #e0e0e0;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 12px;
-}
-
 .btn-primary, .btn-secondary {
   padding: 10px 20px;
   border-radius: 8px;
@@ -525,12 +527,6 @@ onMounted(() => {
 
 .btn-primary:hover {
   background: #666666;
-}
-
-.btn-secondary {
-  background: white;
-  color: #333;
-  border: 1px solid #e0e0e0;
 }
 
 .stats-cards {
@@ -572,19 +568,11 @@ onMounted(() => {
   object-fit: contain;
 }
 
-.stat-icon.pending {
-  background: #f5f5f5;
-}
-
-.stat-icon.processing {
-  background: #f5f5f5;
-}
-
-.stat-icon.approved {
-  background: #f5f5f5;
-}
-
-.stat-icon.completed {
+.stat-icon.pending,
+.stat-icon.processing,
+.stat-icon.approved,
+.stat-icon.completed,
+.stat-icon.rejected {
   background: #f5f5f5;
 }
 
