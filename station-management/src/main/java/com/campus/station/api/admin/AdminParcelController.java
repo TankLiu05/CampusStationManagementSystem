@@ -95,6 +95,9 @@ public class AdminParcelController {
         if (req.getIsSigned() != null) {
             parcel.setIsSigned(req.getIsSigned());
         }
+        if (req.getIsReturned() != null) {
+            parcel.setIsReturned(req.getIsReturned());
+        }
 
         Parcel created = service.create(parcel);
         return ResponseEntity.ok(created);

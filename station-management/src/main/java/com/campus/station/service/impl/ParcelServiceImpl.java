@@ -134,6 +134,9 @@ public class ParcelServiceImpl implements ParcelService {
             existing.setIsSigned(update.getIsSigned());
             stationStorageService.updateSignStatus(existing.getTrackingNumber(), update.getIsSigned());
         }
+        if (update.getIsReturned() != null) {
+            existing.setIsReturned(update.getIsReturned());
+        }
 
         Parcel saved = repository.save(existing);
         

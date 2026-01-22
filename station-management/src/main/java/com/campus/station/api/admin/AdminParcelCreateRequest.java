@@ -11,6 +11,7 @@ public class AdminParcelCreateRequest {
     private String destination;
     private Integer status;
     private Integer isSigned;
+    private Integer isReturned;
 
     public String getTrackingNumber() {
         return trackingNumber;
@@ -82,6 +83,14 @@ public class AdminParcelCreateRequest {
 
     public void setIsSigned(Integer isSigned) {
         this.isSigned = isSigned;
+    }
+
+    public Integer getIsReturned() {
+        return isReturned;
+    }
+
+    public void setIsReturned(Integer isReturned) {
+        this.isReturned = isReturned;
     }
 }
 

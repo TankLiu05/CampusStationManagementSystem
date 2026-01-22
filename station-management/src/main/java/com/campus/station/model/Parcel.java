@@ -46,6 +46,12 @@ public class Parcel {
     @Column(name = "is_signed")
     private Integer isSigned = 0;
 
+    /**
+     * 0: 未退货, 1: 已退货
+     */
+    @Column(name = "is_returned")
+    private Integer isReturned = 0;
+
     @CreationTimestamp
     @Column(name = "create_time", nullable = false, updatable = false)
     private LocalDateTime createTime;
@@ -148,6 +154,14 @@ public class Parcel {
 
     public void setIsSigned(Integer isSigned) {
         this.isSigned = isSigned;
+    }
+
+    public Integer getIsReturned() {
+        return isReturned != null ? isReturned : 0;
+    }
+
+    public void setIsReturned(Integer isReturned) {
+        this.isReturned = isReturned;
     }
 
     public LocalDateTime getCreateTime() {
