@@ -30,5 +30,10 @@ public class ParcelRouteServiceImpl implements ParcelRouteService {
         existing.setEtaDelivered(etaDelivered);
         return repository.save(existing);
     }
+
+    @Override
+    public java.util.List<ParcelRoute> listByTrackingNumber(String trackingNumber) {
+        return repository.findByTrackingNumberOrderByCreateTimeAsc(trackingNumber);
+    }
 }
 

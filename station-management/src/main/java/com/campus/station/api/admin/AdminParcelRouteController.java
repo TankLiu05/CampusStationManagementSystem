@@ -1,9 +1,11 @@
 package com.campus.station.api.admin;
 
 import com.campus.station.common.SessionUtil;
+import com.campus.station.model.AdminRoleScope;
 import com.campus.station.model.Parcel;
 import com.campus.station.model.ParcelRoute;
 import com.campus.station.model.SysAdmin;
+import com.campus.station.service.AdminRoleScopeService;
 import com.campus.station.service.ParcelRouteService;
 import com.campus.station.service.ParcelService;
 import com.campus.station.service.SysAdminService;
@@ -28,10 +30,33 @@ public class AdminParcelRouteController {
     private final ParcelService parcelService;
     private final SysAdminService sysAdminService;
 
-    public AdminParcelRouteController(ParcelRouteService parcelRouteService, ParcelService parcelService, SysAdminService sysAdminService) {
+    private final AdminRoleScopeService adminRoleScopeService;
+
+    public AdminParcelRouteController(ParcelRouteService parcelRouteService, ParcelService parcelService, SysAdminService sysAdminService, AdminRoleScopeService adminRoleScopeService) {
         this.parcelRouteService = parcelRouteService;
         this.parcelService = parcelService;
         this.sysAdminService = sysAdminService;
+        this.adminRoleScopeService = adminRoleScopeService;
+    }
+
+    @org.springframework.web.bind.annotation.GetMapping("/tracking/{trackingNumber}")
+    @Operation(summary = "根据快递单号查询流转记录")
+    public ResponseEntity<?> getByTrackingNumber(@PathVariable String trackingNumber) {
+        AdminRoleScope scope = requireCurrentAdminScope();
+        
+        Parcel parcel = parcelService.getByTrackingNumber(trackingNumber)
+                .orElse(null);
+        if (parcel == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("快递不存在");
+        }
+        
+        // Check visibility
+        if (!parcelService.isParcelVisibleForScope(scope, parcel)) {
+             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无权查看该快递的流转记录");
+        }
+        
+        java.util.List<ParcelRoute> routes = parcelRouteService.listByTrackingNumber(trackingNumber);
+        return ResponseEntity.ok(routes);
     }
 
     private SysAdmin requireAdmin() {
@@ -40,6 +65,12 @@ public class AdminParcelRouteController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员未登录");
         }
         return current;
+    }
+
+    private AdminRoleScope requireCurrentAdminScope() {
+        SysAdmin admin = requireAdmin();
+        return adminRoleScopeService.getByAdminId(admin.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "管理员角色未配置"));
     }
 
     @PostMapping

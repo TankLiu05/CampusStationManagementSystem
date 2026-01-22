@@ -17,9 +17,11 @@ import org.springframework.web.bind.annotation.*;
 public class UserParcelController {
 
     private final ParcelService service;
+    private final com.campus.station.service.ParcelRouteService parcelRouteService;
 
-    public UserParcelController(ParcelService service) {
+    public UserParcelController(ParcelService service, com.campus.station.service.ParcelRouteService parcelRouteService) {
         this.service = service;
+        this.parcelRouteService = parcelRouteService;
     }
 
     @GetMapping
@@ -62,5 +64,46 @@ public class UserParcelController {
                     return ResponseEntity.ok((Object) parcel);
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/tracking/{trackingNumber}/routes")
+    @Operation(summary = "查询快递流转记录")
+    public ResponseEntity<?> getRoutesByTrackingNumber(@PathVariable String trackingNumber) {
+        // Allow public access or restricted to logged-in user?
+        // Requirement: "User side can see full process"
+        // Assuming user needs to be logged in to access API, but maybe strict ownership check is not required for routes if they have the tracking number?
+        // However, usually tracking is public if you have the number.
+        // But for safety let's check login.
+        
+        // If strict ownership is needed:
+        /*
+        Long currentUserId = SessionUtil.getCurrentUserId();
+        if (currentUserId == null) {
+            return ResponseEntity.status(401).body("未登录");
+        }
+        // check ownership...
+        */
+
+        // For now, let's assume if they have the tracking number, they can see the routes (common practice), 
+        // OR we can enforce they must be the receiver.
+        // Given "User side can see full process", let's be permissive with tracking number query but maybe require login.
+        
+        // Let's implement strict check if user is receiver to be safe, or just login.
+        // Re-reading user request: "User side can see full process...".
+        // Let's assume login is required.
+        
+        Long currentUserId = SessionUtil.getCurrentUserId();
+        if (currentUserId == null) {
+            return ResponseEntity.status(401).body("未登录");
+        }
+        
+        // Optional: Check if parcel belongs to user. 
+        // If we want to allow querying ANY parcel by tracking number (like normal courier apps), we skip ownership check.
+        // If we want to restrict to "My Parcels", we check receiverId.
+        // User request: "User side can see full process".
+        // Usually tracking search is open. Let's keep it open for logged in users.
+        
+        java.util.List<com.campus.station.model.ParcelRoute> routes = parcelRouteService.listByTrackingNumber(trackingNumber);
+        return ResponseEntity.ok(routes);
     }
 }
