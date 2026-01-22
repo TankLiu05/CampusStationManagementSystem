@@ -216,11 +216,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
+import { searchStorage, type StationStorage } from '@/api/admin/stationStorage'
 
-const { success } = useToast()
+const { success, error } = useToast()
 
 interface WarehouseInfo {
   name: string
@@ -252,6 +253,14 @@ interface TrendItem {
 }
 
 const showEditInfo = ref(false)
+const storageList = ref<StationStorage[]>([])
+const loading = ref(false)
+
+// 货架配置常量
+const AREAS = ['A', 'B', 'C', 'D'] // 固定4个区域
+const SHELVES_PER_AREA = 10 // 每个区域10个货架
+const MAX_CAPACITY_PER_SHELF = 50 // 每个货架最大容量50件
+const TOTAL_CAPACITY = AREAS.length * SHELVES_PER_AREA * MAX_CAPACITY_PER_SHELF // 总容量 = 2000件
 
 // 仓库基本信息
 const warehouseInfo = reactive<WarehouseInfo>({
@@ -276,28 +285,89 @@ const editForm = reactive({
   manager: warehouseInfo.manager
 })
 
-// 容量统计
-const capacityStats = reactive({
-  totalCapacity: 500,
-  usedCapacity: 356,
-  remainCapacity: 144,
-  usageRate: 71,
-  todayIn: 45,
-  todayOut: 32,
-  todayInTrend: 12,
-  todayOutTrend: -8,
-  overdueParcels: 15
+// 加载仓库数据
+const loadWarehouseData = async () => {
+  loading.value = true
+  try {
+    storageList.value = await searchStorage()
+  } catch (e) {
+    error('加载仓库数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 容量统计（根据实际数据计算）
+const capacityStats = computed(() => {
+  const inStockList = storageList.value.filter(s => s.isSigned !== 1)
+  const usedCapacity = inStockList.length
+  const remainCapacity = TOTAL_CAPACITY - usedCapacity
+  const usageRate = Math.round((usedCapacity / TOTAL_CAPACITY) * 100)
+  
+  // 获取今天的日期（用于筛选今日数据）
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  const todayIn = storageList.value.filter(s => {
+    if (!s.createTime) return false
+    const createDate = new Date(s.createTime)
+    createDate.setHours(0, 0, 0, 0)
+    return createDate.getTime() === today.getTime()
+  }).length
+  
+  const todayOut = storageList.value.filter(s => {
+    if (!s.updateTime || s.isSigned !== 1) return false
+    const updateDate = new Date(s.updateTime)
+    updateDate.setHours(0, 0, 0, 0)
+    return updateDate.getTime() === today.getTime()
+  }).length
+  
+  // 计算滞留包裹（超过7天未取）
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const overdueParcels = inStockList.filter(s => {
+    if (!s.createTime) return false
+    return new Date(s.createTime) < sevenDaysAgo
+  }).length
+  
+  return {
+    totalCapacity: TOTAL_CAPACITY,
+    usedCapacity,
+    remainCapacity,
+    usageRate,
+    todayIn,
+    todayOut,
+    todayInTrend: 0, // 需要历史数据才能计算
+    todayOutTrend: 0, // 需要历史数据才能计算
+    overdueParcels
+  }
 })
 
-// 各区域容量
-const zoneCapacities = ref<ZoneCapacity[]>([
-  { id: 1, name: 'A区 - 普通件', totalSlots: 200, usedSlots: 156, usageRate: 78, shelfCount: 8, status: 'normal' },
-  { id: 2, name: 'B区 - 大件', totalSlots: 100, usedSlots: 98, usageRate: 98, shelfCount: 4, status: 'full' },
-  { id: 3, name: 'C区 - 贵重件', totalSlots: 120, usedSlots: 65, usageRate: 54, shelfCount: 6, status: 'normal' },
-  { id: 4, name: 'D区 - 临时件', totalSlots: 80, usedSlots: 37, usageRate: 46, shelfCount: 3, status: 'normal' },
-])
+// 各区域容量（根据实际数据计算）
+const zoneCapacities = computed<ZoneCapacity[]>(() => {
+  return AREAS.map((area, index) => {
+    const areaStorages = storageList.value.filter(s => s.area === area && s.isSigned !== 1)
+    const totalSlots = SHELVES_PER_AREA * MAX_CAPACITY_PER_SHELF
+    const usedSlots = areaStorages.length
+    const usageRate = Math.round((usedSlots / totalSlots) * 100)
+    
+    let status = 'normal'
+    if (usageRate >= 95) status = 'full'
+    else if (usageRate >= 80) status = 'warning'
+    
+    return {
+      id: index + 1,
+      name: `${area}区`,
+      totalSlots,
+      usedSlots,
+      usageRate,
+      shelfCount: SHELVES_PER_AREA,
+      status
+    }
+  })
+})
 
-// 近7天趋势数据
+// 近7天趋势数据（模拟数据，需要后端提供历史统计接口）
 const trendData = ref<TrendItem[]>([
   { date: '01-13', inCount: 42, outCount: 38, stockCount: 352, usageRate: 70 },
   { date: '01-14', inCount: 55, outCount: 41, stockCount: 366, usageRate: 73 },
@@ -307,6 +377,10 @@ const trendData = ref<TrendItem[]>([
   { date: '01-18', inCount: 40, outCount: 36, stockCount: 376, usageRate: 75 },
   { date: '01-19', inCount: 45, outCount: 32, stockCount: 356, usageRate: 71 },
 ])
+
+onMounted(() => {
+  loadWarehouseData()
+})
 
 const getZoneStatusLabel = (status: string) => {
   const labels: Record<string, string> = {

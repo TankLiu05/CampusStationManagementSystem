@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
 import { searchStorage, type StationStorage } from '@/api/admin/stationStorage'
@@ -132,6 +132,12 @@ const { error } = useToast()
 const storageList = ref<StationStorage[]>([])
 const storageLoading = ref(false)
 const currentZone = ref('')
+let refreshTimer: number | null = null
+
+// 货架配置常量
+const AREAS = ['A', 'B', 'C', 'D'] // 固定4个区域
+const SHELVES_PER_AREA = 10 // 每个区域10个货架
+const MAX_CAPACITY_PER_SHELF = 50 // 每个货架最大容量50件
 
 // 加载数据
 const loadData = async () => {
@@ -148,6 +154,17 @@ const loadData = async () => {
 
 onMounted(() => {
   loadData()
+  // 每30秒自动刷新一次数据
+  refreshTimer = window.setInterval(() => {
+    loadData()
+  }, 30000)
+})
+
+onUnmounted(() => {
+  // 清除定时器
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+  }
 })
 
 // 扩展货架统计数据
@@ -157,53 +174,60 @@ interface ShelfStat {
   inStock: number
   picked: number
   total: number
+  maxCapacity: number
   storages: StationStorage[]
 }
 
 const shelfStats = computed<ShelfStat[]>(() => {
+  // 初始化所有固定的货架（4个区域 × 10个货架 = 40个货架）
   const shelfMap = new Map<string, ShelfStat>()
   
+  AREAS.forEach(area => {
+    for (let shelfNum = 1; shelfNum <= SHELVES_PER_AREA; shelfNum++) {
+      const key = `${area}-${shelfNum}`
+      shelfMap.set(key, {
+        area,
+        shelf: String(shelfNum),
+        inStock: 0,
+        picked: 0,
+        total: 0,
+        maxCapacity: MAX_CAPACITY_PER_SHELF,
+        storages: []
+      })
+    }
+  })
+  
+  // 统计实际数据
   storageList.value.forEach(storage => {
     if (!storage.area || !storage.shelf) return // 没有位置信息的跳过
     
     const key = `${storage.area}-${storage.shelf}`
-    if (!shelfMap.has(key)) {
-      shelfMap.set(key, { 
-        area: storage.area, 
-        shelf: storage.shelf, 
-        inStock: 0, 
-        picked: 0, 
-        total: 0, 
-        storages: [] 
-      })
+    const stat = shelfMap.get(key)
+    if (stat) {
+      stat.total++
+      if (storage.isSigned === 1) {
+        stat.picked++
+      } else {
+        stat.inStock++
+      }
+      stat.storages.push(storage)
     }
-    const stat = shelfMap.get(key)!
-    stat.total++
-    if (storage.isSigned === 1) {
-      stat.picked++
-    } else {
-      stat.inStock++
-    }
-    stat.storages.push(storage)
   })
   
   return Array.from(shelfMap.values()).sort((a, b) => {
     if (a.area !== b.area) return a.area.localeCompare(b.area)
-    return a.shelf.localeCompare(b.shelf)
+    return parseInt(a.shelf) - parseInt(b.shelf)
   })
 })
 
-// 区域列表
+// 区域列表（固定显示所有区域）
 const zones = computed(() => {
-  const areaSet = new Set<string>()
-  shelfStats.value.forEach(s => areaSet.add(s.area))
-  const areaList = Array.from(areaSet).sort()
   return [
-    { id: '', name: '全部区域', count: shelfStats.value.length },
-    ...areaList.map(area => ({
+    { id: '', name: '全部区域', count: AREAS.length * SHELVES_PER_AREA },
+    ...AREAS.map(area => ({
       id: area,
       name: `${area}区`,
-      count: shelfStats.value.filter(s => s.area === area).length
+      count: SHELVES_PER_AREA
     }))
   ]
 })
@@ -214,13 +238,13 @@ const filteredShelves = computed(() => {
   return shelfStats.value.filter(s => s.area === currentZone.value)
 })
 
-// 统计数据
+// 统计数据（固定区域和货架数量）
 const stats = computed(() => {
   const inStock = storageList.value.filter(s => s.isSigned !== 1).length
   const picked = storageList.value.filter(s => s.isSigned === 1).length
   return {
-    totalZones: new Set(shelfStats.value.map(s => s.area)).size,
-    totalShelves: shelfStats.value.length,
+    totalZones: AREAS.length, // 固定4个区域
+    totalShelves: AREAS.length * SHELVES_PER_AREA, // 固定40个货架
     inStockCount: inStock,
     pickedCount: picked
   }
@@ -233,10 +257,10 @@ const getCompanies = (shelf: ShelfStat): Array<{ name: string; count: number }> 
   return []
 }
 
-// 计算在库率
+// 计算在库率（基于货架最大容量）
 const getUsageRate = (shelf: ShelfStat) => {
-  if (shelf.total === 0) return 0
-  return Math.round((shelf.inStock / shelf.total) * 100)
+  if (shelf.maxCapacity === 0) return 0
+  return Math.round((shelf.inStock / shelf.maxCapacity) * 100)
 }
 
 // 根据在库率返回颜色
