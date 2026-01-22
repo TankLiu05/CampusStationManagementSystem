@@ -125,11 +125,11 @@
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
-import { parcelApi, type Parcel, ParcelStatus } from '@/api/admin/parcel'
+import { searchStorage, type StationStorage } from '@/api/admin/stationStorage'
 
 const { error } = useToast()
 
-const parcelList = ref<Parcel[]>([])
+const storageList = ref<StationStorage[]>([])
 const storageLoading = ref(false)
 const currentZone = ref('')
 
@@ -137,9 +137,8 @@ const currentZone = ref('')
 const loadData = async () => {
   storageLoading.value = true
   try {
-    const parcelRes = await parcelApi.list(0, 1000)
-    // 筛选已入库的快递 (status=2)
-    parcelList.value = (parcelRes?.content || []).filter(p => p.status === ParcelStatus.STORED)
+    // 调用仓库接口获取所有库存数据
+    storageList.value = await searchStorage()
   } catch (e) {
     error('加载数据失败')
   } finally {
@@ -151,26 +150,6 @@ onMounted(() => {
   loadData()
 })
 
-// 从快递的 location 字段解析区域和货架
-// location 格式示例: "A区-1号货架-1234" 或自定义格式
-const parseLocation = (location?: string) => {
-  if (!location) return { area: '', shelf: '', position: '' }
-  
-  // 尝试解析 "A区-1号货架-1234" 格式
-  const match = location.match(/(\w+)区-(\d+)号货架?-(\d+)/)
-  if (match) {
-    return { area: match[1], shelf: match[2], position: match[3] }
-  }
-  
-  // 尝试简化格式 "A-1-1234"
-  const simpleMatch = location.match(/(\w+)-(\d+)-(\d+)/)
-  if (simpleMatch) {
-    return { area: simpleMatch[1], shelf: simpleMatch[2], position: simpleMatch[3] }
-  }
-  
-  return { area: '', shelf: '', position: location }
-}
-
 // 扩展货架统计数据
 interface ShelfStat {
   area: string
@@ -178,28 +157,34 @@ interface ShelfStat {
   inStock: number
   picked: number
   total: number
-  parcels: Parcel[]
+  storages: StationStorage[]
 }
 
 const shelfStats = computed<ShelfStat[]>(() => {
   const shelfMap = new Map<string, ShelfStat>()
   
-  parcelList.value.forEach(p => {
-    const loc = parseLocation(p.location)
-    if (!loc.area || !loc.shelf) return // 没有位置信息的跳过
+  storageList.value.forEach(storage => {
+    if (!storage.area || !storage.shelf) return // 没有位置信息的跳过
     
-    const key = `${loc.area}-${loc.shelf}`
+    const key = `${storage.area}-${storage.shelf}`
     if (!shelfMap.has(key)) {
-      shelfMap.set(key, { area: loc.area, shelf: loc.shelf, inStock: 0, picked: 0, total: 0, parcels: [] })
+      shelfMap.set(key, { 
+        area: storage.area, 
+        shelf: storage.shelf, 
+        inStock: 0, 
+        picked: 0, 
+        total: 0, 
+        storages: [] 
+      })
     }
     const stat = shelfMap.get(key)!
     stat.total++
-    if (p.isSigned === 1) {
+    if (storage.isSigned === 1) {
       stat.picked++
     } else {
       stat.inStock++
     }
-    stat.parcels.push(p)
+    stat.storages.push(storage)
   })
   
   return Array.from(shelfMap.values()).sort((a, b) => {
@@ -231,8 +216,8 @@ const filteredShelves = computed(() => {
 
 // 统计数据
 const stats = computed(() => {
-  const inStock = parcelList.value.filter(p => p.isSigned !== 1).length
-  const picked = parcelList.value.filter(p => p.isSigned === 1).length
+  const inStock = storageList.value.filter(s => s.isSigned !== 1).length
+  const picked = storageList.value.filter(s => s.isSigned === 1).length
   return {
     totalZones: new Set(shelfStats.value.map(s => s.area)).size,
     totalShelves: shelfStats.value.length,
@@ -241,18 +226,11 @@ const stats = computed(() => {
   }
 })
 
-// 获取快递公司统计
-const getCompanies = (shelf: ShelfStat) => {
-  const companyMap = new Map<string, number>()
-  shelf.parcels.forEach(p => {
-    if (p.company) {
-      companyMap.set(p.company, (companyMap.get(p.company) || 0) + 1)
-    }
-  })
-  return Array.from(companyMap.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3) // 最多显示3个
+// 获取快递公司统计（仓库表没有company字段，暂不显示）
+const getCompanies = (shelf: ShelfStat): Array<{ name: string; count: number }> => {
+  // StationStorage 表中没有快递公司字段
+  // 如果需要显示，需要关联查询 parcel 表或修改后端接口
+  return []
 }
 
 // 计算在库率
