@@ -101,3 +101,27 @@ export function listUnsignedParcels(page: number = 0, size: number = 10) {
     params: { page, size },
   })
 }
+
+/**
+ * 查询快递流转记录（物流轨迹）
+ * @param trackingNumber 快递单号
+ */
+export function getParcelRoutes(trackingNumber: string) {
+  return request<ParcelRoute[]>(`/api/user/parcel/tracking/${trackingNumber}/routes`, {
+    method: 'GET',
+  })
+}
+
+/**
+ * 快递流转记录数据结构
+ */
+export interface ParcelRoute {
+  id: number
+  trackingNumber: string
+  currentStation: string
+  nextStation?: string
+  etaNextStation?: string
+  etaDelivered?: string
+  createTime: string
+  updateTime: string
+}

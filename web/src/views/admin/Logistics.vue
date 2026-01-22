@@ -495,8 +495,40 @@ const resetFilters = () => {
   loadParcelList()
 }
 
-const viewLogistics = (item: LogisticsItem) => {
+const viewLogistics = async (item: LogisticsItem) => {
   currentLogistics.value = item
+  
+  // 加载真实的物流轨迹数据
+  try {
+    const routes = await parcelRouteApi.getByTrackingNumber(item.trackingNumber)
+    if (routes && routes.length > 0) {
+      // 将后端数据转换为前端展示格式
+      currentLogistics.value.trackingHistory = routes.map(route => ({
+        status: route.currentStation,
+        time: route.createTime?.replace('T', ' ').substring(0, 16) || '',
+        description: `从 ${route.currentStation} 发往 ${route.nextStation || '目的地'}`,
+        location: route.currentStation
+      }))
+    } else {
+      // 没有物流轨迹数据时显示默认信息
+      currentLogistics.value.trackingHistory = [{
+        status: '暂无物流信息',
+        time: item.updateTime,
+        description: '暂无详细物流轨迹',
+        location: item.currentStation
+      }]
+    }
+  } catch (error: any) {
+    console.error('加载物流轨迹失败:', error)
+    // 接口调用失败时显示默认信息
+    currentLogistics.value.trackingHistory = [{
+      status: '暂无物流信息',
+      time: item.updateTime,
+      description: '暂无详细物流轨迹',
+      location: item.currentStation
+    }]
+  }
+  
   showTrackingDetail.value = true
 }
 
@@ -1165,14 +1197,12 @@ td {
 
 .timeline-content {
   background: white;
-  border: 1px solid #f0f0f0;
   border-radius: 8px;
   padding: 16px;
 }
 
 .timeline-item.active .timeline-content {
   background: #f6ffed;
-  border-color: #b7eb8f;
 }
 
 .timeline-header {

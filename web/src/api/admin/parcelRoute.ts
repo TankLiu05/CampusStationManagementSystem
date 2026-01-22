@@ -73,5 +73,15 @@ export const parcelRouteApi = {
       method: 'PUT',
       body: JSON.stringify({ etaDelivered })
     })
+  },
+
+  /**
+   * 根据快递单号查询流转记录
+   * @param trackingNumber 快递单号
+   */
+  getByTrackingNumber(trackingNumber: string) {
+    return request<ParcelRoute[]>(`/api/admin/parcelRoute/tracking/${trackingNumber}`, {
+      method: 'GET'
+    })
   }
 }

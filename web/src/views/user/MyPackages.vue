@@ -71,6 +71,28 @@
         </div>
       </div>
 
+      <!-- 分页 -->
+      <div v-if="!loading && packages.length > 0" class="pagination">
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage === 0"
+          @click="handlePageChange(currentPage - 1)"
+        >
+          上一页
+        </button>
+        <div class="pagination-info">
+          <span>第 {{ currentPage + 1 }} 页 / 共 {{ totalPages }} 页</span>
+          <span class="total-count">（共 {{ totalElements }} 条）</span>
+        </div>
+        <button 
+          class="pagination-btn" 
+          :disabled="currentPage >= totalPages - 1"
+          @click="handlePageChange(currentPage + 1)"
+        >
+          下一页
+        </button>
+      </div>
+
       <!-- 包裹详情对话框 -->
       <div v-if="showDetailDialog" class="dialog-overlay" @click="closeDetailDialog">
         <div class="dialog-content" @click.stop>
@@ -127,6 +149,35 @@
               </div>
             </div>
 
+            <div class="detail-section">
+              <h3>物流轨迹</h3>
+              <div v-if="loadingRoutes" class="routes-loading">
+                <p>加载中...</p>
+              </div>
+              <div v-else-if="parcelRoutes.length === 0" class="routes-empty">
+                <p>暂无物流轨迹信息</p>
+              </div>
+              <div v-else class="routes-timeline">
+                <div 
+                  v-for="(route, index) in parcelRoutes" 
+                  :key="route.id"
+                  class="timeline-item"
+                  :class="{ active: index === 0 }"
+                >
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-header">
+                      <span class="timeline-station">{{ route.currentStation }}</span>
+                      <span class="timeline-time">{{ formatTime(route.createTime) }}</span>
+                    </div>
+                    <p class="timeline-desc">
+                      {{ route.nextStation ? `发往 ${route.nextStation}` : '到达目的地' }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="detail-section" v-if="selectedPackage.rawData.isSigned === 0">
               <h3>取件提示</h3>
               <div class="pickup-notice">
@@ -161,7 +212,9 @@ import {
   signParcel, 
   listSignedParcels, 
   listUnsignedParcels,
-  type Parcel 
+  getParcelRoutes,
+  type Parcel,
+  type ParcelRoute
 } from '@/api/user/parcel'
 import { useToast } from '@/composables/useToast'
 
@@ -195,6 +248,8 @@ const totalElements = ref(0)
 const showDetailDialog = ref(false)
 const selectedPackage = ref<Package | null>(null)
 const signing = ref(false)
+const loadingRoutes = ref(false)
+const parcelRoutes = ref<ParcelRoute[]>([])
 
 // 存储各个标签的真实计数
 const tabCounts = ref({
@@ -206,8 +261,9 @@ const tabCounts = ref({
 
 // 监听activeTab变化，自动加载对应数据
 watch(activeTab, () => {
-  // 切换标签时清空搜索关键词并重新加载数据
+  // 切换标签时清空搜索关键词、重置页码并重新加载数据
   searchKeyword.value = ''
+  currentPage.value = 0
   loadParcels()
 })
 
@@ -264,6 +320,11 @@ const packages = computed<Package[]>(() => {
   return allParcels.value.map(transformParcel)
 })
 
+// 计算总页数
+const totalPages = computed(() => {
+  return Math.ceil(totalElements.value / pageSize.value)
+})
+
 // 加载包裹列表（根据activeTab调用不同的后端接口）
 async function loadParcels() {
   try {
@@ -307,7 +368,8 @@ async function loadParcels() {
 async function handleSearch() {
   const keyword = searchKeyword.value.trim()
   if (!keyword) {
-    // 如果搜索框为空，重新加载当前标签的数据
+    // 如果搜索框为空，重置页码并重新加载当前标签的数据
+    currentPage.value = 0
     await loadParcels()
     return
   }
@@ -318,6 +380,7 @@ async function handleSearch() {
     const parcel = await searchMyParcelByTrackingNumber(keyword)
     allParcels.value = [parcel]
     totalElements.value = 1
+    currentPage.value = 0
   } catch (error) {
     console.error('搜索失败:', error)
     allParcels.value = []
@@ -327,10 +390,32 @@ async function handleSearch() {
   }
 }
 
+// 处理页码变化
+async function handlePageChange(page: number) {
+  if (page < 0 || page >= totalPages.value) return
+  currentPage.value = page
+  await loadParcels()
+  // 滚动到顶部
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 // 显示包裹详情
-function showPackageDetail(pkg: Package) {
+async function showPackageDetail(pkg: Package) {
   selectedPackage.value = pkg
   showDetailDialog.value = true
+  
+  // 加载物流轨迹
+  loadingRoutes.value = true
+  parcelRoutes.value = []
+  try {
+    const routes = await getParcelRoutes(pkg.trackingNumber)
+    parcelRoutes.value = routes || []
+  } catch (err: any) {
+    console.error('加载物流轨迹失败:', err)
+    parcelRoutes.value = []
+  } finally {
+    loadingRoutes.value = false
+  }
 }
 
 // 关闭详情对话框
@@ -338,6 +423,19 @@ function closeDetailDialog() {
   showDetailDialog.value = false
   selectedPackage.value = null
   signing.value = false
+  parcelRoutes.value = []
+  loadingRoutes.value = false
+}
+
+// 格式化时间
+function formatTime(time: string): string {
+  if (!time) return ''
+  return new Date(time).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 // 从详情对话框签收
@@ -826,6 +924,149 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
+/* 分页样式 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.pagination-btn {
+  padding: 10px 24px;
+  background: #666;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #555;
+}
+
+.pagination-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 物流轨迹样式 */
+.routes-timeline {
+  position: relative;
+  padding-left: 20px;
+  margin-top: 16px;
+}
+
+.routes-timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e0e0e0;
+}
+
+.timeline-item {
+  position: relative;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+}
+
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-item:last-child::after {
+  content: '';
+  position: absolute;
+  left: -24px;
+  bottom: -20px;
+  width: 2px;
+  height: 20px;
+  background: #e0e0e0;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -27px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #666;
+  z-index: 1;
+}
+
+.timeline-item.active .timeline-dot {
+  background: #1890ff;
+  box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.2);
+}
+
+.timeline-content {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.timeline-item.active .timeline-content {
+  background: #e6f7ff;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.timeline-station {
+  font-weight: 600;
+  color: #333;
+}
+
+.timeline-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.timeline-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.routes-loading,
+.routes-empty {
+  padding: 16px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+
+.pagination-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #666;
+}
+
+.total-count {
+  font-size: 12px;
+  color: #999;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .page-header h1 {
@@ -933,6 +1174,17 @@ onMounted(async () => {
   .empty-state,
   .loading-state {
     padding: 40px 20px;
+  }
+  
+  .pagination {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+  
+  .pagination-btn {
+    width: 100%;
+    padding: 12px;
   }
 }
 </style>
