@@ -85,7 +85,7 @@
               </div>
               <div class="address-actions">
                 <button v-if="!addr.isDefault" class="action-link" @click="handleSetDefault(addr.id)">设为默认</button>
-                <button class="action-link" @click="openEditAddress(addr)">编辑</button>
+                <button class="action-link edit" @click="openEditAddress(addr)">编辑</button>
                 <button class="action-link delete" @click="handleDeleteAddress(addr.id)">删除</button>
               </div>
             </div>
@@ -763,8 +763,8 @@ const handleSetDefault = async (id: number) => {
 }
 
 .address-item.is-default {
-  border-color: #a8c4a2;
-  background: #f5f5f0;
+  border-color: #ccc;
+  background: #f0f0f0;
 }
 
 .address-info {
@@ -799,7 +799,7 @@ const handleSetDefault = async (id: number) => {
 .default-tag {
   display: inline-block;
   padding: 2px 8px;
-  background: #a8c4a2;
+  background: #999;
   color: white;
   font-size: 12px;
   border-radius: 4px;
@@ -807,37 +807,55 @@ const handleSetDefault = async (id: number) => {
 
 .address-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .action-link {
-  background: none;
-  border: none;
-  color: #2196F3;
-  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  background: white;
+  color: #5dade2;
+  font-size: 12px;
   cursor: pointer;
-  padding: 0;
+  transition: all 0.2s;
 }
 
 .action-link:hover {
-  text-decoration: underline;
+  background: #f0f8ff;
+  border-color: #5dade2;
+  color: #3498db;
 }
 
 .action-link:first-child {
-  color: #4CAF50;
+  color: #66bb6a;
 }
 
 .action-link:first-child:hover {
-  color: #45a049;
+  background: #f1f8f4;
+  border-color: #66bb6a;
+  color: #57a85a;
+}
+
+.action-link.edit {
+  color: #5dade2;
+}
+
+.action-link.edit:hover {
+  background: #f0f8ff;
+  border-color: #5dade2;
+  color: #3498db;
 }
 
 .action-link.delete {
-  color: #f44336;
+  color: #ef5350;
 }
 
 .action-link.delete:hover {
-  color: #d32f2f;
+  background: #fff5f5;
+  border-color: #ef5350;
+  color: #e53935;
 }
 
 /* 复选框样式 */
