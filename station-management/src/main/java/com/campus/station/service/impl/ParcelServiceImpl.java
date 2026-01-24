@@ -41,6 +41,22 @@ public class ParcelServiceImpl implements ParcelService {
     }
 
     @Override
+    @Transactional
+    public Parcel create(Parcel parcel, String initialStation) {
+        if (initialStation != null && !initialStation.isBlank()) {
+            parcel.setCurrentStation(initialStation);
+        }
+        Parcel saved = repository.save(parcel);
+        if (initialStation != null && !initialStation.isBlank()) {
+            ParcelRoute route = new ParcelRoute();
+            route.setTrackingNumber(saved.getTrackingNumber());
+            route.setCurrentStation(initialStation);
+            parcelRouteRepository.save(route);
+        }
+        return saved;
+    }
+
+    @Override
     public Optional<Parcel> getById(Long id) {
         return repository.findById(id);
     }
@@ -126,6 +142,18 @@ public class ParcelServiceImpl implements ParcelService {
         if (update.getLocation() != null) {
             existing.setLocation(update.getLocation());
         }
+        if (update.getCurrentStation() != null) {
+            existing.setCurrentStation(update.getCurrentStation());
+        }
+        if (update.getNextStation() != null) {
+            existing.setNextStation(update.getNextStation());
+        }
+        if (update.getEtaNextStation() != null) {
+            existing.setEtaNextStation(update.getEtaNextStation());
+        }
+        if (update.getEtaDelivered() != null) {
+            existing.setEtaDelivered(update.getEtaDelivered());
+        }
         if (update.getPickupCode() != null) {
             existing.setPickupCode(update.getPickupCode());
         }
@@ -148,6 +176,29 @@ public class ParcelServiceImpl implements ParcelService {
         }
         
         return saved;
+    }
+
+    @Override
+    @Transactional
+    public void updateLogisticsInfo(Long id, String currentStation, String nextStation, java.time.LocalDateTime etaNextStation, java.time.LocalDateTime etaDelivered, Integer status) {
+        Parcel existing = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("快递不存在"));
+        
+        if (currentStation != null) {
+            existing.setCurrentStation(currentStation);
+        }
+        // nextStation 允许为 null (表示已到达某站，暂无下一站)
+        existing.setNextStation(nextStation);
+        existing.setEtaNextStation(etaNextStation);
+        
+        if (etaDelivered != null) {
+            existing.setEtaDelivered(etaDelivered);
+        }
+        if (status != null) {
+            existing.setStatus(status);
+        }
+        
+        repository.save(existing);
     }
 
     @Override
@@ -263,15 +314,10 @@ public class ParcelServiceImpl implements ParcelService {
         }
 
         String province = scope.getProvince();
-        String city = scope.getCity();
         String stationCode = scope.getStation();
 
         if (role == AdminRole.MANAGER) {
             return matchesProvince(parcel, province);
-        }
-
-        if (role == AdminRole.CITY_ADMIN) {
-            return matchesCity(parcel, city);
         }
 
         if (role == AdminRole.STREET_ADMIN) {
@@ -299,39 +345,36 @@ public class ParcelServiceImpl implements ParcelService {
         if (province == null || province.isBlank()) {
             return false;
         }
-        String origin = parcel.getOrigin();
-        String destination = parcel.getDestination();
-        if (origin != null && origin.contains(province)) {
-            return true;
-        }
-        if (destination != null && destination.contains(province)) {
-            return true;
-        }
-        List<ParcelRoute> routes = parcelRouteRepository
-                .findByTrackingNumberOrderByCreateTimeAsc(parcel.getTrackingNumber());
-        for (ParcelRoute route : routes) {
-            String current = route.getCurrentStation();
-            String next = route.getNextStation();
-            if (current != null && current.contains(province)) {
-                return true;
-            }
-            if (next != null && next.contains(province)) {
-                return true;
-            }
-        }
-        return false;
+        
+        province = province.trim();
+        
+        // 移除“省”后缀进行宽松匹配，解决“河北省”匹配不到“河北xxx”的问题
+        String cleanProvince = province.endsWith("省") ? province.substring(0, province.length() - 1) : province;
+
+        return checkLocationMatch(parcel, province, cleanProvince);
     }
 
     private boolean matchesCity(Parcel parcel, String city) {
         if (city == null || city.isBlank()) {
             return false;
         }
+        
+        city = city.trim();
+        
+        // 移除“市”后缀进行宽松匹配
+        String cleanCity = city.endsWith("市") ? city.substring(0, city.length() - 1) : city;
+
+        return checkLocationMatch(parcel, city, cleanCity);
+    }
+
+    private boolean checkLocationMatch(Parcel parcel, String location, String cleanLocation) {
         String origin = parcel.getOrigin();
         String destination = parcel.getDestination();
-        if (origin != null && origin.contains(city)) {
+        
+        if (origin != null && (origin.contains(location) || origin.contains(cleanLocation))) {
             return true;
         }
-        if (destination != null && destination.contains(city)) {
+        if (destination != null && (destination.contains(location) || destination.contains(cleanLocation))) {
             return true;
         }
         List<ParcelRoute> routes = parcelRouteRepository
@@ -339,16 +382,16 @@ public class ParcelServiceImpl implements ParcelService {
         for (ParcelRoute route : routes) {
             String current = route.getCurrentStation();
             String next = route.getNextStation();
-            if (current != null && current.contains(city)) {
+            if (current != null && (current.contains(location) || current.contains(cleanLocation))) {
                 return true;
             }
-            if (next != null && next.contains(city)) {
+            if (next != null && (next.contains(location) || next.contains(cleanLocation))) {
                 return true;
             }
         }
         return false;
     }
-    
+
     @Override
     public Page<Parcel> listByReceiverPhone(String receiverPhone, Pageable pageable) {
         return repository.findByReceiverPhone(receiverPhone, pageable);
@@ -357,5 +400,10 @@ public class ParcelServiceImpl implements ParcelService {
     @Override
     public Optional<Parcel> getByTrackingNumberAndReceiverPhone(String trackingNumber, String receiverPhone) {
         return repository.findByTrackingNumberAndReceiverPhone(trackingNumber, receiverPhone);
+    }
+
+    @Override
+    public Page<Parcel> listByReceiverIdOrReceiverPhone(Long receiverId, String receiverPhone, Pageable pageable) {
+        return repository.findByReceiverIdOrReceiverPhone(receiverId, receiverPhone, pageable);
     }
 }

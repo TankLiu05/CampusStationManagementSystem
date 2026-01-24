@@ -99,6 +99,56 @@ public class AdminParcelRouteController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("快递不存在");
         }
 
+        AdminRoleScope scope = requireCurrentAdminScope();
+        // 权限检查：如果是站点管理员，只能操作当前站点与自己站点一致的包裹
+        if (scope.getRole() == com.campus.station.model.AdminRole.STREET_ADMIN) {
+            String adminStation = scope.getStation();
+            
+            // 验证包裹实际位置是否在当前管理员站点
+            String parcelLocation = parcel.getCurrentStation();
+            if (parcelLocation == null || parcelLocation.isBlank()) {
+                // 如果当前位置为空（如刚揽收），则检查发货地
+                parcelLocation = parcel.getOrigin();
+            }
+            
+            boolean hasPermission = false;
+            
+            // 1. 检查是否在当前站点（发货/处理中）
+            if (adminStation != null && parcelLocation != null) {
+                if (adminStation.equals(parcelLocation) || 
+                    adminStation.contains(parcelLocation) || 
+                    parcelLocation.contains(adminStation)) {
+                    hasPermission = true;
+                }
+            }
+            
+            // 2. 检查是否是下一站（收货/待处理）
+            // 如果当前管理员是包裹的“下一站”，则有权接收包裹并更新状态
+            String nextStation = parcel.getNextStation();
+            if (!hasPermission && adminStation != null && nextStation != null) {
+                 if (adminStation.equals(nextStation) || 
+                    adminStation.contains(nextStation) || 
+                    nextStation.contains(adminStation)) {
+                    hasPermission = true;
+                }
+            }
+
+            if (!hasPermission) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("您无权操作该包裹（非本站当前或待接收包裹）");
+            }
+
+            // 验证请求中的当前站点是否与管理员站点一致
+            String reqStation = req.getCurrentStation();
+            if (adminStation != null && reqStation != null) {
+                boolean matchReq = adminStation.equals(reqStation) || 
+                               adminStation.contains(reqStation) || 
+                               reqStation.contains(adminStation);
+                if (!matchReq) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("您无权从 " + reqStation + " 发出包裹（非本站）");
+                }
+            }
+        }
+
         ParcelRoute route = new ParcelRoute();
         route.setTrackingNumber(req.getTrackingNumber());
         route.setCurrentStation(req.getCurrentStation());
@@ -107,6 +157,23 @@ public class AdminParcelRouteController {
         route.setEtaDelivered(req.getEtaDelivered());
 
         ParcelRoute created = parcelRouteService.create(route);
+
+        // 更新包裹的当前位置为最新的站点，同步物流信息
+        Integer newStatus = null;
+        // 如果包裹状态不是“运输中”且不是“已签收”，则更新为“运输中”
+        if (parcel.getStatus() != 1 && parcel.getStatus() != 2) {
+             newStatus = 1;
+        }
+        
+        parcelService.updateLogisticsInfo(
+            parcel.getId(),
+            req.getCurrentStation(),
+            created.getNextStation(),
+            created.getEtaNextStation(),
+            created.getEtaDelivered(),
+            newStatus
+        );
+
         return ResponseEntity.ok(created);
     }
 

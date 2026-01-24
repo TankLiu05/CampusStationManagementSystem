@@ -149,13 +149,11 @@ const REQUIRED_ROLE: AdminRole = 'MANAGER'
 const roleLevel: Record<AdminRole, number> = {
   SUPERADMIN: 1,
   MANAGER: 2,
-  CITY_ADMIN: 3,
-  STREET_ADMIN: 4
+  STREET_ADMIN: 3
 }
 const roleDisplayName: Record<AdminRole, string> = {
   SUPERADMIN: '超级管理员',
   MANAGER: '省级管理员',
-  CITY_ADMIN: '市级管理员',
   STREET_ADMIN: '站点管理员'
 }
 

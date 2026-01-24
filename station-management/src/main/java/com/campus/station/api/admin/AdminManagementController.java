@@ -65,9 +65,6 @@ public class AdminManagementController {
             return true;
         }
         if (currentRole == AdminRole.MANAGER) {
-            return targetRole == AdminRole.CITY_ADMIN || targetRole == AdminRole.STREET_ADMIN;
-        }
-        if (currentRole == AdminRole.CITY_ADMIN) {
             return targetRole == AdminRole.STREET_ADMIN;
         }
         return false;
@@ -84,28 +81,20 @@ public class AdminManagementController {
             return true;
         }
 
-        // 省级管理员：查看同省的市级和站点管理员
+        // 省级管理员：查看同省的站点管理员
         if (currentRole == AdminRole.MANAGER) {
             String province = currentScope.getProvince();
             if (province == null || province.isBlank()) {
                 return false;
             }
-            if (targetRole != AdminRole.CITY_ADMIN && targetRole != AdminRole.STREET_ADMIN) {
-                return false;
-            }
-            return province.equals(targetScope.getProvince());
-        }
-
-        // 市级管理员：查看同市的站点管理员
-        if (currentRole == AdminRole.CITY_ADMIN) {
-            String city = currentScope.getCity();
-            if (city == null || city.isBlank()) {
-                return false;
-            }
             if (targetRole != AdminRole.STREET_ADMIN) {
                 return false;
             }
-            return city.equals(targetScope.getCity());
+            String targetProvince = targetScope.getProvince();
+            if (targetProvince == null) {
+                return false;
+            }
+            return province.equals(targetProvince) || province.startsWith(targetProvince) || targetProvince.startsWith(province);
         }
 
         // 站点管理员目前没有下级
@@ -141,10 +130,6 @@ public class AdminManagementController {
             if (province == null || province.isBlank()) {
                 return ResponseEntity.badRequest().body("省级管理员必须填写省份");
             }
-        } else if (targetRole == AdminRole.CITY_ADMIN) {
-            if (province == null || province.isBlank() || city == null || city.isBlank()) {
-                return ResponseEntity.badRequest().body("市级管理员必须填写省份和城市");
-            }
         } else if (targetRole == AdminRole.STREET_ADMIN) {
             if (province == null || province.isBlank() || city == null || city.isBlank() || station == null
                     || station.isBlank()) {
@@ -154,9 +139,9 @@ public class AdminManagementController {
 
         String currentProvince = currentScope.getProvince();
         if (currentProvince != null && !currentProvince.isBlank()
-                && (targetRole == AdminRole.MANAGER || targetRole == AdminRole.CITY_ADMIN
+                && (targetRole == AdminRole.MANAGER
                         || targetRole == AdminRole.STREET_ADMIN)) {
-            if (province == null || !currentProvince.equals(province)) {
+            if (province == null || (!currentProvince.equals(province) && !province.startsWith(currentProvince) && !currentProvince.startsWith(province))) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无权跨省创建管理员");
             }
         }
@@ -231,6 +216,13 @@ public class AdminManagementController {
         }
 
         return ResponseEntity.ok(new AdminDetailView(admin, currentScope));
+    }
+
+    @GetMapping("/stations/all")
+    @Operation(summary = "获取所有站点信息")
+    public ResponseEntity<List<AdminStation>> getAllStations() {
+        requireCurrentAdmin();
+        return ResponseEntity.ok(adminStationRepository.findAll());
     }
 
     @GetMapping

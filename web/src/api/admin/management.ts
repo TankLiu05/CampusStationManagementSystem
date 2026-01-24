@@ -1,7 +1,7 @@
 import { request } from '@/utls/request'
 
 // 管理员角色类型
-export type AdminRole = 'SUPERADMIN' | 'MANAGER' | 'CITY_ADMIN' | 'STREET_ADMIN'
+export type AdminRole = 'SUPERADMIN' | 'MANAGER' | 'STREET_ADMIN'
 
 // 管理员详情
 export interface AdminDetail {
@@ -48,6 +48,20 @@ export interface UpdateAdminParams {
   station?: string
 }
 
+export interface AdminStation {
+  id: number
+  province: string
+  city: string
+  station: string
+  phone: string | null
+  username: string | null
+}
+
+// 获取所有站点列表
+export function getAllStations(): Promise<AdminStation[]> {
+  return request('/api/admin/management/stations/all', { method: 'GET' })
+}
+
 // 获取可管理的管理员列表
 export function getAdminList(): Promise<AdminRoleScope[]> {
   return request('/api/admin/management', { method: 'GET' })
@@ -89,6 +103,5 @@ export function deleteAdmin(adminId: number): Promise<void> {
 export const roleNameMap: Record<AdminRole, string> = {
   SUPERADMIN: '超级管理员',
   MANAGER: '省级管理员',
-  CITY_ADMIN: '市级管理员',
   STREET_ADMIN: '站点管理员'
 }

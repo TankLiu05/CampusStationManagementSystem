@@ -188,11 +188,21 @@
             </div>
             <div class="form-group">
               <label>当前站点 *</label>
-              <input type="text" v-model="updateForm.currentStation">
+              <select v-model="updateForm.currentStation" class="form-select" disabled>
+                <option value="">请选择当前站点</option>
+                <option v-for="station in stations" :key="station.id" :value="station.station">
+                  {{ station.station }} ({{ station.city }})
+                </option>
+              </select>
             </div>
             <div class="form-group">
               <label>下一站点</label>
-              <input type="text" v-model="updateForm.nextStation">
+              <select v-model="updateForm.nextStation" class="form-select">
+                <option value="">请选择下一站点</option>
+                <option v-for="station in stations" :key="station.id" :value="station.station">
+                  {{ station.station }} ({{ station.city }})
+                </option>
+              </select>
             </div>
 
             <div class="form-row">
@@ -284,44 +294,11 @@ import { useRouter } from 'vue-router'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelRouteApi, type ParcelRoute, type ParcelRouteCreateRequest } from '@/api/admin/parcelRoute'
 import { parcelApi, type Parcel, type PageResponse } from '@/api/admin/parcel'
-import { getCurrentAdminDetail, type AdminRole } from '@/api/admin/management'
+import { getCurrentAdminDetail, getAllStations, type AdminRole, type AdminStation, type AdminDetail } from '@/api/admin/management'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
 const { success, error: showError, warning, info } = useToast()
-
-// 权限检查：需要市级管理员及以上权限
-const REQUIRED_ROLE: AdminRole = 'CITY_ADMIN'
-const roleLevel: Record<AdminRole, number> = {
-  SUPERADMIN: 1,
-  MANAGER: 2,
-  CITY_ADMIN: 3,
-  STREET_ADMIN: 4
-}
-const roleDisplayName: Record<AdminRole, string> = {
-  SUPERADMIN: '超级管理员',
-  MANAGER: '省级管理员',
-  CITY_ADMIN: '市级管理员',
-  STREET_ADMIN: '站点管理员'
-}
-
-const checkPermission = async () => {
-  try {
-    const detail = await getCurrentAdminDetail()
-    const currentLevel = roleLevel[detail.role]
-    const requiredLevel = roleLevel[REQUIRED_ROLE]
-    if (currentLevel > requiredLevel) {
-      warning(`权限不足：「物流管理」需要${roleDisplayName[REQUIRED_ROLE]}及以上权限，您当前是${roleDisplayName[detail.role]}`)
-      router.replace('/admin/home')
-      return false
-    }
-    return true
-  } catch (error) {
-    console.error('权限检查失败:', error)
-    router.replace('/admin/home')
-    return false
-  }
-}
 
 interface TrackingHistory {
   status: string
@@ -358,6 +335,7 @@ const showAddRoute = ref(false)
 const showUpdateRoute = ref(false)
 const showTrackingDetail = ref(false)
 const currentLogistics = ref<LogisticsItem | null>(null)
+const currentAdmin = ref<AdminDetail | null>(null)
 
 const stats = reactive({
   totalParcels: 0,
@@ -400,10 +378,10 @@ const convertParcelToLogistics = (parcel: Parcel): LogisticsItem => {
     id: parcel.id,
     trackingNumber: parcel.trackingNumber,
     company: parcel.company,
-    currentStation: parcel.location || '待分配',
-    nextStation: parcel.status === 2 ? '' : '校园驿站',
-    etaNextStation: '',
-    etaDelivered: '',
+    currentStation: parcel.currentStation || '待分配',
+    nextStation: parcel.nextStation || (parcel.status === 2 ? '' : '校园驿站'),
+    etaNextStation: parcel.etaNextStation?.replace('T', ' ').substring(0, 16) || '',
+    etaDelivered: parcel.etaDelivered?.replace('T', ' ').substring(0, 16) || '',
     status: frontStatus,
     updateTime: parcel.updateTime?.replace('T', ' ').substring(0, 16) || '',
     isDelayed: false,
@@ -530,18 +508,51 @@ const viewLogistics = async (item: LogisticsItem) => {
   showTrackingDetail.value = true
 }
 
-const updateRoute = (item: LogisticsItem) => {
+const updateRoute = async (item: LogisticsItem) => {
   // 已生成取件码的快件不能修改
   if (item.pickupCode) {
     warning('该快件已生成取件码，无法修改站点信息')
     return
   }
   currentLogistics.value = item
+  
+  // 自动设置当前站点：查询最新的流转记录，将上一站的下一站（nextStation）作为本次的当前站点
+  let newCurrentStation = item.currentStation
+  
+  try {
+    const routes = await parcelRouteApi.getByTrackingNumber(item.trackingNumber)
+    if (routes && routes.length > 0) {
+      // 获取最后一条记录
+      const lastRoute = routes[routes.length - 1]
+      // 如果上一条记录有下一站，则当前站点应该是上一条记录的下一站
+      if (lastRoute.nextStation) {
+        newCurrentStation = lastRoute.nextStation
+      }
+    }
+  } catch (error) {
+    console.error('获取流转记录失败，使用默认当前站点', error)
+  }
+
+  // 权限检查：如果是站点管理员，只能操作本站点的包裹
+  if (currentAdmin.value && currentAdmin.value.role === 'STREET_ADMIN') {
+    const adminStation = currentAdmin.value.station
+    // 宽松匹配逻辑，与后端保持一致
+    const match = adminStation && newCurrentStation && 
+                 (adminStation === newCurrentStation || 
+                  adminStation.includes(newCurrentStation) || 
+                  newCurrentStation.includes(adminStation))
+    
+    if (!match) {
+      warning(`您无权操作位于 ${newCurrentStation} 的包裹（非本站包裹）`)
+      return
+    }
+  }
+  
   Object.assign(updateForm, {
-    currentStation: item.currentStation,
-    nextStation: item.nextStation,
+    currentStation: newCurrentStation,
+    nextStation: '', // 下一站需要管理员重新选择
     etaNextStation: '',
-    etaDelivered: '',
+    etaDelivered: item.etaDelivered || '',
     remark: ''
   })
   showUpdateRoute.value = true
@@ -572,6 +583,7 @@ const submitRoute = async () => {
     await parcelRouteApi.create(data)
     success('添加成功')
     showAddRoute.value = false
+    loadParcelList()
     Object.assign(routeForm, {
       trackingNumber: '',
       currentStation: '',
@@ -585,21 +597,31 @@ const submitRoute = async () => {
 }
 
 const submitUpdate = async () => {
+  if (!currentLogistics.value) return
+
   if (!updateForm.currentStation) {
-    warning('请填写当前站点')
+    warning('当前站点信息缺失')
     return
   }
-
+  if (!updateForm.nextStation) {
+    warning('请选择下一站点')
+    return
+  }
+  
   try {
-    // 如果更新了预计送达时间，调用后端接口
-    if (updateForm.etaDelivered && currentLogistics.value?.id) {
-      await parcelRouteApi.updateEtaDelivered(
-        currentLogistics.value.id,
-        updateForm.etaDelivered
-      )
+    // 创建新的物流路线记录
+    const data: ParcelRouteCreateRequest = {
+      trackingNumber: currentLogistics.value.trackingNumber,
+      currentStation: updateForm.currentStation,
+      nextStation: updateForm.nextStation,
+      etaNextStation: updateForm.etaNextStation,
+      etaDelivered: updateForm.etaDelivered
     }
+    
+    await parcelRouteApi.create(data)
     success('更新成功')
     showUpdateRoute.value = false
+    loadParcelList()
   } catch (error: any) {
     showError(error.message || '更新失败')
   }
@@ -611,12 +633,37 @@ const handlePageChange = (delta: number) => {
   loadParcelList()
 }
 
+const stations = ref<AdminStation[]>([])
+
+// 加载站点列表
+const loadStations = async () => {
+  try {
+    const res = await getAllStations()
+    // 按省份和城市排序
+    stations.value = res.sort((a, b) => {
+      const provinceCompare = (a.province || '').localeCompare(b.province || '')
+      if (provinceCompare !== 0) return provinceCompare
+      
+      const cityCompare = (a.city || '').localeCompare(b.city || '')
+      if (cityCompare !== 0) return cityCompare
+      
+      return (a.station || '').localeCompare(b.station || '')
+    })
+  } catch (error) {
+    console.error('加载站点列表失败:', error)
+  }
+}
+
 // 页面加载时初始化
 onMounted(async () => {
-  const hasPermission = await checkPermission()
-  if (hasPermission) {
-    loadParcelList()
+  try {
+    const adminInfo = await getCurrentAdminDetail()
+    currentAdmin.value = adminInfo
+  } catch (error) {
+    console.error('获取管理员信息失败:', error)
   }
+  loadParcelList()
+  loadStations()
 })
 </script>
 

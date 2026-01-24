@@ -37,6 +37,18 @@ public class Parcel {
     @Column(name = "location", length = 100)
     private String location;
 
+    @Column(name = "current_station", length = 100)
+    private String currentStation;
+
+    @Column(name = "next_station", length = 100)
+    private String nextStation;
+
+    @Column(name = "eta_next_station")
+    private LocalDateTime etaNextStation;
+
+    @Column(name = "eta_delivered")
+    private LocalDateTime etaDelivered;
+
     @Column(name = "pickup_code", length = 6)
     private String pickupCode;
 
@@ -130,6 +142,38 @@ public class Parcel {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getCurrentStation() {
+        return currentStation;
+    }
+
+    public void setCurrentStation(String currentStation) {
+        this.currentStation = currentStation;
+    }
+
+    public String getNextStation() {
+        return nextStation;
+    }
+
+    public void setNextStation(String nextStation) {
+        this.nextStation = nextStation;
+    }
+
+    public LocalDateTime getEtaNextStation() {
+        return etaNextStation;
+    }
+
+    public void setEtaNextStation(LocalDateTime etaNextStation) {
+        this.etaNextStation = etaNextStation;
+    }
+
+    public LocalDateTime getEtaDelivered() {
+        return etaDelivered;
+    }
+
+    public void setEtaDelivered(LocalDateTime etaDelivered) {
+        this.etaDelivered = etaDelivered;
     }
 
     public String getPickupCode() {

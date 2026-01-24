@@ -88,8 +88,7 @@
               <label>角色 *</label>
               <select v-model="adminForm.role">
                 <option value="">请选择角色</option>
-                <option value="MANAGER">省级管理员</option>
-                <option value="CITY_ADMIN">市级管理员</option>
+                <option v-if="currentUserRole === 'SUPERADMIN'" value="MANAGER">省级管理员</option>
                 <option value="STREET_ADMIN">站点管理员</option>
               </select>
             </div>
@@ -103,12 +102,13 @@
             </div>
             <div class="form-group">
               <label>省份</label>
-              <select v-model="adminForm.province" @change="onProvinceChange">
+              <select v-if="currentUserRole === 'SUPERADMIN'" v-model="adminForm.province" @change="onProvinceChange">
                 <option value="">请选择省份</option>
                 <option v-for="province in provinces" :key="province" :value="province">
                   {{ province }}
                 </option>
               </select>
+              <input v-else type="text" v-model="adminForm.province" disabled class="disabled-input">
             </div>
             <div class="form-group">
               <label>城市</label>
@@ -158,23 +158,23 @@ const { success, error: showError, warning } = useToast()
 const { confirm } = useConfirm()
 
 // 权限检查：需要市级管理员及以上权限
-const REQUIRED_ROLE: AdminRole = 'CITY_ADMIN'
+const REQUIRED_ROLE: AdminRole = 'MANAGER'
 const roleLevel: Record<AdminRole, number> = {
   SUPERADMIN: 1,
   MANAGER: 2,
-  CITY_ADMIN: 3,
-  STREET_ADMIN: 4
+  STREET_ADMIN: 3
 }
 const roleDisplayName: Record<AdminRole, string> = {
   SUPERADMIN: '超级管理员',
   MANAGER: '省级管理员',
-  CITY_ADMIN: '市级管理员',
   STREET_ADMIN: '站点管理员'
 }
 
 const checkPermission = async () => {
   try {
     const detail = await getCurrentAdminDetail()
+    currentUserRole.value = detail.role
+    currentUserProvince.value = detail.province || ''
     const currentLevel = roleLevel[detail.role]
     const requiredLevel = roleLevel[REQUIRED_ROLE]
     if (currentLevel > requiredLevel) {
@@ -204,6 +204,8 @@ interface AdminForm {
 const searchKeyword = ref('')
 const adminList = ref<AdminRoleScope[]>([])
 const adminDetails = ref<Record<number, AdminDetail>>({})
+const currentUserRole = ref<AdminRole | null>(null)
+const currentUserProvince = ref<string>('')
 const showModal = ref(false)
 const isEdit = ref(false)
 const editingAdminId = ref<number | null>(null)
@@ -346,6 +348,26 @@ const openCreateModal = () => {
   isEdit.value = false
   editingAdminId.value = null
   resetForm()
+  
+  // 如果是省级管理员，自动填入省份
+  if (currentUserRole.value === 'MANAGER' && currentUserProvince.value) {
+    // 尝试匹配前端定义的省份名称（处理"河北"与"河北省"的不一致）
+    const userProv = currentUserProvince.value
+    // 1. 直接匹配
+    if (provinceCityMap[userProv]) {
+      adminForm.province = userProv
+    } else {
+      // 2. 前缀匹配 (例如后端存"河北省", 前端map是"河北")
+      const matchedProv = Object.keys(provinceCityMap).find(p => userProv.startsWith(p))
+      if (matchedProv) {
+        adminForm.province = matchedProv
+      } else {
+        // 3. 兜底
+        adminForm.province = userProv
+      }
+    }
+  }
+  
   showModal.value = true
 }
 
@@ -679,6 +701,12 @@ td {
 .btn-delete:hover {
   background: #f5222d;
   color: white;
+}
+
+.disabled-input {
+  background-color: #f5f5f5;
+  color: #666;
+  cursor: not-allowed;
 }
 
 /* 弹窗样式 */

@@ -22,4 +22,7 @@ public interface ParcelRepository extends JpaRepository<Parcel, Long> {
     // 通过手机号查询包裹
     Page<Parcel> findByReceiverPhone(String receiverPhone, Pageable pageable);
     Optional<Parcel> findByTrackingNumberAndReceiverPhone(String trackingNumber, String receiverPhone);
+    
+    // 同时通过ID或手机号查询
+    Page<Parcel> findByReceiverIdOrReceiverPhone(Long receiverId, String receiverPhone, Pageable pageable);
 }

@@ -119,7 +119,9 @@
                   @click="shipPackage(pkg.id)">发货</button>
                 <button 
                   v-if="pkg.status === 'SHIPPED'" 
-                  class="btn-action btn-action-success" 
+                  :class="['btn-action', canStore(pkg) ? 'btn-action-success' : 'btn-action-disabled']"
+                  :disabled="!canStore(pkg)"
+                  :title="!canStore(pkg) ? '非本站或发货站不可入库' : '入库'"
                   @click="storePackage(pkg.id)">入库</button>
                 <button 
                   v-if="pkg.status === 'STORED' && !pkg.hasStorageInfo" 
@@ -201,7 +203,30 @@
             </div>
             <div class="form-group">
               <label>终点站 / 目的地 *</label>
-              <input type="text" v-model="packageForm.destination" placeholder="请输入终点站或目的地">
+              <div class="address-selector">
+                <div class="select-row">
+                  <select v-model="selectedProvince" @change="onProvinceChange" class="addr-select">
+                    <option value="">请选择省份</option>
+                    <option v-for="p in provinces" :key="p.code" :value="p.name">{{ p.name }}</option>
+                  </select>
+                  <select v-model="selectedCity" class="addr-select">
+                    <option value="">请选择城市</option>
+                    <option v-for="c in cities" :key="c.code" :value="c.name">{{ c.name }}</option>
+                  </select>
+                </div>
+                <input 
+                  type="text" 
+                  v-model="district" 
+                  placeholder="请输入区/县"
+                  class="addr-input"
+                >
+                <input 
+                  type="text" 
+                  v-model="detailAddress" 
+                  placeholder="请输入详细地址（街道/门牌号等）"
+                  class="addr-input"
+                >
+              </div>
             </div>
           </div>
         </div>
@@ -339,9 +364,61 @@ import { parcelApi, type Parcel, type ParcelCreateRequest, type ParcelUpdateRequ
 import { getCurrentAdminDetail } from '@/api/admin/management'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { chinaDivisions, type Region } from '@/utils/china-division'
 
 const { success, error: showError, warning, info } = useToast()
 const { confirm } = useConfirm()
+
+// 地址选择相关
+const provinces = ref<Region[]>(chinaDivisions)
+const cities = ref<Region[]>([])
+const selectedProvince = ref('')
+const selectedCity = ref('')
+const district = ref('')
+const detailAddress = ref('')
+
+const onProvinceChange = () => {
+  selectedCity.value = ''
+  cities.value = []
+  if (selectedProvince.value) {
+    const province = provinces.value.find(p => p.name === selectedProvince.value)
+    if (province && province.children) {
+      cities.value = province.children
+    }
+  }
+}
+
+// 解析地址到表单
+const parseAddressToForm = (fullAddress: string) => {
+  if (!fullAddress) return
+
+  // 尝试匹配省份
+  const province = provinces.value.find(p => fullAddress.startsWith(p.name))
+  if (province) {
+    selectedProvince.value = province.name
+    onProvinceChange()
+    
+    // 尝试匹配城市
+    const remainingAfterProvince = fullAddress.slice(province.name.length)
+    const city = cities.value.find(c => remainingAfterProvince.startsWith(c.name))
+    
+    if (city) {
+      selectedCity.value = city.name
+      // 剩余部分尝试提取区县（假设区县后面是详细地址，这里简单处理，将剩余部分作为区县+详情）
+      // 由于没有明确分隔符，很难准确区分区县和详情，这里暂且将剩余部分放入详情，或者尝试更智能的匹配
+      // 用户要求区县和详细地址自己填写，这里作为回显，尽量匹配
+      // 简单策略：剩余部分全部放入详细地址，用户可以自己拆分
+      // 或者：如果之前是标准格式存的，可以尝试解析。
+      // 既然用户说"区县和详细地址需要自己填写"，那回显时就让用户自己修正吧。
+      // 为方便起见，将剩余部分填入"详细地址"，"区县"留空或让用户填
+      detailAddress.value = remainingAfterProvince.slice(city.name.length)
+    } else {
+      detailAddress.value = remainingAfterProvince
+    }
+  } else {
+    detailAddress.value = fullAddress
+  }
+}
 
 interface Package {
   id: number
@@ -352,6 +429,7 @@ interface Package {
   origin?: string
   destination?: string
   location: string
+  currentStation?: string // 当前站点
   pickupCode: string
   status: string // 前端状态：PENDING_SHIP, SHIPPED, STORED, RETURNED
   backendStatus: number // 后端状态：0-待发货, 1-已发货, 2-已入库, 3-退回/异常
@@ -433,6 +511,7 @@ const convertBackendToUI = (parcel: Parcel): Package => {
     origin: parcel.origin,
     destination: parcel.destination,
     location: parcel.location || '-',
+    currentStation: parcel.currentStation,
     pickupCode: parcel.pickupCode || '-',
     status: mapBackendStatusToUI(parcel.status),
     backendStatus: parcel.status,
@@ -443,9 +522,25 @@ const convertBackendToUI = (parcel: Parcel): Package => {
   }
 }
 
+const currentAdminStation = ref('')
+
 // 加载包裹列表
 const loadPackages = async () => {
   try {
+    // 获取当前管理员站点信息（如果尚未获取）
+    if (!currentAdminStation.value) {
+        try {
+            const adminDetail = await getCurrentAdminDetail()
+            currentAdminStation.value = [
+              adminDetail.province,
+              adminDetail.city,
+              adminDetail.station
+            ].filter(Boolean).join('')
+        } catch (e) {
+            console.error('获取管理员信息失败', e)
+        }
+    }
+
     const response = await parcelApi.list(currentPage.value - 1, pageSize.value)
     packageList.value = response.content.map(convertBackendToUI)
     total.value = response.totalElements
@@ -465,6 +560,27 @@ const updateStats = (parcels: Parcel[]) => {
   stats.shipping = parcels.filter(p => p.status === 1).length // 运输中
   stats.stored = parcels.filter(p => p.status === 2 && p.isSigned === 0).length // 已入库未签收
   stats.abnormal = parcels.filter(p => p.status === 3).length // 异常包裹
+}
+
+// 判断是否可以进行入库操作
+const canStore = (pkg: Package) => {
+  // 1. 必须有当前站点信息和管理员站点信息
+  if (!pkg.currentStation || !currentAdminStation.value) return false
+  
+  // 2. 管理员必须在包裹当前所在的站点
+  const adminStation = currentAdminStation.value
+  const parcelStation = pkg.currentStation
+  const isAdminAtParcelStation = adminStation.includes(parcelStation) || parcelStation.includes(adminStation)
+  
+  if (!isAdminAtParcelStation) return false
+
+  // 3. 不能在发货地入库（除非发货地即目的地，暂不考虑特殊情况）
+  // 如果当前站点包含发货地（或者发货地包含当前站点），则认为是发货地
+  if (pkg.origin && (parcelStation.includes(pkg.origin) || pkg.origin.includes(parcelStation))) {
+    return false
+  }
+  
+  return true
 }
 
 const getStatusLabel = (status?: string) => {
@@ -578,12 +694,16 @@ const editPackage = (pkg: Package) => {
     company: pkg.company,
     receiverName: pkg.receiverName,
     receiverPhone: pkg.receiverPhone,
-    origin: '',
-    destination: '',
+    origin: pkg.origin || '',
+    destination: pkg.destination || '',
     location: pkg.location,
     pickupCode: pkg.pickupCode,
     remark: pkg.remark || ''
   })
+  
+  // 解析地址回显
+  parseAddressToForm(pkg.destination || '')
+  
   showEditPackage.value = true
 }
 
@@ -620,10 +740,7 @@ const submitPackage = async () => {
       warning('请填写起始站点')
       return
     }
-    if (!packageForm.destination) {
-      warning('请填写终点站/目的地')
-      return
-    }
+    // 目的地验证已移至 submitPackage 内部处理
   }
   
   try {
@@ -633,19 +750,26 @@ const submitPackage = async () => {
         trackingNumber: packageForm.trackingNumber,
         company: packageForm.company,
         receiverName: packageForm.receiverName || undefined,
-        receiverPhone: packageForm.receiverPhone || undefined
+        receiverPhone: packageForm.receiverPhone || undefined,
+        destination: `${selectedProvince.value}${selectedCity.value}${district.value}${detailAddress.value}`
       }
       await parcelApi.update(editingPackageId.value, updateData)
       success('更新成功')
     } else {
       // 创建新包裹，直接使用表单中填写的地址
+      const fullDestination = `${selectedProvince.value}${selectedCity.value}${district.value}${detailAddress.value}`
+      if (!selectedProvince.value || !selectedCity.value || !district.value || !detailAddress.value) {
+        warning('请完整填写收货地址（省、市、区县、详细地址）')
+        return
+      }
+      
       const createData: ParcelCreateRequest = {
         trackingNumber: packageForm.trackingNumber,
         company: packageForm.company,
         receiverPhone: packageForm.receiverPhone,
         receiverName: packageForm.receiverName || undefined,
         origin: packageForm.origin,
-        destination: packageForm.destination,
+        destination: fullDestination,
         status: 0, // 默认状态：待发货
         isSigned: 0 // 默认未签收
       }
@@ -681,6 +805,14 @@ const openAddPackageModal = async () => {
     // 填充表单数据
     packageForm.trackingNumber = trackingNumber
     packageForm.origin = currentStation || ''
+    
+    // 重置地址选择
+    selectedProvince.value = ''
+    selectedCity.value = ''
+    district.value = ''
+    detailAddress.value = ''
+    cities.value = []
+    
     console.log('表单数据已填充:', { trackingNumber: packageForm.trackingNumber, origin: packageForm.origin })
     
     showAddPackage.value = true
@@ -834,6 +966,34 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.address-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.select-row {
+  display: flex;
+  gap: 10px;
+}
+
+.addr-select {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+}
+
+.addr-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
 .packages-management {
 }
 
@@ -1157,6 +1317,18 @@ tr {
   color: white;
 }
 
+/* 禁用按钮样式 */
+.btn-action-disabled {
+  background-color: #d9d9d9;
+  color: #8c8c8c;
+  cursor: not-allowed;
+  border: 1px solid #d9d9d9;
+}
+.btn-action-disabled:hover {
+  opacity: 1;
+}
+
+/* 分页 */
 .pagination {
   padding: 20px;
   display: flex;

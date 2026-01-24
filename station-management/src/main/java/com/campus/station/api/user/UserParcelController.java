@@ -46,7 +46,7 @@ public class UserParcelController {
         com.campus.station.model.SysUser currentUser = SessionUtil.getCurrentUser();
         if (currentUser != null && currentUser.getPhone() != null && !currentUser.getPhone().isBlank()) {
             // 同时查询receiverId匹配和receiverPhone匹配的包裹
-            Page<Parcel> parcelsByPhone = service.listByReceiverPhone(currentUser.getPhone(), pageable);
+            Page<Parcel> parcelsByPhone = service.listByReceiverIdOrReceiverPhone(currentUserId, currentUser.getPhone(), pageable);
             return ResponseEntity.ok(parcelsByPhone);
         }
         
@@ -86,9 +86,16 @@ public class UserParcelController {
         if (currentUserId == null) {
             return ResponseEntity.status(401).body("未登录");
         }
+        
+        com.campus.station.model.SysUser currentUser = SessionUtil.getCurrentUser();
+        String userPhone = (currentUser != null) ? currentUser.getPhone() : null;
+        
         return service.getById(id)
                 .map(parcel -> {
-                    if (parcel.getReceiverId() != null && !parcel.getReceiverId().equals(currentUserId)) {
+                    boolean isIdMatch = parcel.getReceiverId() != null && parcel.getReceiverId().equals(currentUserId);
+                    boolean isPhoneMatch = userPhone != null && !userPhone.isBlank() && userPhone.equals(parcel.getReceiverPhone());
+                    
+                    if (!isIdMatch && !isPhoneMatch) {
                          return ResponseEntity.status(403).body("无权查看此快递");
                     }
                     return ResponseEntity.ok((Object) parcel);

@@ -35,15 +35,13 @@ const { warning } = useToast()
 const roleLevel: Record<AdminRole, number> = {
   SUPERADMIN: 1,
   MANAGER: 2,
-  CITY_ADMIN: 3,
-  STREET_ADMIN: 4
+  STREET_ADMIN: 3
 }
 
 // 角色显示名称
 const roleDisplayName: Record<AdminRole, string> = {
   SUPERADMIN: '超级管理员',
   MANAGER: '省级管理员',
-  CITY_ADMIN: '市级管理员',
   STREET_ADMIN: '站点管理员'
 }
 
@@ -72,13 +70,13 @@ const currentRole = ref<AdminRole | null>(null)
 // 菜单项及其权限要求
 const menuItems: MenuItem[] = [
   { id: 'dashboard', label: '工作台', icon: 'dashboard', route: '/admin/home' },
-  { id: 'users', label: '用户管理', icon: 'users', route: '/admin/users', requiredRole: 'CITY_ADMIN' },
-  { id: 'admins', label: '管理员管理', icon: 'admins', route: '/admin/admins', requiredRole: 'CITY_ADMIN' },
+  { id: 'users', label: '用户管理', icon: 'users', route: '/admin/users', requiredRole: 'MANAGER' },
+  { id: 'admins', label: '管理员管理', icon: 'admins', route: '/admin/admins', requiredRole: 'MANAGER' },
   { id: 'packages', label: '包裹管理', icon: 'packages', route: '/admin/packages' },
   { id: 'warehouse', label: '仓库管理', icon: 'warehouse', route: '/admin/warehouse' },
   { id: 'warehouse-info', label: '仓库信息', icon: 'warehouse-info', route: '/admin/warehouse-info' },
   { id: 'returns', label: '退货申请', icon: 'returns', route: '/admin/returns' },
-  { id: 'logistics', label: '物流管理', icon: 'logistics', route: '/admin/logistics', requiredRole: 'CITY_ADMIN' },
+  { id: 'logistics', label: '物流管理', icon: 'logistics', route: '/admin/logistics' },
   { id: 'messages', label: '留言管理', icon: 'messages', route: '/admin/messages' },
   { id: 'announcements', label: '公告管理', icon: 'announcements', route: '/admin/announcements', requiredRole: 'MANAGER' },
   { id: 'settings', label: '个人设置', icon: 'settings', route: '/admin/settings' },

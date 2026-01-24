@@ -19,6 +19,19 @@ public class ParcelRouteServiceImpl implements ParcelRouteService {
     @Override
     @Transactional
     public ParcelRoute create(ParcelRoute route) {
+        // 查询该快递单号的最新一条流转记录
+        java.util.List<ParcelRoute> routes = repository.findByTrackingNumberOrderByCreateTimeAsc(route.getTrackingNumber());
+        if (!routes.isEmpty()) {
+            ParcelRoute lastRoute = routes.get(routes.size() - 1);
+            // 如果最新记录的当前站点与新记录的当前站点相同，且最新记录没有下一站信息
+            // 则认为是补充完善该站点的流转信息，直接更新原记录
+            if (lastRoute.getCurrentStation().equals(route.getCurrentStation()) && lastRoute.getNextStation() == null) {
+                lastRoute.setNextStation(route.getNextStation());
+                lastRoute.setEtaNextStation(route.getEtaNextStation());
+                lastRoute.setEtaDelivered(route.getEtaDelivered());
+                return repository.save(lastRoute);
+            }
+        }
         return repository.save(route);
     }
 
