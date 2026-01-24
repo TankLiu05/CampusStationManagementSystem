@@ -112,6 +112,15 @@
             </div>
             <button class="action-btn" @click="showChangePassword = true">修改密码</button>
           </div>
+          <div class="security-item">
+            <div class="security-left">
+              <div class="security-info">
+                <h3>升级为管理员</h3>
+                <p>输入超级管理员密码，升级您的账户为超级管理员</p>
+              </div>
+            </div>
+            <button class="action-btn upgrade-btn" @click="showUpgradeAdmin = true">升级为管理员</button>
+          </div>
         </div>
       </div>
 
@@ -240,6 +249,27 @@
         </div>
       </div>
     </div>
+
+    <!-- 升级为管理员弹窗 -->
+    <div class="modal" v-if="showUpgradeAdmin" @click="showUpgradeAdmin = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>升级为超级管理员</h3>
+          <button class="close-btn" @click="showUpgradeAdmin = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>超级管理员密码</label>
+            <input type="password" v-model="upgradeForm.adminPassword" placeholder="请输入超级管理员密码（admin123）">
+          </div>
+          <p class="tip-text">升级后，您将拥有超级管理员的所有权限，可以访问管理后台</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showUpgradeAdmin = false">取消</button>
+          <button class="btn-submit" @click="upgradeToAdmin">确认升级</button>
+        </div>
+      </div>
+    </div>
     </div>
   </UserLayout>
 </template>
@@ -247,7 +277,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
-import { getUserProfile, updateUserProfile, changeUserPassword, type UserProfile as UserProfileType, type ChangePasswordRequest } from '@/api/user/profile'
+import { getUserProfile, updateUserProfile, changeUserPassword, upgradeToSuperAdmin, type UserProfile as UserProfileType, type ChangePasswordRequest } from '@/api/user/profile'
 import { 
   createLocation, 
   getLocationList, 
@@ -285,6 +315,7 @@ interface PasswordForm {
 const isEditing = ref(false)
 const showChangePassword = ref(false)
 const showAddAddress = ref(false)
+const showUpgradeAdmin = ref(false)
 
 const userInfo = reactive<UserInfo>({
   username: 'user123',
@@ -304,6 +335,10 @@ const passwordForm = reactive<PasswordForm>({
   oldPassword: '',
   newPassword: '',
   confirmPassword: ''
+})
+
+const upgradeForm = reactive({
+  adminPassword: ''
 })
 
 // 收货地址表单
@@ -534,6 +569,30 @@ const handleSetDefault = async (id: number) => {
   } catch (error) {
     console.error('设置默认地址失败:', error)
     showError('设置默认地址失败，请稍后重试')
+  }
+}
+
+// 升级为超级管理员
+const upgradeToAdmin = async () => {
+  if (!upgradeForm.adminPassword) {
+    warning('请输入超级管理员密码')
+    return
+  }
+  
+  try {
+    await upgradeToSuperAdmin(upgradeForm.adminPassword)
+    
+    upgradeForm.adminPassword = ''
+    showUpgradeAdmin.value = false
+    success('升级成功！请重新登录以访问管理后台')
+    
+    // 延迟跳转到登录页
+    setTimeout(() => {
+      window.location.href = '/login'
+    }, 2000)
+  } catch (error) {
+    console.error('升级失败:', error)
+    showError('升级失败，请检查超级管理员密码是否正确')
   }
 }
 </script>
@@ -1015,6 +1074,29 @@ const handleSetDefault = async (id: number) => {
 .btn-submit:hover {
   border-color: #a8c4a2;
   color: #a8c4a2;
+}
+
+.upgrade-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
+  border: none !important;
+}
+
+.upgrade-btn:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #663a91 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.tip-text {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-left: 3px solid #667eea;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
 }
 
 @media (max-width: 768px) {

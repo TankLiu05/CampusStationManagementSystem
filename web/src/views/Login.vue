@@ -90,7 +90,7 @@
           </div>
 
           <div class="form-group">
-            <label for="reg-phone">手机号（可选）</label>
+            <label for="reg-phone">手机号</label>
             <div class="input-wrapper">
               <span class="input-icon"><img src="@/assets/icons/phone.png" alt="手机" /></span>
               <input
@@ -98,6 +98,9 @@
                 id="reg-phone"
                 v-model="registerForm.phone"
                 placeholder="输入手机号"
+                required
+                pattern="[0-9]{11}"
+                title="请输入11位手机号"
               />
             </div>
           </div>

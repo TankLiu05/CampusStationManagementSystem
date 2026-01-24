@@ -63,3 +63,14 @@ export function changeUserPassword(data: ChangePasswordRequest) {
     body: JSON.stringify(data),
   })
 }
+
+/**
+ * 升级为超级管理员
+ * @param adminPassword 超级管理员密码
+ */
+export function upgradeToSuperAdmin(adminPassword: string) {
+  return request<string>('/api/user/profile/upgrade-to-admin', {
+    method: 'POST',
+    body: JSON.stringify({ adminPassword }),
+  })
+}

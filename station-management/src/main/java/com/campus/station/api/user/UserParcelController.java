@@ -1,15 +1,23 @@
 package com.campus.station.api.user;
 
-import com.campus.station.common.SessionUtil;
-import com.campus.station.model.Parcel;
-import com.campus.station.service.ParcelService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.campus.station.common.SessionUtil;
+import com.campus.station.model.Parcel;
+import com.campus.station.service.ParcelService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @Tag(name = "UserParcel", description = "用户快递查询接口")
@@ -33,6 +41,16 @@ public class UserParcelController {
             return ResponseEntity.status(401).body("未登录");
         }
         Pageable pageable = PageRequest.of(page, size);
+        
+        // 获取当前用户手机号
+        com.campus.station.model.SysUser currentUser = SessionUtil.getCurrentUser();
+        if (currentUser != null && currentUser.getPhone() != null && !currentUser.getPhone().isBlank()) {
+            // 同时查询receiverId匹配和receiverPhone匹配的包裹
+            Page<Parcel> parcelsByPhone = service.listByReceiverPhone(currentUser.getPhone(), pageable);
+            return ResponseEntity.ok(parcelsByPhone);
+        }
+        
+        // 如果没有手机号，则只通过receiverId查询
         Page<Parcel> parcels = service.listByReceiver(currentUserId, pageable);
         return ResponseEntity.ok(parcels);
     }
@@ -44,6 +62,18 @@ public class UserParcelController {
         if (currentUserId == null) {
             return ResponseEntity.status(401).body("未登录");
         }
+        
+        // 获取当前用户手机号
+        com.campus.station.model.SysUser currentUser = SessionUtil.getCurrentUser();
+        if (currentUser != null && currentUser.getPhone() != null && !currentUser.getPhone().isBlank()) {
+            // 优先通过手机号查询
+            Optional<Parcel> parcelByPhone = service.getByTrackingNumberAndReceiverPhone(trackingNumber, currentUser.getPhone());
+            if (parcelByPhone.isPresent()) {
+                return ResponseEntity.ok(parcelByPhone.get());
+            }
+        }
+        
+        // 如果通过手机号未找到，再尝试通过receiverId查询
         return service.getByTrackingNumberAndReceiverId(trackingNumber, currentUserId)
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(404).body("未找到对应快递"));

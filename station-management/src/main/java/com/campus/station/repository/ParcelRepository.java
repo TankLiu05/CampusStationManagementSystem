@@ -1,12 +1,13 @@
 package com.campus.station.repository;
 
-import com.campus.station.model.Parcel;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
-import java.util.Optional;
+import com.campus.station.model.Parcel;
 
 public interface ParcelRepository extends JpaRepository<Parcel, Long> {
     Optional<Parcel> findByTrackingNumber(String trackingNumber);
@@ -17,4 +18,8 @@ public interface ParcelRepository extends JpaRepository<Parcel, Long> {
     Optional<Parcel> findByPickupCodeAndIsSigned(String pickupCode, Integer isSigned);
     Optional<Parcel> findByLocationAndIsSigned(String location, Integer isSigned);
     List<Parcel> findByReceiverId(Long receiverId);
+    
+    // 通过手机号查询包裹
+    Page<Parcel> findByReceiverPhone(String receiverPhone, Pageable pageable);
+    Optional<Parcel> findByTrackingNumberAndReceiverPhone(String trackingNumber, String receiverPhone);
 }

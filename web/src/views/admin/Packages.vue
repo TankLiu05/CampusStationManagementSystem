@@ -20,7 +20,7 @@
         <button class="reset-btn" @click="resetFilters">重置筛选</button>
       </div>
       <div class="action-buttons">
-        <button class="btn-primary" @click="showAddPackage = true">录入包裹</button>
+        <button class="btn-primary" @click="openAddPackageModal">录入包裹</button>
         <button class="btn-secondary" @click="batchDelete">批量删除</button>
       </div>
     </div>
@@ -159,7 +159,12 @@
           <div class="form-row">
             <div class="form-group">
               <label>快递单号 *</label>
-              <input type="text" v-model="packageForm.trackingNumber" placeholder="请输入快递单号">
+              <input 
+                type="text" 
+                v-model="packageForm.trackingNumber" 
+                :placeholder="showAddPackage ? '系统自动生成' : '请输入快递单号'" 
+                :readonly="showAddPackage"
+              >
             </div>
             <div class="form-group">
               <label>快递公司 *</label>
@@ -186,12 +191,17 @@
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>起始站点 / 始发地</label>
-              <input type="text" v-model="packageForm.origin" placeholder="自动根据当前站点生成" readonly>
+              <label>起始站点 / 始发地 *</label>
+              <input 
+                type="text" 
+                v-model="packageForm.origin" 
+                :placeholder="showAddPackage ? '自动获取当前站点' : '请输入起始站点'" 
+                :readonly="showAddPackage"
+              >
             </div>
             <div class="form-group">
-              <label>终点站 / 目的地</label>
-              <input type="text" v-model="packageForm.destination" placeholder="自动根据用户收货地址生成" readonly>
+              <label>终点站 / 目的地 *</label>
+              <input type="text" v-model="packageForm.destination" placeholder="请输入终点站或目的地">
             </div>
           </div>
         </div>
@@ -326,9 +336,6 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { parcelApi, type Parcel, type ParcelCreateRequest, type ParcelUpdateRequest } from '@/api/admin/parcel'
-import { parcelRouteApi, type ParcelRouteCreateRequest } from '@/api/admin/parcelRoute'
-import { getUserByPhone } from '@/api/admin/user'
-import { getUserDefaultLocation } from '@/api/admin/location'
 import { getCurrentAdminDetail } from '@/api/admin/management'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -607,6 +614,18 @@ const submitPackage = async () => {
     return
   }
   
+  // 验证起始站点和终点站（新增时）
+  if (showAddPackage.value) {
+    if (!packageForm.origin) {
+      warning('请填写起始站点')
+      return
+    }
+    if (!packageForm.destination) {
+      warning('请填写终点站/目的地')
+      return
+    }
+  }
+  
   try {
     if (showEditPackage.value && editingPackageId.value) {
       // 更新包裹
@@ -619,85 +638,19 @@ const submitPackage = async () => {
       await parcelApi.update(editingPackageId.value, updateData)
       success('更新成功')
     } else {
-      // 获取当前管理员站点信息
-      const adminDetail = await getCurrentAdminDetail()
-      const currentStationParts = [
-        adminDetail.province,
-        adminDetail.city,
-        adminDetail.station
-      ].filter(Boolean) as string[]
-      const currentStation = currentStationParts.join('')
-      if (!currentStation) {
-        warning('无法获取当前站点信息，请检查管理员站点配置')
-        return
+      // 创建新包裹，直接使用表单中填写的地址
+      const createData: ParcelCreateRequest = {
+        trackingNumber: packageForm.trackingNumber,
+        company: packageForm.company,
+        receiverPhone: packageForm.receiverPhone,
+        receiverName: packageForm.receiverName || undefined,
+        origin: packageForm.origin,
+        destination: packageForm.destination,
+        status: 0, // 默认状态：待发货
+        isSigned: 0 // 默认未签收
       }
-
-      // 先查询快递单号是否已存在
-      let existingParcel: Parcel | null = null
-      try {
-        existingParcel = await parcelApi.searchByTrackingNumber(packageForm.trackingNumber)
-      } catch (e) {
-        // 404 表示不存在，继续创建新包裹
-        existingParcel = null
-      }
-
-      if (existingParcel) {
-        // 快递已存在，添加流转记录并更新状态
-        const routeData: ParcelRouteCreateRequest = {
-          trackingNumber: packageForm.trackingNumber,
-          currentStation: currentStation,
-          nextStation: existingParcel.destination || '目的地',
-          etaNextStation: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 预计明天到达
-          etaDelivered: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString() // 预计后天送达
-        }
-        await parcelRouteApi.create(routeData)
-        
-        // 更新包裹状态为运输中
-        await parcelApi.changeStatus(existingParcel.id, 1)
-        
-        success('包裹已到达本站点，已添加流转记录')
-      } else {
-        // 快递不存在，创建新包裹
-        const phone = packageForm.receiverPhone.trim()
-        const user = await getUserByPhone(phone)
-        let location
-        try {
-          location = await getUserDefaultLocation(user.id)
-        } catch (e) {
-          warning('该用户没有设置默认收货地址，请先让用户在前端设置默认收货地址')
-          return
-        }
-        if (!location) {
-          warning('该用户没有设置默认收货地址，请先让用户在前端设置默认收货地址')
-          return
-        }
-        const destinationParts = [
-          location.province,
-          location.city,
-          location.street,
-          location.detailAddress
-        ].filter(Boolean) as string[]
-        const destination = destinationParts.join('')
-        if (!destination) {
-          warning('无法根据用户地址生成终点站信息，请检查用户收货地址')
-          return
-        }
-        packageForm.destination = destination
-        packageForm.origin = currentStation
-
-        const createData: ParcelCreateRequest = {
-          trackingNumber: packageForm.trackingNumber,
-          company: packageForm.company,
-          receiverPhone: packageForm.receiverPhone,
-          receiverName: packageForm.receiverName || undefined,
-          origin: packageForm.origin || undefined,
-          destination: packageForm.destination || undefined,
-          status: 0, // 默认状态：待发货
-          isSigned: 0 // 默认未签收
-        }
-        await parcelApi.create(createData)
-        success('创建成功')
-      }
+      await parcelApi.create(createData)
+      success('创建成功')
     }
     
     closeModal()
@@ -705,6 +658,35 @@ const submitPackage = async () => {
   } catch (error) {
     console.error('提交包裹失败:', error)
     showError('提交包裹失败，请检查收件人信息是否正确')
+  }
+}
+
+// 打开录入包裹弹窗，自动生成快递单号并填充站点信息
+const openAddPackageModal = async () => {
+  try {
+    // 生成快递单号
+    const trackingNumber = await parcelApi.generateTrackingNumber()
+    console.log('生成的快递单号:', trackingNumber)
+    
+    // 获取当前管理员站点信息
+    const adminDetail = await getCurrentAdminDetail()
+    const currentStationParts = [
+      adminDetail.province,
+      adminDetail.city,
+      adminDetail.station
+    ].filter(Boolean) as string[]
+    const currentStation = currentStationParts.join('')
+    console.log('当前站点信息:', currentStation)
+    
+    // 填充表单数据
+    packageForm.trackingNumber = trackingNumber
+    packageForm.origin = currentStation || ''
+    console.log('表单数据已填充:', { trackingNumber: packageForm.trackingNumber, origin: packageForm.origin })
+    
+    showAddPackage.value = true
+  } catch (error) {
+    console.error('打开录入窗口失败:', error)
+    showError('打开录入窗口失败，请重试')
   }
 }
 
@@ -1287,6 +1269,12 @@ tr {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
+}
+
+.form-group input[readonly] {
+  background-color: #f5f5f5;
+  color: #333;
+  cursor: not-allowed;
 }
 
 .form-group textarea {

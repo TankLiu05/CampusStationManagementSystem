@@ -1,5 +1,16 @@
 package com.campus.station.service.impl;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.campus.station.model.AdminRole;
 import com.campus.station.model.AdminRoleScope;
 import com.campus.station.model.Parcel;
@@ -7,15 +18,6 @@ import com.campus.station.model.ParcelRoute;
 import com.campus.station.repository.ParcelRepository;
 import com.campus.station.repository.ParcelRouteRepository;
 import com.campus.station.service.ParcelService;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ParcelServiceImpl implements ParcelService {
@@ -345,5 +347,15 @@ public class ParcelServiceImpl implements ParcelService {
             }
         }
         return false;
+    }
+    
+    @Override
+    public Page<Parcel> listByReceiverPhone(String receiverPhone, Pageable pageable) {
+        return repository.findByReceiverPhone(receiverPhone, pageable);
+    }
+    
+    @Override
+    public Optional<Parcel> getByTrackingNumberAndReceiverPhone(String trackingNumber, String receiverPhone) {
+        return repository.findByTrackingNumberAndReceiverPhone(trackingNumber, receiverPhone);
     }
 }

@@ -1,11 +1,12 @@
 package com.campus.station.service;
 
-import com.campus.station.model.AdminRoleScope;
-import com.campus.station.model.Parcel;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.Optional;
+import com.campus.station.model.AdminRoleScope;
+import com.campus.station.model.Parcel;
 
 public interface ParcelService {
     Parcel create(Parcel parcel);
@@ -30,4 +31,8 @@ public interface ParcelService {
     void updateReceiverInfo(Long receiverId, String receiverName, String receiverPhone);
     boolean isParcelVisibleForStation(Parcel parcel, String stationCode);
     boolean isParcelVisibleForScope(AdminRoleScope scope, Parcel parcel);
+    
+    // 通过手机号查询包裹
+    Page<Parcel> listByReceiverPhone(String receiverPhone, Pageable pageable);
+    Optional<Parcel> getByTrackingNumberAndReceiverPhone(String trackingNumber, String receiverPhone);
 }

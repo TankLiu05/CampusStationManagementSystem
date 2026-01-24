@@ -1,18 +1,7 @@
 package com.campus.station.api.admin;
 
-import com.campus.station.common.PickupCodeUtil;
-import com.campus.station.common.SessionUtil;
-import com.campus.station.model.AdminRoleScope;
-import com.campus.station.model.Parcel;
-import com.campus.station.model.SysAdmin;
-import com.campus.station.model.SysUser;
-import com.campus.station.service.AdminRoleScopeService;
-import com.campus.station.service.ParcelService;
-import com.campus.station.service.SysAdminService;
-import com.campus.station.service.SysUserService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.concurrent.ThreadLocalRandom;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +17,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.campus.station.common.PickupCodeUtil;
+import com.campus.station.common.SessionUtil;
+import com.campus.station.model.AdminRoleScope;
+import com.campus.station.model.Parcel;
+import com.campus.station.model.SysAdmin;
+import com.campus.station.model.SysUser;
+import com.campus.station.service.AdminRoleScopeService;
+import com.campus.station.service.ParcelService;
+import com.campus.station.service.SysAdminService;
+import com.campus.station.service.SysUserService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @Tag(name = "AdminParcel", description = "管理员快递管理接口")
@@ -70,6 +73,13 @@ public class AdminParcelController {
     @Operation(summary = "创建快递（发货）")
     public ResponseEntity<?> create(@RequestBody AdminParcelCreateRequest req) {
         requireCurrentAdmin();
+        
+        // 验证必填字段
+        if (req.getReceiverPhone() == null || req.getReceiverPhone().isBlank()) {
+            return ResponseEntity.badRequest().body("收件人手机号不能为空");
+        }
+        
+        // 尝试通过用户名或手机号查找系统用户（如果已注册，则关联用户ID）
         SysUser receiver = null;
         if (req.getReceiverUsername() != null && !req.getReceiverUsername().isBlank()) {
             receiver = sysUserService.getByUsername(req.getReceiverUsername()).orElse(null);
@@ -77,16 +87,28 @@ public class AdminParcelController {
         if (receiver == null && req.getReceiverPhone() != null && !req.getReceiverPhone().isBlank()) {
             receiver = sysUserService.getByPhone(req.getReceiverPhone()).orElse(null);
         }
-        if (receiver == null) {
-            return ResponseEntity.status(404).body("收件人用户不存在");
-        }
-
+        
         Parcel parcel = new Parcel();
-        parcel.setTrackingNumber(req.getTrackingNumber());
+        
+        // 自动生成快递单号（如果未提供）
+        String trackingNumber = req.getTrackingNumber();
+        if (trackingNumber == null || trackingNumber.isBlank()) {
+            trackingNumber = generateTrackingNumber();
+        }
+        parcel.setTrackingNumber(trackingNumber);
+        
         parcel.setCompany(req.getCompany());
-        parcel.setReceiverId(receiver.getId());
-        parcel.setReceiverName(req.getReceiverName() != null ? req.getReceiverName() : receiver.getUsername());
-        parcel.setReceiverPhone(req.getReceiverPhone() != null ? req.getReceiverPhone() : receiver.getPhone());
+        
+        // 如果找到了系统用户，则关联用户ID；否则receiverId为null
+        if (receiver != null) {
+            parcel.setReceiverId(receiver.getId());
+        }
+        
+        // 收件人姓名和手机号直接使用表单提供的值
+        parcel.setReceiverName(req.getReceiverName() != null && !req.getReceiverName().isBlank() 
+                ? req.getReceiverName() 
+                : (receiver != null ? receiver.getUsername() : "未填写"));
+        parcel.setReceiverPhone(req.getReceiverPhone());
         parcel.setOrigin(req.getOrigin());
         parcel.setDestination(req.getDestination());
         if (req.getStatus() != null) {
@@ -101,6 +123,16 @@ public class AdminParcelController {
 
         Parcel created = service.create(parcel);
         return ResponseEntity.ok(created);
+    }
+
+    @GetMapping("/generate-tracking-number")
+    @Operation(summary = "生成快递单号")
+    public ResponseEntity<String> generateTrackingNumberApi() {
+        requireCurrentAdmin();
+        String trackingNumber = generateTrackingNumber();
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body("\""+trackingNumber+"\""); // 返回JSON格式的字符串
     }
 
     @GetMapping("/search")
@@ -147,6 +179,30 @@ public class AdminParcelController {
                     return ResponseEntity.ok(updated);
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * 生成随机快递单号
+     * 格式：YD + 13位数字（时间戳10位 + 随机数3位）
+     * 例如：YD1706789012345
+     */
+    private String generateTrackingNumber() {
+        String trackingNumber;
+        int attempts = 0;
+        do {
+            // 使用当前时间戳（秒级）+ 3位随机数
+            long timestamp = System.currentTimeMillis() / 1000; // 10位时间戳
+            int random = ThreadLocalRandom.current().nextInt(100, 1000); // 3位随机数
+            trackingNumber = "YD" + timestamp + random;
+            attempts++;
+            if (attempts > 10) {
+                // 如果尝试10次仍然冲突，使用纯随机数
+                long randomNum = ThreadLocalRandom.current().nextLong(1000000000000L, 10000000000000L);
+                trackingNumber = "YD" + randomNum;
+                break;
+            }
+        } while (service.getByTrackingNumber(trackingNumber).isPresent());
+        return trackingNumber;
     }
 
     private static String generateRandomLocation() {

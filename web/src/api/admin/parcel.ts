@@ -54,13 +54,14 @@ export interface PageResponse<T> {
 
 /**
  * 包裹创建请求数据（对应后端 AdminParcelCreateRequest）
+ * 注意：收件人不需要是系统注册用户，只需要提供手机号和姓名即可
  */
 export interface ParcelCreateRequest {
   trackingNumber: string
   company: string
-  receiverUsername?: string // 收件人用户名（优先使用）
-  receiverPhone?: string // 收件人手机号（备用查找方式）
-  receiverName?: string // 收件人姓名（可选，默认使用用户的username）
+  receiverUsername?: string // 收件人用户名（可选，如果提供且系统中存在，则关联用户ID）
+  receiverPhone?: string // 收件人手机号（必填，用于用户查询自己的包裹）
+  receiverName?: string // 收件人姓名（可选，不填则使用系统用户名）
    origin?: string
    destination?: string
   status?: number // 快递状态（可选）
@@ -178,5 +179,23 @@ export const parcelApi = {
     return request<Parcel>('/api/admin/parcel/search', {
       params: { trackingNumber }
     })
+  },
+
+  /**
+   * 生成快递单号
+   * @description 自动生成一个唯一的快递单号
+   */
+  async generateTrackingNumber() {
+    const response = await fetch('/api/admin/parcel/generate-tracking-number', {
+      credentials: 'include'
+    })
+    if (!response.ok) {
+      throw new Error('生成快递单号失败')
+    }
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      return response.json() // 返回JSON格式
+    }
+    return response.text() // 返回纯文本
   }
 }
