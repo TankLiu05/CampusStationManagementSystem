@@ -88,8 +88,10 @@
             <tr>
               <th>快递单号</th>
               <th>快递公司</th>
+              <th>起始站</th>
               <th>当前站点</th>
               <th>下一站点</th>
+              <th>终点站</th>
               <th>预计到达</th>
               <th>物流状态</th>
               <th>更新时间</th>
@@ -105,8 +107,10 @@
               <td>
                 <span class="company-badge">{{ item.company }}</span>
               </td>
+              <td>{{ item.origin || '-' }}</td>
               <td>{{ item.currentStation }}</td>
               <td>{{ item.nextStation || '-' }}</td>
+              <td>{{ item.destination || '-' }}</td>
               <td>
                 <span :class="['eta-text', { delayed: item.isDelayed }]">
                   {{ item.etaNextStation || '-' }}
@@ -147,6 +151,25 @@
             <div class="form-group">
               <label>快递单号 *</label>
               <input type="text" v-model="routeForm.trackingNumber" placeholder="请输入快递单号">
+            </div>
+            <div class="form-group">
+              <label>快递公司 *</label>
+              <select v-model="routeForm.company">
+                <option value="顺丰速运">顺丰速运</option>
+                <option value="中通快递">中通快递</option>
+                <option value="圆通速递">圆通速递</option>
+                <option value="申通快递">申通快递</option>
+                <option value="韵达快递">韵达快递</option>
+                <option value="极兔速递">极兔速递</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>起始站 *</label>
+              <input type="text" v-model="routeForm.origin" placeholder="如：北京转运中心">
+            </div>
+            <div class="form-group">
+              <label>终点站 *</label>
+              <input type="text" v-model="routeForm.destination" placeholder="如：广州转运中心">
             </div>
             <div class="form-group">
               <label>当前站点 *</label>
@@ -311,6 +334,8 @@ interface LogisticsItem {
   id: number
   trackingNumber: string
   company: string
+  origin?: string
+  destination?: string
   currentStation: string
   nextStation: string
   etaNextStation: string
@@ -346,6 +371,9 @@ const stats = reactive({
 
 const routeForm = reactive({
   trackingNumber: '',
+  company: '顺丰速运',
+  origin: '',
+  destination: '',
   currentStation: '',
   nextStation: '',
   etaNextStation: '',
@@ -378,6 +406,8 @@ const convertParcelToLogistics = (parcel: Parcel): LogisticsItem => {
     id: parcel.id,
     trackingNumber: parcel.trackingNumber,
     company: parcel.company,
+    origin: parcel.origin,
+    destination: parcel.destination,
     currentStation: parcel.currentStation || '待分配',
     nextStation: parcel.nextStation || (parcel.status === 2 ? '' : '校园驿站'),
     etaNextStation: parcel.etaNextStation?.replace('T', ' ').substring(0, 16) || '',
@@ -559,8 +589,12 @@ const updateRoute = async (item: LogisticsItem) => {
 }
 
 const submitRoute = async () => {
-  if (!routeForm.trackingNumber || !routeForm.currentStation) {
-    warning('请填写快递单号和当前站点')
+  if (!routeForm.trackingNumber || !routeForm.currentStation || !routeForm.company) {
+    warning('请填写快递单号、快递公司和当前站点')
+    return
+  }
+  if (!routeForm.origin || !routeForm.destination) {
+    warning('请填写起始站和终点站')
     return
   }
   if (!routeForm.nextStation) {
@@ -573,26 +607,35 @@ const submitRoute = async () => {
   }
 
   try {
-    const data: ParcelRouteCreateRequest = {
+    const requestData: any = {
       trackingNumber: routeForm.trackingNumber,
+      company: routeForm.company,
+      origin: routeForm.origin,
+      destination: routeForm.destination,
       currentStation: routeForm.currentStation,
       nextStation: routeForm.nextStation,
-      etaNextStation: routeForm.etaNextStation,
-      etaDelivered: routeForm.etaDelivered
+      etaNextStation: routeForm.etaNextStation ? routeForm.etaNextStation.replace('T', ' ') + ':00' : '',
+      etaDelivered: routeForm.etaDelivered ? routeForm.etaDelivered.replace('T', ' ') + ':00' : ''
     }
-    await parcelRouteApi.create(data)
-    success('添加成功')
+    
+    await parcelRouteApi.create(requestData)
+    success('添加物流信息成功')
     showAddRoute.value = false
-    loadParcelList()
+    searchLogistics()
+    
+    // 重置表单
     Object.assign(routeForm, {
       trackingNumber: '',
+      company: '顺丰速运',
+      origin: '',
+      destination: '',
       currentStation: '',
       nextStation: '',
       etaNextStation: '',
       etaDelivered: ''
     })
-  } catch (error: any) {
-    showError(error.message || '添加失败')
+  } catch (err: any) {
+    showError(err.message || '添加物流信息失败')
   }
 }
 

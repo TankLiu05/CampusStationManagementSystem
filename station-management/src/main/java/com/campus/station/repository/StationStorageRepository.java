@@ -15,4 +15,6 @@ public interface StationStorageRepository extends JpaRepository<StationStorage, 
     
     // 检查位置是否被占用 (未签收的包裹)
     boolean existsByAreaAndShelfAndPositionAndIsSigned(String area, String shelf, String position, Integer isSigned);
+
+    java.util.List<StationStorage> findByStationNameIsNull();
 }

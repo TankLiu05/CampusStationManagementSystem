@@ -22,6 +22,9 @@ export interface ParcelRoute {
  */
 export interface ParcelRouteCreateRequest {
   trackingNumber: string
+  company?: string
+  origin?: string
+  destination?: string
   currentStation: string
   nextStation: string
   etaNextStation: string

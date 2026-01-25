@@ -33,6 +33,7 @@ public interface ParcelService {
     Page<Parcel> listByReceiverAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable);
     Optional<Parcel> findActiveByPickupCode(String pickupCode);
     Optional<Parcel> findActiveByLocation(String location);
+    Optional<Parcel> findActiveByLocationAndStation(String location, String station);
     void deleteBatch(Iterable<Long> ids);
     void updateReceiverInfo(Long receiverId, String receiverName, String receiverPhone);
     boolean isParcelVisibleForStation(Parcel parcel, String stationCode);

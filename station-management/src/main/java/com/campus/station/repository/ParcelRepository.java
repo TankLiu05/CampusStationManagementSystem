@@ -17,6 +17,7 @@ public interface ParcelRepository extends JpaRepository<Parcel, Long> {
     Page<Parcel> findByReceiverIdAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable);
     Optional<Parcel> findByPickupCodeAndIsSigned(String pickupCode, Integer isSigned);
     Optional<Parcel> findByLocationAndIsSigned(String location, Integer isSigned);
+    Optional<Parcel> findByLocationAndCurrentStationAndIsSigned(String location, String currentStation, Integer isSigned);
     List<Parcel> findByReceiverId(Long receiverId);
     
     // 通过手机号查询包裹

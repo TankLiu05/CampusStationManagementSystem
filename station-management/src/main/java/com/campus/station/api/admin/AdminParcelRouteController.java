@@ -93,10 +93,52 @@ public class AdminParcelRouteController {
             return ResponseEntity.badRequest().body("预计送达时间不能为空");
         }
 
+        // Check if parcel exists. If not, create it.
         Parcel parcel = parcelService.getByTrackingNumber(req.getTrackingNumber())
                 .orElse(null);
+        
         if (parcel == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("快递不存在");
+            // New parcel: validate required fields
+            if (req.getCompany() == null || req.getCompany().isBlank()) {
+                return ResponseEntity.badRequest().body("快递公司不能为空");
+            }
+            if (req.getOrigin() == null || req.getOrigin().isBlank()) {
+                return ResponseEntity.badRequest().body("起始站不能为空");
+            }
+            if (req.getDestination() == null || req.getDestination().isBlank()) {
+                return ResponseEntity.badRequest().body("终点站不能为空");
+            }
+
+            // Create new parcel with info from request
+            parcel = new Parcel();
+            parcel.setTrackingNumber(req.getTrackingNumber());
+            parcel.setCompany(req.getCompany());
+            parcel.setOrigin(req.getOrigin());
+            parcel.setDestination(req.getDestination());
+            // Other fields default
+            parcel.setStatus(1); // Shipped
+            parcel.setIsSigned(0);
+            parcel.setReceiverName("Unknown"); // Placeholder
+            parcel.setReceiverPhone("Unknown"); // Placeholder
+            parcel = parcelService.create(parcel);
+        } else {
+             // Update existing parcel origin/destination/company if not set
+             boolean changed = false;
+             if (req.getCompany() != null && !req.getCompany().isBlank() && (parcel.getCompany() == null || parcel.getCompany().isBlank())) {
+                 parcel.setCompany(req.getCompany());
+                 changed = true;
+             }
+             if (req.getOrigin() != null && !req.getOrigin().isBlank() && (parcel.getOrigin() == null || parcel.getOrigin().isBlank())) {
+                 parcel.setOrigin(req.getOrigin());
+                 changed = true;
+             }
+             if (req.getDestination() != null && !req.getDestination().isBlank() && (parcel.getDestination() == null || parcel.getDestination().isBlank())) {
+                 parcel.setDestination(req.getDestination());
+                 changed = true;
+             }
+             if (changed) {
+                 parcelService.update(parcel.getId(), parcel);
+             }
         }
 
         AdminRoleScope scope = requireCurrentAdminScope();

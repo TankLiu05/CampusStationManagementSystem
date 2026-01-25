@@ -266,6 +266,11 @@ public class ParcelServiceImpl implements ParcelService {
     }
 
     @Override
+    public Optional<Parcel> findActiveByLocationAndStation(String location, String station) {
+        return repository.findByLocationAndCurrentStationAndIsSigned(location, station, 0);
+    }
+
+    @Override
     @Transactional
     public void updateReceiverInfo(Long receiverId, String receiverName, String receiverPhone) {
         List<Parcel> parcels = repository.findByReceiverId(receiverId);

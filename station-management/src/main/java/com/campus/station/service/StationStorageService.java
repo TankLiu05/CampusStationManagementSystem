@@ -33,5 +33,5 @@ public interface StationStorageService {
      */
     void deleteByTrackingNumber(String trackingNumber);
 
-    java.util.List<StationStorage> search(String area, String shelf, String position, String receiverName, String receiverPhone);
+    java.util.List<StationStorage> search(String stationName, String area, String shelf, String position, String receiverName, String receiverPhone);
 }

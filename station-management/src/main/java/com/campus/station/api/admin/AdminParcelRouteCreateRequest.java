@@ -5,6 +5,9 @@ import java.time.LocalDateTime;
 public class AdminParcelRouteCreateRequest {
 
     private String trackingNumber;
+    private String company;
+    private String origin;
+    private String destination;
     private String currentStation;
     private String nextStation;
     private LocalDateTime etaNextStation;
@@ -16,6 +19,30 @@ public class AdminParcelRouteCreateRequest {
 
     public void setTrackingNumber(String trackingNumber) {
         this.trackingNumber = trackingNumber;
+    }
+
+    public String getCompany() {
+        return company;
+    }
+
+    public void setCompany(String company) {
+        this.company = company;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
+    }
+
+    public String getDestination() {
+        return destination;
+    }
+
+    public void setDestination(String destination) {
+        this.destination = destination;
     }
 
     public String getCurrentStation() {

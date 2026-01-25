@@ -32,6 +32,7 @@ public class StationStorageServiceImpl implements StationStorageService {
         storage.setReceiverPhone(parcel.getReceiverPhone());
         storage.setPickupCode(parcel.getPickupCode());
         storage.setIsSigned(parcel.getIsSigned());
+        storage.setStationName(parcel.getCurrentStation());
 
         // Parse location string
         String location = parcel.getLocation();
@@ -68,10 +69,13 @@ public class StationStorageServiceImpl implements StationStorageService {
     }
 
     @Override
-    public java.util.List<StationStorage> search(String area, String shelf, String position, String receiverName, String receiverPhone) {
+    public java.util.List<StationStorage> search(String stationName, String area, String shelf, String position, String receiverName, String receiverPhone) {
         return repository.findAll((org.springframework.data.jpa.domain.Specification<StationStorage>) (root, query, criteriaBuilder) -> {
             java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
 
+            if (stationName != null && !stationName.isEmpty()) {
+                predicates.add(criteriaBuilder.equal(root.get("stationName"), stationName));
+            }
             if (area != null && !area.isEmpty()) {
                 predicates.add(criteriaBuilder.equal(root.get("area"), area));
             }

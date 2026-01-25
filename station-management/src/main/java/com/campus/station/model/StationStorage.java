@@ -54,6 +54,9 @@ public class StationStorage {
     @Column(name = "position", length = 10)
     private String position;
 
+    @Column(name = "station_name", length = 100)
+    private String stationName;
+
     @CreationTimestamp
     @Column(name = "create_time", nullable = false, updatable = false)
     private LocalDateTime createTime;
@@ -132,6 +135,14 @@ public class StationStorage {
 
     public void setPosition(String position) {
         this.position = position;
+    }
+
+    public String getStationName() {
+        return stationName;
+    }
+
+    public void setStationName(String stationName) {
+        this.stationName = stationName;
     }
 
     public LocalDateTime getCreateTime() {

@@ -1,8 +1,10 @@
 package com.campus.station.api.admin;
 
 import com.campus.station.common.SessionUtil;
+import com.campus.station.model.AdminRoleScope;
 import com.campus.station.model.StationStorage;
 import com.campus.station.model.SysAdmin;
+import com.campus.station.service.AdminRoleScopeService;
 import com.campus.station.service.StationStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,9 +23,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminStationStorageController {
 
     private final StationStorageService stationStorageService;
+    private final AdminRoleScopeService adminRoleScopeService;
 
-    public AdminStationStorageController(StationStorageService stationStorageService) {
+    public AdminStationStorageController(StationStorageService stationStorageService, AdminRoleScopeService adminRoleScopeService) {
         this.stationStorageService = stationStorageService;
+        this.adminRoleScopeService = adminRoleScopeService;
     }
 
     private SysAdmin requireAdmin() {
@@ -32,6 +36,12 @@ public class AdminStationStorageController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "管理员未登录");
         }
         return current;
+    }
+
+    private AdminRoleScope requireCurrentAdminScope() {
+        SysAdmin admin = requireAdmin();
+        return adminRoleScopeService.getByAdminId(admin.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "管理员角色未配置"));
     }
 
     @GetMapping("/tracking/{trackingNumber}")
@@ -51,7 +61,12 @@ public class AdminStationStorageController {
             @org.springframework.web.bind.annotation.RequestParam(required = false) String position,
             @org.springframework.web.bind.annotation.RequestParam(required = false) String receiverName,
             @org.springframework.web.bind.annotation.RequestParam(required = false) String receiverPhone) {
-        requireAdmin();
-        return ResponseEntity.ok(stationStorageService.search(area, shelf, position, receiverName, receiverPhone));
+        AdminRoleScope scope = requireCurrentAdminScope();
+        String stationName = scope.getStation();
+        // Only STREET_ADMIN has a specific station. Higher admins might have null (see all) or region.
+        // For simplicity, if station is set, filter by it.
+        // Note: scope.getStation() returns the station name string.
+        
+        return ResponseEntity.ok(stationStorageService.search(stationName, area, shelf, position, receiverName, receiverPhone));
     }
 }

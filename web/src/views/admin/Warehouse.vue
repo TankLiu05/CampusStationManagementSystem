@@ -54,63 +54,45 @@
           :class="['zone-tab', { active: currentZone === zone.id }]"
           @click="currentZone = zone.id"
         >
-          {{ zone.name }} ({{ zone.count }})
+          {{ zone.name }}
         </button>
       </div>
 
-      <!-- 货架列表 -->
+      <!-- 包裹列表 -->
       <div class="shelves-table">
         <table>
           <thead>
             <tr>
-              <th>货架编号</th>
-              <th>所属区域</th>
-              <th>在库数量</th>
-              <th>已取数量</th>
-              <th>总计</th>
-              <th>快递公司</th>
-              <th>在库率</th>
+              <th>快递单号</th>
+              <th>收件人</th>
+              <th>手机号</th>
+              <th>取件码</th>
+              <th>存放位置</th>
+              <th>入库时间</th>
               <th>状态</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="storageLoading">
-              <td colspan="8" class="empty-row">加载中...</td>
+              <td colspan="7" class="empty-row">加载中...</td>
             </tr>
-            <tr v-else-if="filteredShelves.length === 0">
-              <td colspan="8" class="empty-row">暂无货架数据</td>
+            <tr v-else-if="filteredStorages.length === 0">
+              <td colspan="7" class="empty-row">暂无包裹数据</td>
             </tr>
-            <tr v-for="shelf in filteredShelves" :key="`${shelf.area}-${shelf.shelf}`">
-              <td><span class="shelf-code">{{ shelf.area }}-{{ shelf.shelf }}</span></td>
-              <td>{{ shelf.area }}区</td>
-              <td>{{ shelf.inStock }}</td>
-              <td>{{ shelf.picked }}</td>
-              <td>{{ shelf.total }}</td>
+            <tr v-for="item in filteredStorages" :key="item.id">
+              <td>{{ item.trackingNumber }}</td>
+              <td>{{ item.receiverName || '-' }}</td>
+              <td>{{ item.receiverPhone || '-' }}</td>
+              <td><span class="pickup-code">{{ item.pickupCode || '-' }}</span></td>
               <td>
-                <div class="company-tags">
-                  <span 
-                    v-for="company in getCompanies(shelf)" 
-                    :key="company.name" 
-                    class="company-tag"
-                    :title="`${company.name}: ${company.count}件`"
-                  >
-                    {{ company.name }}({{ company.count }})
-                  </span>
-                  <span v-if="getCompanies(shelf).length === 0">-</span>
-                </div>
+                <span class="location-tag">
+                  {{ formatLocation(item) }}
+                </span>
               </td>
+              <td>{{ formatDate(item.createTime) }}</td>
               <td>
-                <div class="usage-bar">
-                  <div 
-                    class="usage-fill" 
-                    :style="{ width: getUsageRate(shelf) + '%', background: getUsageColor(getUsageRate(shelf)) }"
-                  ></div>
-                </div>
-                <span class="usage-text">{{ getUsageRate(shelf) }}%</span>
-              </td>
-              <td>
-                <span :class="['status-badge', getShelfStatus(shelf)]">
-                  {{ getStatusLabel(shelf) }}
+                <span :class="['status-badge', item.isSigned === 1 ? 'signed' : 'instock']">
+                  {{ item.isSigned === 1 ? '已取件' : '在库' }}
                 </span>
               </td>
             </tr>
@@ -134,10 +116,7 @@ const storageLoading = ref(false)
 const currentZone = ref('')
 let refreshTimer: number | null = null
 
-// 货架配置常量
-const AREAS = ['A', 'B', 'C', 'D'] // 固定4个区域
-const SHELVES_PER_AREA = 10 // 每个区域10个货架
-const MAX_CAPACITY_PER_SHELF = 50 // 每个货架最大容量50件
+const AREAS = ['A', 'B', 'C', 'D']
 
 // 加载数据
 const loadData = async () => {
@@ -167,122 +146,50 @@ onUnmounted(() => {
   }
 })
 
-// 扩展货架统计数据
-interface ShelfStat {
-  area: string
-  shelf: string
-  inStock: number
-  picked: number
-  total: number
-  maxCapacity: number
-  storages: StationStorage[]
-}
-
-const shelfStats = computed<ShelfStat[]>(() => {
-  // 初始化所有固定的货架（4个区域 × 10个货架 = 40个货架）
-  const shelfMap = new Map<string, ShelfStat>()
-  
-  AREAS.forEach(area => {
-    for (let shelfNum = 1; shelfNum <= SHELVES_PER_AREA; shelfNum++) {
-      const key = `${area}-${shelfNum}`
-      shelfMap.set(key, {
-        area,
-        shelf: String(shelfNum),
-        inStock: 0,
-        picked: 0,
-        total: 0,
-        maxCapacity: MAX_CAPACITY_PER_SHELF,
-        storages: []
-      })
-    }
-  })
-  
-  // 统计实际数据
-  storageList.value.forEach(storage => {
-    if (!storage.area || !storage.shelf) return // 没有位置信息的跳过
-    
-    const key = `${storage.area}-${storage.shelf}`
-    const stat = shelfMap.get(key)
-    if (stat) {
-      stat.total++
-      if (storage.isSigned === 1) {
-        stat.picked++
-      } else {
-        stat.inStock++
-      }
-      stat.storages.push(storage)
-    }
-  })
-  
-  return Array.from(shelfMap.values()).sort((a, b) => {
-    if (a.area !== b.area) return a.area.localeCompare(b.area)
-    return parseInt(a.shelf) - parseInt(b.shelf)
-  })
-})
-
-// 区域列表（固定显示所有区域）
+// 区域列表
 const zones = computed(() => {
   return [
-    { id: '', name: '全部区域', count: AREAS.length * SHELVES_PER_AREA },
+    { id: '', name: '全部区域' },
     ...AREAS.map(area => ({
       id: area,
-      name: `${area}区`,
-      count: SHELVES_PER_AREA
+      name: `${area}区`
     }))
   ]
 })
 
-// 筛选后的货架
-const filteredShelves = computed(() => {
-  if (!currentZone.value) return shelfStats.value
-  return shelfStats.value.filter(s => s.area === currentZone.value)
+// 筛选后的包裹列表
+const filteredStorages = computed(() => {
+  if (!currentZone.value) return storageList.value
+  return storageList.value.filter(s => s.area === currentZone.value)
 })
 
-// 统计数据（固定区域和货架数量）
+// 统计数据
 const stats = computed(() => {
   const inStock = storageList.value.filter(s => s.isSigned !== 1).length
   const picked = storageList.value.filter(s => s.isSigned === 1).length
+  // 计算实际使用的区域数
+  const usedZones = new Set(storageList.value.map(s => s.area).filter(Boolean)).size
+  // 计算实际使用的货架数
+  const usedShelves = new Set(storageList.value.map(s => `${s.area}-${s.shelf}`).filter(s => !s.startsWith('undefined-'))).size
+  
   return {
-    totalZones: AREAS.length, // 固定4个区域
-    totalShelves: AREAS.length * SHELVES_PER_AREA, // 固定40个货架
+    totalZones: usedZones || 0,
+    totalShelves: usedShelves || 0,
     inStockCount: inStock,
     pickedCount: picked
   }
 })
 
-// 获取快递公司统计（仓库表没有company字段，暂不显示）
-const getCompanies = (shelf: ShelfStat): Array<{ name: string; count: number }> => {
-  // StationStorage 表中没有快递公司字段
-  // 如果需要显示，需要关联查询 parcel 表或修改后端接口
-  return []
+// 格式化位置
+const formatLocation = (item: StationStorage) => {
+  if (!item.area || !item.shelf || !item.position) return '待分配'
+  return `${item.area}区-${item.shelf}号货架-${item.position}`
 }
 
-// 计算在库率（基于货架最大容量）
-const getUsageRate = (shelf: ShelfStat) => {
-  if (shelf.maxCapacity === 0) return 0
-  return Math.round((shelf.inStock / shelf.maxCapacity) * 100)
-}
-
-// 根据在库率返回颜色
-const getUsageColor = (rate: number) => {
-  if (rate === 0) return '#e0e0e0'
-  if (rate < 50) return '#52c41a'
-  if (rate < 80) return '#faad14'
-  return '#f5222d'
-}
-
-// 获取货架状态
-const getShelfStatus = (shelf: ShelfStat) => {
-  if (shelf.inStock === 0) return 'empty'
-  if (getUsageRate(shelf) >= 80) return 'busy'
-  return 'normal'
-}
-
-// 获取状态标签
-const getStatusLabel = (shelf: ShelfStat) => {
-  if (shelf.inStock === 0) return '空闲'
-  if (getUsageRate(shelf) >= 80) return '繁忙'
-  return '正常'
+// 格式化日期
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '-'
+  return dateStr.replace('T', ' ').substring(0, 16)
 }
 </script>
 
@@ -411,32 +318,20 @@ td {
   padding: 60px;
 }
 
-.shelf-code {
+.pickup-code {
   font-family: 'Courier New', monospace;
-  font-weight: 600;
-  color: #808080;
+  font-weight: 700;
+  color: #1890ff;
+  font-size: 16px;
 }
 
-.usage-bar {
-  width: 80px;
-  height: 8px;
-  background: #f0f0f0;
+.location-tag {
+  background: #f0f5ff;
+  color: #2f54eb;
+  padding: 4px 8px;
   border-radius: 4px;
-  overflow: hidden;
-  display: inline-block;
-  vertical-align: middle;
-  margin-right: 8px;
-}
-
-.usage-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.3s;
-}
-
-.usage-text {
   font-size: 12px;
-  color: #666;
+  font-weight: 500;
 }
 
 .status-badge {
@@ -446,35 +341,14 @@ td {
   font-weight: 500;
 }
 
-.status-badge.empty {
-  background: #f0f0f0;
-  color: #999;
-}
-
-.status-badge.normal {
+.status-badge.instock {
   background: #f6ffed;
   color: #52c41a;
 }
 
-.status-badge.busy {
-  background: #fff7e6;
-  color: #fa8c16;
-}
-
-.company-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.company-tag {
-  padding: 2px 8px;
-  background: #f0f0f0;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #666;
-  white-space: nowrap;
+.status-badge.signed {
+  background: #f5f5f5;
+  color: #999;
 }
 
 @media (max-width: 1200px) {

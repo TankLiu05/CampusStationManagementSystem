@@ -76,6 +76,8 @@
             <th>快递公司</th>
             <th>收件人</th>
             <th>手机号</th>
+            <th>起始站</th>
+            <th>终点站</th>
             <th>存放位置</th>
             <th>取件码</th>
             <th>状态</th>
@@ -97,6 +99,8 @@
             <td>{{ pkg.company }}</td>
             <td>{{ pkg.receiverName }}</td>
             <td>{{ pkg.receiverPhone }}</td>
+            <td>{{ pkg.origin }}</td>
+            <td>{{ pkg.destination }}</td>
             <td>{{ pkg.location }}</td>
             <td>
               <span class="pickup-code">{{ pkg.pickupCode }}</span>
@@ -512,6 +516,7 @@ const convertBackendToUI = (parcel: Parcel): Package => {
     destination: parcel.destination,
     location: parcel.location || '-',
     currentStation: parcel.currentStation,
+    nextStation: parcel.nextStation,
     pickupCode: parcel.pickupCode || '-',
     status: mapBackendStatusToUI(parcel.status),
     backendStatus: parcel.status,
@@ -565,21 +570,24 @@ const updateStats = (parcels: Parcel[]) => {
 // 判断是否可以进行入库操作
 const canStore = (pkg: Package) => {
   // 1. 必须有当前站点信息和管理员站点信息
-  if (!pkg.currentStation || !currentAdminStation.value) return false
+  if (!currentAdminStation.value) return false
   
-  // 2. 管理员必须在包裹当前所在的站点
+  // 2. 检查是否匹配“下一站”信息（新逻辑：只有作为物流下一站的站点才能入库）
   const adminStation = currentAdminStation.value
-  const parcelStation = pkg.currentStation
-  const isAdminAtParcelStation = adminStation.includes(parcelStation) || parcelStation.includes(adminStation)
+  const nextStation = pkg.nextStation
   
-  if (!isAdminAtParcelStation) return false
-
-  // 3. 不能在发货地入库（除非发货地即目的地，暂不考虑特殊情况）
-  // 如果当前站点包含发货地（或者发货地包含当前站点），则认为是发货地
-  if (pkg.origin && (parcelStation.includes(pkg.origin) || pkg.origin.includes(parcelStation))) {
-    return false
+  if (nextStation) {
+      // 如果有下一站信息，必须匹配管理员站点
+      const isMatch = adminStation === nextStation || 
+                      adminStation.includes(nextStation) || 
+                      nextStation.includes(adminStation)
+      if (!isMatch) return false
+  } else {
+      // 如果没有下一站信息（可能是发货地未发出，或数据缺失），暂不允许入库
+      // 或者是刚刚发货但未设置下一站？通常发货时会设置下一站。
+      return false
   }
-  
+
   return true
 }
 

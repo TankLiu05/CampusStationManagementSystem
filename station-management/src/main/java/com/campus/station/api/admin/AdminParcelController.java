@@ -130,6 +130,56 @@ public class AdminParcelController {
         return ResponseEntity.ok(created);
     }
 
+    @GetMapping
+    @Operation(summary = "获取快递列表")
+    public ResponseEntity<Page<Parcel>> list(Pageable pageable) {
+        AdminRoleScope scope = requireCurrentAdminScope();
+        return ResponseEntity.ok(service.listForScope(scope, pageable));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "获取快递详情")
+    public ResponseEntity<?> getById(@PathVariable Long id) {
+        AdminRoleScope scope = requireCurrentAdminScope();
+        return service.getById(id)
+                .filter(parcel -> service.isParcelVisibleForScope(scope, parcel))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "更新快递信息")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Parcel parcel) {
+        AdminRoleScope scope = requireCurrentAdminScope();
+        return service.getById(id)
+                .filter(p -> service.isParcelVisibleForScope(scope, p))
+                .map(p -> ResponseEntity.ok(service.update(id, parcel)))
+                .orElse(ResponseEntity.status(HttpStatus.FORBIDDEN).build());
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "删除快递")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        requireCurrentAdmin();
+        service.delete(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping
+    @Operation(summary = "批量删除快递")
+    public ResponseEntity<?> deleteBatch(@RequestBody java.util.List<Long> ids) {
+        requireCurrentAdmin();
+        service.deleteBatch(ids);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/status")
+    @Operation(summary = "修改快递状态")
+    public ResponseEntity<?> changeStatus(@PathVariable Long id, @RequestParam Integer status) {
+        requireCurrentAdmin();
+        return ResponseEntity.ok(service.changeStatus(id, status));
+    }
+
     @GetMapping("/generate-tracking-number")
     @Operation(summary = "生成快递单号")
     public ResponseEntity<String> generateTrackingNumberApi() {
@@ -167,42 +217,45 @@ public class AdminParcelController {
                     }
                     
                     // 2. 验证站点权限（如果是街道管理员）
-                    String currentStation = parcel.getCurrentStation();
                     String adminStation = scope.getStation();
                     
-                    if (scope.getRole() == com.campus.station.model.AdminRole.STREET_ADMIN) {
-                        if (adminStation != null && currentStation != null) {
-                            // 检查管理员是否在包裹当前所在的站点
-                            boolean isAtCurrentStation = adminStation.equals(currentStation) || 
-                                                       adminStation.contains(currentStation) || 
-                                                       currentStation.contains(adminStation);
-                            
-                            if (!isAtCurrentStation) {
-                                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("您无权对不在本站的包裹进行入库操作（当前包裹在：" + currentStation + "）");
-                            }
+                    // 3. 验证入库权限：只有物流信息的最新“下一站”才有权入库
+                    // 获取流转记录
+                    java.util.List<ParcelRoute> routes = parcelRouteService.listByTrackingNumber(parcel.getTrackingNumber());
+                    
+                    if (routes.isEmpty()) {
+                        // 如果没有任何流转记录，说明还在发货地且未发出，禁止入库
+                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("包裹尚未开始流转，无法进行入库操作");
+                    }
+                    
+                    // 获取最新的一条流转记录
+                    // 假设 listByTrackingNumber 返回的列表可能未排序，手动按 ID 或 创建时间 倒序排序
+                    routes.sort((a, b) -> {
+                        if (b.getCreateTime() != null && a.getCreateTime() != null) {
+                            return b.getCreateTime().compareTo(a.getCreateTime());
+                        }
+                        return b.getId().compareTo(a.getId());
+                    });
+                    
+                    ParcelRoute latestRoute = routes.get(0);
+                    String authorizedStation = latestRoute.getNextStation();
+                    
+                    if (authorizedStation == null || authorizedStation.isBlank()) {
+                         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无法确定下一站信息，禁止入库");
+                    }
+                    
+                    // 检查当前管理员是否属于该授权站点
+                    boolean isAuthorized = false;
+                    if (adminStation != null) {
+                        if (adminStation.equals(authorizedStation) || 
+                            adminStation.contains(authorizedStation) || 
+                            authorizedStation.contains(adminStation)) {
+                            isAuthorized = true;
                         }
                     }
                     
-                    // 3. 验证是否为发货站点（发货站点不能入库，必须流转到终点站）
-                    // 获取流转记录（按时间正序）
-                    java.util.List<ParcelRoute> routes = parcelRouteService.listByTrackingNumber(parcel.getTrackingNumber());
-                    if (!routes.isEmpty()) {
-                        ParcelRoute firstRoute = routes.get(0);
-                        String originStation = firstRoute.getCurrentStation();
-                        
-                        // 如果当前站点就是发货时的初始站点，且有下一站（说明是物流件而非同城即时达），则禁止入库
-                        // 逻辑优化：只要是发货站点，且当前没有流转到其他站点（即 currentStation == originStation），就禁止入库
-                        // 除非发货站点就是收货地址（极少见，且通常不走物流逻辑）
-                        
-                        if (originStation != null && currentStation != null && 
-                            (originStation.equals(currentStation) || originStation.contains(currentStation) || currentStation.contains(originStation))) {
-                             
-                             // 进一步检查：如果这是刚刚创建的包裹（只有一条路由记录），肯定是发货站点
-                             // 或者虽然有多条记录，但兜兜转转又回到了发货站点（也不应该直接入库，应该继续发走）
-                             
-                             // 简单规则：发货站点不能入库。
-                             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("发货站点无法进行入库操作，请先流转至下一站");
-                        }
+                    if (!isAuthorized) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("只有物流下一站（" + authorizedStation + "）才有权入库，您当前为：" + (adminStation != null ? adminStation : "未知"));
                     }
 
                     String pickupCode;
@@ -212,13 +265,15 @@ public class AdminParcelController {
                     String location;
                     do {
                         location = generateRandomLocation();
-                    } while (service.findActiveByLocation(location).isPresent());
+                    } while (service.findActiveByLocationAndStation(location, authorizedStation).isPresent());
 
                     Parcel update = new Parcel();
                     update.setLocation(location);
                     update.setPickupCode(pickupCode);
                     update.setStatus(2);
                     update.setIsSigned(null);
+                    // Update current station to the station performing the inbound
+                    update.setCurrentStation(authorizedStation);
                     Parcel updated = service.update(id, update);
                     
                     // Explicitly sync to warehouse storage
@@ -254,86 +309,10 @@ public class AdminParcelController {
     }
 
     private static String generateRandomLocation() {
-        char area = (char) ('A' + ThreadLocalRandom.current().nextInt(4));
-        int shelf = ThreadLocalRandom.current().nextInt(1, 11);
-        int code = ThreadLocalRandom.current().nextInt(0, 10000);
-        String shelfPart = String.format("%02d货架", shelf);
-        String codePart = String.format("%04d", code);
-        return area + "区-" + shelfPart + "-" + codePart;
+        int area = ThreadLocalRandom.current().nextInt(1, 5); // A-D area (1-4)
+        int shelf = ThreadLocalRandom.current().nextInt(1, 11); // 1-10 shelf
+        int position = ThreadLocalRandom.current().nextInt(1000, 10000); // 1000-9999
+        char areaChar = (char) ('A' + area - 1);
+        return String.format("%c区-%d号货架-%d", areaChar, shelf, position);
     }
-
-    @GetMapping("/{id}")
-    @Operation(summary = "根据ID获取快递")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
-        requireCurrentAdmin();
-        return service.getById(id)
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @GetMapping
-    @Operation(summary = "分页查询所有快递列表")
-    public Page<Parcel> list(@RequestParam(defaultValue = "0") int page,
-                             @RequestParam(defaultValue = "10") int size,
-                             @RequestParam(required = false) Integer status) {
-        AdminRoleScope scope = requireCurrentAdminScope();
-        Pageable pageable = PageRequest.of(page, size);
-        if (status != null) {
-            return service.listForScopeAndStatus(scope, status, pageable);
-        }
-        return service.listForScope(scope, pageable);
-    }
-
-    @PutMapping("/{id}")
-    @Operation(summary = "更新快递信息")
-    public ResponseEntity<Parcel> update(@PathVariable Long id, @RequestBody Parcel req) {
-        requireCurrentAdmin();
-        Parcel updated = service.update(id, req);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/{id}")
-    @Operation(summary = "删除快递")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        requireCurrentAdmin();
-        service.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping
-    @Operation(summary = "批量删除快递")
-    public ResponseEntity<Void> deleteBatch(@RequestBody Iterable<Long> ids) {
-        requireCurrentAdmin();
-        service.deleteBatch(ids);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{id}/status")
-    @Operation(summary = "修改快递状态")
-    public ResponseEntity<Parcel> changeStatus(@PathVariable Long id, @RequestParam Integer status) {
-        requireCurrentAdmin();
-        Parcel updated = service.changeStatus(id, status);
-        return ResponseEntity.ok(updated);
-    }
-
-    @GetMapping("/debug/{trackingNumber}")
-    @Operation(summary = "调试接口：查看包裹完整信息")
-    public ResponseEntity<?> debugParcelInfo(@PathVariable String trackingNumber) {
-        requireCurrentAdmin();
-        
-        Parcel parcel = service.getByTrackingNumber(trackingNumber).orElse(null);
-        if (parcel == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("包裹不存在");
-        }
-        
-        java.util.Map<String, Object> result = new java.util.HashMap<>();
-        result.put("parcel", parcel);
-        
-        // 由于 service 中没有直接获取 route 的方法，这里只能返回 parcel
-        // 如果需要 route 信息，建议在 AdminParcelRouteController 中添加或注入 ParcelRouteRepository
-        // 但为了简单起见，这里只返回 parcel，这已经足够检查 nextStation 字段了
-        
-        return ResponseEntity.ok(result);
-    }
-
 }
