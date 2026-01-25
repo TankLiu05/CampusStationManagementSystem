@@ -299,13 +299,6 @@ const getScopeText = (admin: AdminRoleScope): string => {
     return province || '未设置'
   }
 
-  if (role === 'CITY_ADMIN') {
-    const parts: string[] = []
-    if (province) parts.push(province)
-    if (city) parts.push(city)
-    return parts.length > 0 ? parts.join(' - ') : '未设置'
-  }
-
   if (role === 'STREET_ADMIN') {
     const parts: string[] = []
     if (province) parts.push(province)
@@ -442,13 +435,6 @@ const submitAdmin = async () => {
     if (adminForm.role === 'MANAGER') {
       if (!adminForm.province.trim()) {
         warning('省级管理员必须填写省份')
-        return
-      }
-    }
-
-    if (adminForm.role === 'CITY_ADMIN') {
-      if (!adminForm.province.trim() || !adminForm.city.trim()) {
-        warning('市级管理员必须填写省份和城市')
         return
       }
     }
@@ -645,11 +631,6 @@ td {
 .role-badge.MANAGER {
   background: #fff7e6;
   color: #fa8c16;
-}
-
-.role-badge.CITY_ADMIN {
-  background: #e6f7ff;
-  color: #1890ff;
 }
 
 .role-badge.STREET_ADMIN {
