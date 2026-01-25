@@ -49,6 +49,9 @@ public class Parcel {
     @Transient
     private LocalDateTime etaDelivered;
 
+    @Transient
+    private Integer isDelivered;
+
     @Column(name = "pickup_code", length = 6)
     private String pickupCode;
 
@@ -174,6 +177,14 @@ public class Parcel {
 
     public void setEtaDelivered(LocalDateTime etaDelivered) {
         this.etaDelivered = etaDelivered;
+    }
+
+    public Integer getIsDelivered() {
+        return isDelivered;
+    }
+
+    public void setIsDelivered(Integer isDelivered) {
+        this.isDelivered = isDelivered;
     }
 
     public String getPickupCode() {

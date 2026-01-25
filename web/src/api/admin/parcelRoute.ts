@@ -13,6 +13,7 @@ export interface ParcelRoute {
   nextStation?: string
   etaNextStation?: string
   etaDelivered?: string
+  isDelivered?: number
   createTime: string
   updateTime: string
 }
@@ -29,6 +30,7 @@ export interface ParcelRouteCreateRequest {
   nextStation: string
   etaNextStation: string
   etaDelivered: string
+  isDelivered?: number
 }
 
 /**
@@ -85,6 +87,16 @@ export const parcelRouteApi = {
   getByTrackingNumber(trackingNumber: string) {
     return request<ParcelRoute[]>(`/api/admin/parcelRoute/tracking/${trackingNumber}`, {
       method: 'GET'
+    })
+  },
+
+  /**
+   * 标记快递已送达
+   * @param trackingNumber 快递单号
+   */
+  markDelivered(trackingNumber: string) {
+    return request<void>(`/api/admin/parcelRoute/markDelivered/${trackingNumber}`, {
+      method: 'POST'
     })
   }
 }

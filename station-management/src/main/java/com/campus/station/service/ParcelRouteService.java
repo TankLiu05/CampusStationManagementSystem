@@ -9,6 +9,8 @@ public interface ParcelRouteService {
 
     ParcelRoute updateEtaDelivered(Long id, java.time.LocalDateTime etaDelivered);
 
+    void markAsDelivered(String trackingNumber);
+
     java.util.List<ParcelRoute> listByTrackingNumber(String trackingNumber);
 }
 

@@ -12,6 +12,7 @@ public class AdminParcelRouteCreateRequest {
     private String nextStation;
     private LocalDateTime etaNextStation;
     private LocalDateTime etaDelivered;
+    private Integer isDelivered;
 
     public String getTrackingNumber() {
         return trackingNumber;
@@ -75,6 +76,14 @@ public class AdminParcelRouteCreateRequest {
 
     public void setEtaDelivered(LocalDateTime etaDelivered) {
         this.etaDelivered = etaDelivered;
+    }
+
+    public Integer getIsDelivered() {
+        return isDelivered;
+    }
+
+    public void setIsDelivered(Integer isDelivered) {
+        this.isDelivered = isDelivered;
     }
 }
 

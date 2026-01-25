@@ -33,6 +33,9 @@ public class ParcelRoute {
     @Column(name = "eta_delivered")
     private LocalDateTime etaDelivered;
 
+    @Column(name = "is_delivered")
+    private Integer isDelivered = 0;
+
     @CreationTimestamp
     @Column(name = "create_time", nullable = false, updatable = false)
     private LocalDateTime createTime;
@@ -87,6 +90,14 @@ public class ParcelRoute {
 
     public void setEtaDelivered(LocalDateTime etaDelivered) {
         this.etaDelivered = etaDelivered;
+    }
+
+    public Integer getIsDelivered() {
+        return isDelivered;
+    }
+
+    public void setIsDelivered(Integer isDelivered) {
+        this.isDelivered = isDelivered;
     }
 
     public LocalDateTime getCreateTime() {

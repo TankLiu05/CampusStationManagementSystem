@@ -810,7 +810,6 @@ const openAddPackageModal = async () => {
     // 重置地址选择
     selectedProvince.value = ''
     selectedCity.value = ''
-    district.value = ''
     detailAddress.value = ''
     cities.value = []
     

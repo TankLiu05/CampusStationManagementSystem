@@ -73,6 +73,38 @@ public class AdminParcelRouteController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "管理员角色未配置"));
     }
 
+    @PostMapping("/markDelivered/{trackingNumber}")
+    @Operation(summary = "标记快递已送达")
+    public ResponseEntity<?> markDelivered(@PathVariable String trackingNumber) {
+        requireAdmin();
+        try {
+            // Check if parcel is already delivered
+            java.util.List<ParcelRoute> routes = parcelRouteService.listByTrackingNumber(trackingNumber);
+            if (!routes.isEmpty()) {
+                ParcelRoute last = routes.get(routes.size() - 1);
+                if (last.getIsDelivered() != null && last.getIsDelivered() == 1) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("该快递已送达，无需重复标记");
+                }
+            }
+
+            parcelRouteService.markAsDelivered(trackingNumber);
+            
+            // Sync status to Parcel (Arrived = 2)
+            java.util.List<Parcel> parcels = parcelService.getByTrackingNumber(trackingNumber)
+                    .map(java.util.List::of)
+                    .orElse(java.util.Collections.emptyList());
+            if (!parcels.isEmpty()) {
+                parcelService.changeStatus(parcels.get(0).getId(), 2);
+            }
+            
+            return ResponseEntity.ok("操作成功");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("系统错误: " + e.getMessage());
+        }
+    }
+
     @PostMapping
     @Operation(summary = "创建快递流转记录")
     public ResponseEntity<?> create(@RequestBody AdminParcelRouteCreateRequest req) {
@@ -80,6 +112,16 @@ public class AdminParcelRouteController {
         if (req.getTrackingNumber() == null || req.getTrackingNumber().isBlank()) {
             return ResponseEntity.badRequest().body("快递单号不能为空");
         }
+
+        // Check if parcel is already delivered
+        java.util.List<ParcelRoute> routes = parcelRouteService.listByTrackingNumber(req.getTrackingNumber());
+        if (!routes.isEmpty()) {
+            ParcelRoute last = routes.get(routes.size() - 1);
+            if (last.getIsDelivered() != null && last.getIsDelivered() == 1) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("该快递已送达，无法继续更新物流信息");
+            }
+        }
+
         if (req.getCurrentStation() == null || req.getCurrentStation().isBlank()) {
             return ResponseEntity.badRequest().body("当前站点不能为空");
         }
@@ -197,6 +239,7 @@ public class AdminParcelRouteController {
         route.setNextStation(req.getNextStation());
         route.setEtaNextStation(req.getEtaNextStation());
         route.setEtaDelivered(req.getEtaDelivered());
+        route.setIsDelivered(req.getIsDelivered() != null ? req.getIsDelivered() : 0);
 
         ParcelRoute created = parcelRouteService.create(route);
 

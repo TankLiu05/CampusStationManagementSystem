@@ -36,6 +36,7 @@ export interface Parcel {
   nextStation?: string // 下一站点
   etaNextStation?: string // 预计到达下一站时间
   etaDelivered?: string // 预计送达时间
+  isDelivered?: number // 是否已送达（0:否, 1:是）
   pickupCode?: string // 取件码
   status: number // 0: 待发货, 1: 已发货, 2: 已入库, 3: 退回/异常
   isSigned: number // 0: 未签收, 1: 已签收

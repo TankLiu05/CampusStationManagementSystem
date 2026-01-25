@@ -45,6 +45,19 @@ public class ParcelRouteServiceImpl implements ParcelRouteService {
     }
 
     @Override
+    @Transactional
+    public void markAsDelivered(String trackingNumber) {
+        java.util.List<ParcelRoute> routes = repository.findByTrackingNumberOrderByCreateTimeAsc(trackingNumber);
+        if (routes.isEmpty()) {
+            throw new IllegalArgumentException("未找到该快递的流转记录");
+        }
+        // 获取最新的一条记录
+        ParcelRoute lastRoute = routes.get(routes.size() - 1);
+        lastRoute.setIsDelivered(1);
+        repository.save(lastRoute);
+    }
+
+    @Override
     public java.util.List<ParcelRoute> listByTrackingNumber(String trackingNumber) {
         return repository.findByTrackingNumberOrderByCreateTimeAsc(trackingNumber);
     }

@@ -43,6 +43,7 @@ public class ParcelServiceImpl implements ParcelService {
             parcel.setNextStation(latest.getNextStation());
             parcel.setEtaNextStation(latest.getEtaNextStation());
             parcel.setEtaDelivered(latest.getEtaDelivered());
+            parcel.setIsDelivered(latest.getIsDelivered());
         }
         return parcel;
     }

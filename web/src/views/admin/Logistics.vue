@@ -131,6 +131,12 @@
                     :class="{ disabled: !!item.pickupCode || !canUpdateRoute(item) }"
                     @click="canUpdateRoute(item) && updateRoute(item)"
                   >更新</button>
+                  <button
+                    class="btn-delivery"
+                    :disabled="!!item.pickupCode || !canUpdateRoute(item)"
+                    :class="{ disabled: !!item.pickupCode || !canUpdateRoute(item) }"
+                    @click="canUpdateRoute(item) && markAsDelivered(item)"
+                  >送达</button>
                 </div>
               </td>
             </tr>
@@ -239,12 +245,18 @@
                 <input type="datetime-local" v-model="updateForm.etaNextStation">
               </div>
               <div class="form-group">
-                <label>预计送达时间</label>
-                <input type="datetime-local" v-model="updateForm.etaDelivered">
-              </div>
+              <label>预计送达时间</label>
+              <input type="datetime-local" v-model="updateForm.etaDelivered">
             </div>
-            <div class="form-group">
-              <label>备注信息</label>
+          </div>
+          <div class="form-group checkbox-group">
+             <label class="checkbox-label">
+               <input type="checkbox" v-model="updateForm.isDelivered">
+               标记为已送达（物流信息将不可再更改）
+             </label>
+          </div>
+          <div class="form-group">
+            <label>备注信息</label>
               <textarea v-model="updateForm.remark" placeholder="可选备注" rows="3"></textarea>
             </div>
           </div>
@@ -350,6 +362,7 @@ interface LogisticsItem {
   status: string
   updateTime: string
   isDelayed: boolean
+  isDelivered?: number
   trackingHistory: TrackingHistory[]
   pickupCode?: string // 取件码
 }
@@ -392,31 +405,56 @@ const updateForm = reactive({
   nextStation: '',
   etaNextStation: '',
   etaDelivered: '',
+  isDelivered: false,
   remark: ''
 })
 
 const canUpdateRoute = (item: LogisticsItem) => {
   // 已有取件码的快件前面已经做了禁用，这里主要限制“终点站站点管理员”再继续更新物流
+  // 如果已标记为送达，则不可再更新
+  if (item.isDelivered === 1) {
+    return false
+  }
+
   if (!currentAdmin.value) {
     // 未获取到管理员信息时，保守起见允许按钮显示，后端仍有权限校验
     return true
   }
 
-  // 只有站点管理员才有“本站终点站不再更新”的限制
+  // 只有站点管理员才有权限限制，超级管理员(ADMIN)可以任意操作
   if (currentAdmin.value.role === 'STREET_ADMIN') {
     const adminStation = currentAdmin.value.station
-    const destination = item.destination
+    const nextStation = item.nextStation
+    const currentStation = item.currentStation
 
-    if (adminStation && destination) {
-      const isTerminalStation =
-        adminStation === destination ||
-        adminStation.includes(destination) ||
-        destination.includes(adminStation)
+    if (!adminStation) return false
 
-      if (isTerminalStation) {
-        return false
+    // 1. 如果状态是已揽收（待发货），此时通常没有下一站（或为默认值），允许当前站点（起始站）管理员操作
+    if (item.status === 'collected') {
+      if (currentStation && currentStation.trim() !== '') {
+        return adminStation === currentStation || 
+               adminStation.includes(currentStation) || 
+               currentStation.includes(adminStation)
       }
+      return false
     }
+
+    // 2. 对于运输中或其他状态，如果有下一站信息，只有下一站的管理员可以更新（到达下一站的操作）
+    // 注意：'校园驿站' 可能是默认占位符，如果下一站确实是校园驿站，则只有校园驿站管理员可操作
+    if (nextStation && nextStation.trim() !== '') {
+      return adminStation === nextStation || 
+             adminStation.includes(nextStation) || 
+             nextStation.includes(adminStation)
+    }
+
+    // 3. 如果没有下一站信息（兜底），允许当前站点管理员操作
+    if (currentStation && currentStation.trim() !== '') {
+      return adminStation === currentStation || 
+             adminStation.includes(currentStation) || 
+             currentStation.includes(adminStation)
+    }
+    
+    return false
   }
 
   return true
@@ -449,6 +487,7 @@ const convertParcelToLogistics = (parcel: Parcel): LogisticsItem => {
     status: frontStatus,
     updateTime: parcel.updateTime?.replace('T', ' ').substring(0, 16) || '',
     isDelayed: false,
+    isDelivered: parcel.isDelivered,
     trackingHistory: [],
     pickupCode: parcel.pickupCode
   }
@@ -588,6 +627,13 @@ const updateRoute = async (item: LogisticsItem) => {
     if (routes && routes.length > 0) {
       // 获取最后一条记录
       const lastRoute = routes[routes.length - 1]
+      
+      // 检查是否已送达
+      if (lastRoute.isDelivered === 1) {
+        warning('该快件已标记为送达，无法继续更新物流信息')
+        return
+      }
+
       // 如果上一条记录有下一站，则当前站点应该是上一条记录的下一站
       if (lastRoute.nextStation) {
         newCurrentStation = lastRoute.nextStation
@@ -618,6 +664,7 @@ const updateRoute = async (item: LogisticsItem) => {
     etaNextStation: '',
     // 将显示用的空格替换回 T，以便 datetime-local 组件识别
     etaDelivered: item.etaDelivered ? item.etaDelivered.replace(' ', 'T') : '',
+    isDelivered: false,
     remark: ''
   })
   showUpdateRoute.value = true
@@ -695,7 +742,8 @@ const submitUpdate = async () => {
       nextStation: updateForm.nextStation,
       // datetime-local 返回的格式已经是 "2026-01-30T17:20"，直接添加秒即可
       etaNextStation: updateForm.etaNextStation ? updateForm.etaNextStation + ':00' : '',
-      etaDelivered: updateForm.etaDelivered ? updateForm.etaDelivered + ':00' : ''
+      etaDelivered: updateForm.etaDelivered ? updateForm.etaDelivered + ':00' : '',
+      isDelivered: updateForm.isDelivered ? 1 : 0
     }
     
     await parcelRouteApi.create(data)
@@ -704,6 +752,20 @@ const submitUpdate = async () => {
     loadParcelList()
   } catch (error: any) {
     showError(error.message || '更新失败')
+  }
+}
+
+const markAsDelivered = async (item: LogisticsItem) => {
+  if (!confirm('确定将该快件标记为已送达吗？标记后将无法再修改物流信息。')) {
+    return
+  }
+
+  try {
+    await parcelRouteApi.markDelivered(item.trackingNumber)
+    success('标记送达成功')
+    loadParcelList()
+  } catch (error: any) {
+    showError(error.message || '操作失败')
   }
 }
 
@@ -1007,51 +1069,64 @@ td {
   color: #595959;
 }
 
-.action-btns {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-view, .btn-edit, .btn-refresh {
+.btn-view, .btn-edit, .btn-delivery {
   padding: 6px 12px;
   border-radius: 4px;
-  cursor: pointer;
   font-size: 12px;
+  cursor: pointer;
+  border: 1px solid;
   transition: all 0.2s;
 }
 
 .btn-view {
+  color: #808080;
+  border-color: #808080;
   background: white;
-  color: #1890ff;
-  border: 1px solid #1890ff;
 }
 
 .btn-view:hover {
-  background: #1890ff;
-  color: white;
+  background: #f5f5f5;
 }
 
 .btn-edit {
+  color: #1a73e8;
+  border-color: #1a73e8;
   background: white;
-  color: #808080;
-  border: 1px solid #808080;
 }
 
-.btn-edit:hover {
-  background: #808080;
-  color: white;
+.btn-edit:hover:not(:disabled) {
+  background: #e8f0fe;
 }
 
+.btn-edit:disabled,
 .btn-edit.disabled {
-  opacity: 0.5;
+  color: #ccc;
+  border-color: #eee;
+  background: #f5f5f5;
   cursor: not-allowed;
-  border-color: #d9d9d9;
-  color: #d9d9d9;
 }
 
-.btn-edit.disabled:hover {
+.btn-delivery {
+  color: #28a745;
+  border-color: #28a745;
   background: white;
-  color: #d9d9d9;
+}
+
+.btn-delivery:hover {
+  background: #e6f9e6;
+}
+
+.btn-delivery:disabled,
+.btn-delivery.disabled {
+  color: #ccc;
+  border-color: #eee;
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.action-btns {
+  display: flex;
+  gap: 8px;
 }
 
 .pagination {
