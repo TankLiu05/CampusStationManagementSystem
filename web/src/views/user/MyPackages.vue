@@ -647,7 +647,14 @@ async function showPackageDetail(pkg: Package) {
   parcelRoutes.value = []
   try {
     const routes = await getParcelRoutes(pkg.trackingNumber)
-    parcelRoutes.value = routes || []
+    // 按createTime倒序排序（最新时间在前）
+    if (routes && routes.length > 0) {
+      parcelRoutes.value = [...routes].sort((a, b) => {
+        return new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+      })
+    } else {
+      parcelRoutes.value = []
+    }
   } catch (err: any) {
     console.error('加载物流轨迹失败:', err)
     parcelRoutes.value = []

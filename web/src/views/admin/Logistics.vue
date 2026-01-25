@@ -581,8 +581,12 @@ const viewLogistics = async (item: LogisticsItem) => {
   try {
     const routes = await parcelRouteApi.getByTrackingNumber(item.trackingNumber)
     if (routes && routes.length > 0) {
+      // 按createTime倒序排序（最新时间在前）
+      const sortedRoutes = [...routes].sort((a, b) => {
+        return new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
+      })
       // 将后端数据转换为前端展示格式
-      currentLogistics.value.trackingHistory = routes.map(route => ({
+      currentLogistics.value.trackingHistory = sortedRoutes.map(route => ({
         status: route.currentStation,
         time: route.createTime?.replace('T', ' ').substring(0, 16) || '',
         description: `从 ${route.currentStation} 发往 ${route.nextStation || '目的地'}`,
