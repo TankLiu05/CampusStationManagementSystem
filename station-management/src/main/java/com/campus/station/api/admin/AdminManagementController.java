@@ -305,6 +305,33 @@ public class AdminManagementController {
         updateScope.setStation(station);
         AdminRoleScope savedScope = adminRoleScopeService.update(scope.getId(), updateScope);
 
+        if (savedScope.getRole() == AdminRole.STREET_ADMIN
+                && savedScope.getProvince() != null && !savedScope.getProvince().isBlank()
+                && savedScope.getCity() != null && !savedScope.getCity().isBlank()
+                && savedScope.getStation() != null && !savedScope.getStation().isBlank()) {
+            Optional<AdminStation> stationOpt = adminStationRepository.findByProvinceAndCityAndStation(
+                    savedScope.getProvince(), savedScope.getCity(), savedScope.getStation());
+            AdminStation adminStation;
+            if (stationOpt.isPresent()) {
+                adminStation = stationOpt.get();
+            } else {
+                adminStation = new AdminStation();
+                adminStation.setProvince(savedScope.getProvince());
+                adminStation.setCity(savedScope.getCity());
+                adminStation.setStation(savedScope.getStation());
+            }
+            adminStation.setUsername(savedAdmin.getUsername());
+            if (savedAdmin.getPhone() != null) {
+                adminStation.setPhone(savedAdmin.getPhone());
+            } else {
+                adminStation.setPhone("");
+            }
+            try {
+                adminStationRepository.save(adminStation);
+            } catch (Exception e) {
+            }
+        }
+
         return ResponseEntity.ok(new AdminDetailView(savedAdmin, savedScope));
     }
 
