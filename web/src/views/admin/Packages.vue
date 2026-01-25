@@ -220,14 +220,8 @@
                 </div>
                 <input 
                   type="text" 
-                  v-model="district" 
-                  placeholder="请输入区/县"
-                  class="addr-input"
-                >
-                <input 
-                  type="text" 
                   v-model="detailAddress" 
-                  placeholder="请输入详细地址（街道/门牌号等）"
+                  placeholder="请输入详细地址（区县/街道/门牌号等）"
                   class="addr-input"
                 >
               </div>
@@ -378,7 +372,6 @@ const provinces = ref<Region[]>(chinaDivisions)
 const cities = ref<Region[]>([])
 const selectedProvince = ref('')
 const selectedCity = ref('')
-const district = ref('')
 const detailAddress = ref('')
 
 const onProvinceChange = () => {
@@ -759,15 +752,15 @@ const submitPackage = async () => {
         company: packageForm.company,
         receiverName: packageForm.receiverName || undefined,
         receiverPhone: packageForm.receiverPhone || undefined,
-        destination: `${selectedProvince.value}${selectedCity.value}${district.value}${detailAddress.value}`
+        destination: `${selectedProvince.value}${selectedCity.value}${detailAddress.value}`
       }
       await parcelApi.update(editingPackageId.value, updateData)
       success('更新成功')
     } else {
       // 创建新包裹，直接使用表单中填写的地址
-      const fullDestination = `${selectedProvince.value}${selectedCity.value}${district.value}${detailAddress.value}`
-      if (!selectedProvince.value || !selectedCity.value || !district.value || !detailAddress.value) {
-        warning('请完整填写收货地址（省、市、区县、详细地址）')
+      const fullDestination = `${selectedProvince.value}${selectedCity.value}${detailAddress.value}`
+      if (!selectedProvince.value || !selectedCity.value || !detailAddress.value) {
+        warning('请完整填写收货地址（省、市、详细地址）')
         return
       }
       

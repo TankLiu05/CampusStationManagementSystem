@@ -111,8 +111,10 @@ public class AdminManagementController {
         String phone = (String) body.get("phone");
         String email = (String) body.get("email");
         String roleStr = (String) body.get("role");
-        String province = (String) body.get("province");
-        String city = (String) body.get("city");
+        
+        // Normalize address fields
+        String province = normalizeProvince((String) body.get("province"));
+        String city = normalizeCity((String) body.get("city"));
         String station = (String) body.get("station");
 
         if (username == null || username.isBlank() || password == null || password.isBlank() || roleStr == null) {
@@ -286,8 +288,9 @@ public class AdminManagementController {
 
         String phone = (String) body.get("phone");
         String email = (String) body.get("email");
-        String province = (String) body.get("province");
-        String city = (String) body.get("city");
+        // Normalize address fields
+        String province = normalizeProvince((String) body.get("province"));
+        String city = normalizeCity((String) body.get("city"));
         String station = (String) body.get("station");
 
         if (phone != null) {
@@ -360,6 +363,40 @@ public class AdminManagementController {
         sysAdminService.delete(adminId);
 
         return ResponseEntity.noContent().build();
+    }
+
+    private String normalizeProvince(String province) {
+        if (province == null || province.isBlank()) {
+            return province;
+        }
+        province = province.trim();
+        if (province.endsWith("省") || province.endsWith("市") || province.endsWith("区")) {
+            return province;
+        }
+        
+        // Direct controlled municipalities
+        if (province.equals("北京") || province.equals("天津") || province.equals("上海") || province.equals("重庆")) {
+            return province + "市";
+        }
+        
+        // Autonomous regions and SARs
+        if (java.util.Arrays.asList("内蒙古", "广西", "西藏", "宁夏", "新疆", "香港", "澳门").contains(province)) {
+             return province;
+        }
+        
+        // Default: append "省"
+        return province + "省";
+    }
+
+    private String normalizeCity(String city) {
+        if (city == null || city.isBlank()) {
+            return city;
+        }
+        city = city.trim();
+        if (city.endsWith("市") || city.endsWith("州") || city.endsWith("盟") || city.endsWith("地区") || city.endsWith("区") || city.endsWith("县")) {
+            return city;
+        }
+        return city + "市";
     }
 
     static class AdminDetailView {

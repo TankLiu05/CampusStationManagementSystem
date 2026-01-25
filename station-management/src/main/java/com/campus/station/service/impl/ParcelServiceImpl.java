@@ -34,6 +34,19 @@ public class ParcelServiceImpl implements ParcelService {
         this.stationStorageService = stationStorageService;
     }
 
+    private Parcel populateTransientFields(Parcel parcel) {
+        if (parcel == null) return null;
+        List<ParcelRoute> routes = parcelRouteRepository.findByTrackingNumberOrderByCreateTimeAsc(parcel.getTrackingNumber());
+        if (!routes.isEmpty()) {
+            ParcelRoute latest = routes.get(routes.size() - 1);
+            parcel.setCurrentStation(latest.getCurrentStation());
+            parcel.setNextStation(latest.getNextStation());
+            parcel.setEtaNextStation(latest.getEtaNextStation());
+            parcel.setEtaDelivered(latest.getEtaDelivered());
+        }
+        return parcel;
+    }
+
     @Override
     @Transactional
     public Parcel create(Parcel parcel) {
@@ -58,22 +71,26 @@ public class ParcelServiceImpl implements ParcelService {
 
     @Override
     public Optional<Parcel> getById(Long id) {
-        return repository.findById(id);
+        return repository.findById(id).map(this::populateTransientFields);
     }
 
     @Override
     public Optional<Parcel> getByTrackingNumber(String trackingNumber) {
-        return repository.findByTrackingNumber(trackingNumber);
+        return repository.findByTrackingNumber(trackingNumber).map(this::populateTransientFields);
     }
 
     @Override
     public Page<Parcel> list(Pageable pageable) {
-        return repository.findAll(pageable);
+        Page<Parcel> page = repository.findAll(pageable);
+        page.forEach(this::populateTransientFields);
+        return page;
     }
 
     @Override
     public Page<Parcel> listByStatus(Integer status, Pageable pageable) {
-        return repository.findByStatus(status, pageable);
+        Page<Parcel> page = repository.findByStatus(status, pageable);
+        page.forEach(this::populateTransientFields);
+        return page;
     }
 
     @Override
@@ -98,6 +115,7 @@ public class ParcelServiceImpl implements ParcelService {
     public Page<Parcel> listForScope(AdminRoleScope scope, Pageable pageable) {
         List<Parcel> all = repository.findAll();
         List<Parcel> filtered = all.stream()
+                .map(this::populateTransientFields)
                 .filter(parcel -> isParcelVisibleForScope(scope, parcel))
                 .collect(Collectors.toList());
         return toPage(filtered, pageable);
@@ -107,6 +125,7 @@ public class ParcelServiceImpl implements ParcelService {
     public Page<Parcel> listForScopeAndStatus(AdminRoleScope scope, Integer status, Pageable pageable) {
         List<Parcel> all = repository.findByStatus(status, Pageable.unpaged()).getContent();
         List<Parcel> filtered = all.stream()
+                .map(this::populateTransientFields)
                 .filter(parcel -> isParcelVisibleForScope(scope, parcel))
                 .collect(Collectors.toList());
         return toPage(filtered, pageable);
@@ -170,6 +189,12 @@ public class ParcelServiceImpl implements ParcelService {
 
         Parcel saved = repository.save(existing);
         
+        // Restore transient fields if lost during save
+        if (saved.getCurrentStation() == null) saved.setCurrentStation(existing.getCurrentStation());
+        if (saved.getNextStation() == null) saved.setNextStation(existing.getNextStation());
+        if (saved.getEtaNextStation() == null) saved.setEtaNextStation(existing.getEtaNextStation());
+        if (saved.getEtaDelivered() == null) saved.setEtaDelivered(existing.getEtaDelivered());
+        
         // 当更新包裹信息且有取件码和位置时，同步到仓库
         if (saved.getPickupCode() != null && saved.getLocation() != null) {
             stationStorageService.syncFromParcel(saved);
@@ -184,6 +209,8 @@ public class ParcelServiceImpl implements ParcelService {
         Parcel existing = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("快递不存在"));
         
+        // Fields are transient now, we only update status
+        /*
         if (currentStation != null) {
             existing.setCurrentStation(currentStation);
         }
@@ -194,6 +221,7 @@ public class ParcelServiceImpl implements ParcelService {
         if (etaDelivered != null) {
             existing.setEtaDelivered(etaDelivered);
         }
+        */
         if (status != null) {
             existing.setStatus(status);
         }
@@ -242,32 +270,39 @@ public class ParcelServiceImpl implements ParcelService {
 
     @Override
     public Page<Parcel> listByReceiver(Long receiverId, Pageable pageable) {
-        return repository.findByReceiverId(receiverId, pageable);
+        Page<Parcel> page = repository.findByReceiverId(receiverId, pageable);
+        page.forEach(this::populateTransientFields);
+        return page;
     }
 
     @Override
     public Optional<Parcel> getByTrackingNumberAndReceiverId(String trackingNumber, Long receiverId) {
-        return repository.findByTrackingNumberAndReceiverId(trackingNumber, receiverId);
+        return repository.findByTrackingNumberAndReceiverId(trackingNumber, receiverId).map(this::populateTransientFields);
     }
 
     @Override
     public Page<Parcel> listByReceiverAndIsSigned(Long receiverId, Integer isSigned, Pageable pageable) {
-        return repository.findByReceiverIdAndIsSigned(receiverId, isSigned, pageable);
+        Page<Parcel> page = repository.findByReceiverIdAndIsSigned(receiverId, isSigned, pageable);
+        page.forEach(this::populateTransientFields);
+        return page;
     }
 
     @Override
     public Optional<Parcel> findActiveByPickupCode(String pickupCode) {
-        return repository.findByPickupCodeAndIsSigned(pickupCode, 0);
+        return repository.findByPickupCodeAndIsSigned(pickupCode, 0).map(this::populateTransientFields);
     }
 
     @Override
     public Optional<Parcel> findActiveByLocation(String location) {
-        return repository.findByLocationAndIsSigned(location, 0);
+        return repository.findByLocationAndIsSigned(location, 0).map(this::populateTransientFields);
     }
 
     @Override
     public Optional<Parcel> findActiveByLocationAndStation(String location, String station) {
-        return repository.findByLocationAndCurrentStationAndIsSigned(location, station, 0);
+        // findByLocationAndCurrentStationAndIsSigned removed due to normalization
+        return repository.findByLocationAndIsSigned(location, 0)
+                .map(this::populateTransientFields)
+                .filter(p -> station != null && station.equals(p.getCurrentStation()));
     }
 
     @Override
@@ -399,16 +434,20 @@ public class ParcelServiceImpl implements ParcelService {
 
     @Override
     public Page<Parcel> listByReceiverPhone(String receiverPhone, Pageable pageable) {
-        return repository.findByReceiverPhone(receiverPhone, pageable);
+        Page<Parcel> page = repository.findByReceiverPhone(receiverPhone, pageable);
+        page.forEach(this::populateTransientFields);
+        return page;
     }
     
     @Override
     public Optional<Parcel> getByTrackingNumberAndReceiverPhone(String trackingNumber, String receiverPhone) {
-        return repository.findByTrackingNumberAndReceiverPhone(trackingNumber, receiverPhone);
+        return repository.findByTrackingNumberAndReceiverPhone(trackingNumber, receiverPhone).map(this::populateTransientFields);
     }
 
     @Override
     public Page<Parcel> listByReceiverIdOrReceiverPhone(Long receiverId, String receiverPhone, Pageable pageable) {
-        return repository.findByReceiverIdOrReceiverPhone(receiverId, receiverPhone, pageable);
+        Page<Parcel> page = repository.findByReceiverIdOrReceiverPhone(receiverId, receiverPhone, pageable);
+        page.forEach(this::populateTransientFields);
+        return page;
     }
 }

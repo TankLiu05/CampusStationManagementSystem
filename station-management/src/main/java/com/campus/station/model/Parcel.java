@@ -37,16 +37,16 @@ public class Parcel {
     @Column(name = "location", length = 100)
     private String location;
 
-    @Column(name = "current_station", length = 100)
+    @Transient
     private String currentStation;
 
-    @Column(name = "next_station", length = 100)
+    @Transient
     private String nextStation;
 
-    @Column(name = "eta_next_station")
+    @Transient
     private LocalDateTime etaNextStation;
 
-    @Column(name = "eta_delivered")
+    @Transient
     private LocalDateTime etaDelivered;
 
     @Column(name = "pickup_code", length = 6)
