@@ -125,7 +125,12 @@
               <td>
                 <div class="action-btns">
                   <button class="btn-view" @click="viewLogistics(item)">轨迹</button>
-                  <button class="btn-edit" :disabled="!!item.pickupCode" :class="{ disabled: !!item.pickupCode }" @click="updateRoute(item)">更新</button>
+                  <button
+                    class="btn-edit"
+                    :disabled="!!item.pickupCode || !canUpdateRoute(item)"
+                    :class="{ disabled: !!item.pickupCode || !canUpdateRoute(item) }"
+                    @click="canUpdateRoute(item) && updateRoute(item)"
+                  >更新</button>
                 </div>
               </td>
             </tr>
@@ -319,9 +324,11 @@ import { parcelRouteApi, type ParcelRoute, type ParcelRouteCreateRequest } from 
 import { parcelApi, type Parcel, type PageResponse } from '@/api/admin/parcel'
 import { getCurrentAdminDetail, getAllStations, type AdminRole, type AdminStation, type AdminDetail } from '@/api/admin/management'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const router = useRouter()
 const { success, error: showError, warning, info } = useToast()
+const { confirm } = useConfirm()
 
 interface TrackingHistory {
   status: string
@@ -387,6 +394,33 @@ const updateForm = reactive({
   etaDelivered: '',
   remark: ''
 })
+
+const canUpdateRoute = (item: LogisticsItem) => {
+  // 已有取件码的快件前面已经做了禁用，这里主要限制“终点站站点管理员”再继续更新物流
+  if (!currentAdmin.value) {
+    // 未获取到管理员信息时，保守起见允许按钮显示，后端仍有权限校验
+    return true
+  }
+
+  // 只有站点管理员才有“本站终点站不再更新”的限制
+  if (currentAdmin.value.role === 'STREET_ADMIN') {
+    const adminStation = currentAdmin.value.station
+    const destination = item.destination
+
+    if (adminStation && destination) {
+      const isTerminalStation =
+        adminStation === destination ||
+        adminStation.includes(destination) ||
+        destination.includes(adminStation)
+
+      if (isTerminalStation) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
 
 // 包裹列表数据
 const logisticsList = ref<LogisticsItem[]>([])
@@ -582,7 +616,8 @@ const updateRoute = async (item: LogisticsItem) => {
     currentStation: newCurrentStation,
     nextStation: '', // 下一站需要管理员重新选择
     etaNextStation: '',
-    etaDelivered: item.etaDelivered || '',
+    // 将显示用的空格替换回 T，以便 datetime-local 组件识别
+    etaDelivered: item.etaDelivered ? item.etaDelivered.replace(' ', 'T') : '',
     remark: ''
   })
   showUpdateRoute.value = true
@@ -614,8 +649,9 @@ const submitRoute = async () => {
       destination: routeForm.destination,
       currentStation: routeForm.currentStation,
       nextStation: routeForm.nextStation,
-      etaNextStation: routeForm.etaNextStation ? routeForm.etaNextStation.replace('T', ' ') + ':00' : '',
-      etaDelivered: routeForm.etaDelivered ? routeForm.etaDelivered.replace('T', ' ') + ':00' : ''
+      // datetime-local 返回的格式已经是 "2026-01-30T17:20"，直接添加秒即可
+      etaNextStation: routeForm.etaNextStation ? routeForm.etaNextStation + ':00' : '',
+      etaDelivered: routeForm.etaDelivered ? routeForm.etaDelivered + ':00' : ''
     }
     
     await parcelRouteApi.create(requestData)
@@ -657,8 +693,9 @@ const submitUpdate = async () => {
       trackingNumber: currentLogistics.value.trackingNumber,
       currentStation: updateForm.currentStation,
       nextStation: updateForm.nextStation,
-      etaNextStation: updateForm.etaNextStation,
-      etaDelivered: updateForm.etaDelivered
+      // datetime-local 返回的格式已经是 "2026-01-30T17:20"，直接添加秒即可
+      etaNextStation: updateForm.etaNextStation ? updateForm.etaNextStation + ':00' : '',
+      etaDelivered: updateForm.etaDelivered ? updateForm.etaDelivered + ':00' : ''
     }
     
     await parcelRouteApi.create(data)
@@ -682,8 +719,19 @@ const stations = ref<AdminStation[]>([])
 const loadStations = async () => {
   try {
     const res = await getAllStations()
-    // 按省份和城市排序
-    stations.value = res.sort((a, b) => {
+    
+    // 去重：当 station 编号相同时，只保留 id 最大的记录（最新的）
+    const stationMap = new Map<string, AdminStation>()
+    res.forEach(station => {
+      const key = station.station
+      const existing = stationMap.get(key)
+      if (!existing || station.id > existing.id) {
+        stationMap.set(key, station)
+      }
+    })
+    
+    // 转换为数组并按省份和城市排序
+    stations.value = Array.from(stationMap.values()).sort((a, b) => {
       const provinceCompare = (a.province || '').localeCompare(b.province || '')
       if (provinceCompare !== 0) return provinceCompare
       
@@ -1259,7 +1307,7 @@ td {
 }
 
 .timeline-content {
-  background: white;
+  background: #f5f5f5;
   border-radius: 8px;
   padding: 16px;
 }

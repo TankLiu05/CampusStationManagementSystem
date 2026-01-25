@@ -1133,7 +1133,7 @@ onMounted(async () => {
 }
 
 .detail-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .detail-section:last-child {
@@ -1434,6 +1434,7 @@ onMounted(async () => {
   position: relative;
   padding-left: 20px;
   margin-top: 16px;
+  padding-bottom: 0;
 }
 
 .routes-timeline::before {
@@ -1449,21 +1450,16 @@ onMounted(async () => {
 .timeline-item {
   position: relative;
   margin-bottom: 20px;
-  padding-bottom: 20px;
+  padding-bottom: 0;
 }
 
 .timeline-item:last-child {
   margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .timeline-item:last-child::after {
-  content: '';
-  position: absolute;
-  left: -24px;
-  bottom: -20px;
-  width: 2px;
-  height: 20px;
-  background: #e0e0e0;
+  display: none;
 }
 
 .timeline-dot {

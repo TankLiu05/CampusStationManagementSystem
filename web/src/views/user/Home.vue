@@ -67,7 +67,10 @@
                 <div class="parcel-info">
                   <div class="parcel-company">{{ parcel.company }}</div>
                   <div class="parcel-tracking">单号：{{ parcel.trackingNumber }}</div>
-                  <div class="parcel-location">当前位置：{{ parcel.location || '运输途中' }}</div>
+                  <div class="parcel-location">
+                    从 <span class="location-text">{{ parcel.origin || '未知地' }}</span> 
+                    发往 <span class="location-text">{{ parcel.destination || '目的地' }}</span>
+                  </div>
                 </div>
                 <div class="parcel-transit-badge">
                   <span class="transit-text">运输中</span>
@@ -454,6 +457,12 @@ const truncateContent = (content: string, maxLen = 80) => {
 .parcel-status-text {
   font-size: 12px;
   color: #999;
+}
+
+.location-text {
+  color: #333;
+  font-weight: 600;
+  margin: 0 2px;
 }
 
 .parcel-transit-badge {

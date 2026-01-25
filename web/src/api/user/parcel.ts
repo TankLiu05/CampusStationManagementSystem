@@ -13,6 +13,8 @@ export interface Parcel {
   receiverId?: number
   receiverName?: string
   receiverPhone?: string
+  origin?: string // 发货地
+  destination?: string // 目的地
   location?: string // 存放位置
   pickupCode?: string // 取件码
   status: number // 0: 待发货, 1: 已发货, 2: 已入库, 3: 退回/异常
