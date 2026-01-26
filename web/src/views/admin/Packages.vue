@@ -1194,6 +1194,14 @@ td {
   vertical-align: middle;
 }
 
+/* 收件人姓名列允许换行 */
+td:nth-child(4) {
+  word-break: break-all;
+  word-wrap: break-word;
+  white-space: normal;
+  max-width: 120px;
+}
+
 tr {
   height: 56px;
 }

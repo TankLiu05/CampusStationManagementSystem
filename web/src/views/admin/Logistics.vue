@@ -501,7 +501,7 @@ const convertParcelToLogistics = (parcel: Parcel): LogisticsItem => {
     origin: parcel.origin,
     destination: parcel.destination,
     currentStation: parcel.currentStation || '待分配',
-    nextStation: parcel.nextStation || (parcel.status === 2 ? '' : '校园驿站'),
+    nextStation: parcel.nextStation || '',
     etaNextStation: parcel.etaNextStation?.replace('T', ' ').substring(0, 16) || '',
     etaDelivered: parcel.etaDelivered?.replace('T', ' ').substring(0, 16) || '',
     status: frontStatus,
@@ -801,7 +801,15 @@ const submitUpdate = async () => {
 }
 
 const markAsDelivered = async (item: LogisticsItem) => {
-  if (!confirm('确定将该快件标记为已送达吗？标记后将无法再修改物流信息。')) {
+  const confirmed = await confirm({
+    title: '确认操作',
+    message: '确定将该快件标记为已送达吗？标记后将无法再修改物流信息。',
+    confirmText: '确定',
+    cancelText: '取消',
+    type: 'warning'
+  })
+  
+  if (!confirmed) {
     return
   }
 
