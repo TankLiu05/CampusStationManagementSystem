@@ -225,7 +225,7 @@
               <select v-model="updateForm.currentStation" class="form-select" disabled>
                 <option value="">请选择当前站点</option>
                 <option v-for="station in stations" :key="station.id" :value="station.station">
-                  {{ station.station }} ({{ station.city }})
+                  {{ station.province }} - {{ station.city }} - {{ station.station }}
                 </option>
               </select>
             </div>
@@ -234,7 +234,7 @@
               <select v-model="updateForm.nextStation" class="form-select">
                 <option value="">请选择下一站点</option>
                 <option v-for="station in stations" :key="station.id" :value="station.station">
-                  {{ station.station }} ({{ station.city }})
+                  {{ station.province }} - {{ station.city }} - {{ station.station }}
                 </option>
               </select>
             </div>
@@ -248,12 +248,6 @@
               <label>预计送达时间</label>
               <input type="datetime-local" v-model="updateForm.etaDelivered">
             </div>
-          </div>
-          <div class="form-group checkbox-group">
-             <label class="checkbox-label">
-               <input type="checkbox" v-model="updateForm.isDelivered">
-               标记为已送达（物流信息将不可再更改）
-             </label>
           </div>
           <div class="form-group">
             <label>备注信息</label>
@@ -303,11 +297,27 @@
             <div class="tracking-timeline">
               <h4>物流轨迹</h4>
               <div class="timeline">
+                <!-- 已送达节点：当最后一个物流节点标记为已送达时显示 -->
+                <div 
+                  v-if="isParcelDelivered"
+                  class="timeline-item active"
+                >
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-header">
+                      <span class="timeline-status">{{ lastRouteStation }}</span>
+                      <span class="timeline-time">{{ lastRouteTime }}</span>
+                    </div>
+                    <p class="timeline-desc">已送达</p>
+                  </div>
+                </div>
+                
+                <!-- 常规物流节点 -->
                 <div 
                   class="timeline-item" 
                   v-for="(track, index) in currentLogistics?.trackingHistory" 
                   :key="index"
-                  :class="{ active: index === 0 }"
+                  :class="{ active: index === 0 && !isParcelDelivered }"
                 >
                   <div class="timeline-dot"></div>
                   <div class="timeline-content">
@@ -337,6 +347,7 @@ import { parcelApi, type Parcel, type PageResponse } from '@/api/admin/parcel'
 import { getCurrentAdminDetail, getAllStations, type AdminRole, type AdminStation, type AdminDetail } from '@/api/admin/management'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 const router = useRouter()
 const { success, error: showError, warning, info } = useToast()
@@ -347,6 +358,7 @@ interface TrackingHistory {
   time: string
   description: string
   location: string
+  isDelivered?: number
 }
 
 interface LogisticsItem {
@@ -405,13 +417,11 @@ const updateForm = reactive({
   nextStation: '',
   etaNextStation: '',
   etaDelivered: '',
-  isDelivered: false,
   remark: ''
 })
 
 const canUpdateRoute = (item: LogisticsItem) => {
-  // 已有取件码的快件前面已经做了禁用，这里主要限制“终点站站点管理员”再继续更新物流
-  // 如果已标记为送达，则不可再更新
+  // 已标记为送达，则不可再更新
   if (item.isDelivered === 1) {
     return false
   }
@@ -421,43 +431,53 @@ const canUpdateRoute = (item: LogisticsItem) => {
     return true
   }
 
-  // 只有站点管理员才有权限限制，超级管理员(ADMIN)可以任意操作
-  if (currentAdmin.value.role === 'STREET_ADMIN') {
-    const adminStation = currentAdmin.value.station
-    const nextStation = item.nextStation
-    const currentStation = item.currentStation
-
-    if (!adminStation) return false
-
-    // 1. 如果状态是已揽收（待发货），此时通常没有下一站（或为默认值），允许当前站点（起始站）管理员操作
-    if (item.status === 'collected') {
-      if (currentStation && currentStation.trim() !== '') {
-        return adminStation === currentStation || 
-               adminStation.includes(currentStation) || 
-               currentStation.includes(adminStation)
-      }
-      return false
-    }
-
-    // 2. 对于运输中或其他状态，如果有下一站信息，只有下一站的管理员可以更新（到达下一站的操作）
-    // 注意：'校园驿站' 可能是默认占位符，如果下一站确实是校园驿站，则只有校园驿站管理员可操作
-    if (nextStation && nextStation.trim() !== '') {
-      return adminStation === nextStation || 
-             adminStation.includes(nextStation) || 
-             nextStation.includes(adminStation)
-    }
-
-    // 3. 如果没有下一站信息（兜底），允许当前站点管理员操作
-    if (currentStation && currentStation.trim() !== '') {
-      return adminStation === currentStation || 
-             adminStation.includes(currentStation) || 
-             currentStation.includes(adminStation)
-    }
-    
-    return false
+  // 超级管理员可以任意操作
+  if (currentAdmin.value.role !== 'STREET_ADMIN') {
+    return true
   }
 
-  return true
+  // 站点管理员权限检查：与后端逻辑保持一致
+  const adminStation = currentAdmin.value.station
+  const currentStation = item.currentStation
+  const nextStation = item.nextStation
+  const destination = item.destination
+
+  if (!adminStation) return false
+
+  // 检查包裹实际位置：当前站点或起始站（与后端 currentStation/origin 检查对应）
+  let parcelLocation = currentStation
+  if (!parcelLocation || parcelLocation.trim() === '' || parcelLocation === '待分配') {
+    parcelLocation = item.origin || ''
+  }
+
+  // 1. 检查是否在当前站点（发货/处理中）
+  if (parcelLocation && parcelLocation.trim() !== '') {
+    if (adminStation === parcelLocation || 
+        adminStation.includes(parcelLocation) || 
+        parcelLocation.includes(adminStation)) {
+      return true
+    }
+  }
+
+  // 2. 检查是否是下一站（收货/待处理）
+  if (nextStation && nextStation.trim() !== '') {
+    if (adminStation === nextStation || 
+        adminStation.includes(nextStation) || 
+        nextStation.includes(adminStation)) {
+      return true
+    }
+  }
+
+  // 3. 检查是否是终点站（允许终点站标记为送达）
+  if (destination && destination.trim() !== '') {
+    if (adminStation === destination || 
+        adminStation.includes(destination) || 
+        destination.includes(adminStation)) {
+      return true
+    }
+  }
+
+  return false
 }
 
 // 包裹列表数据
@@ -534,7 +554,7 @@ const getStatusLabel = (status?: string) => {
   const labels: Record<string, string> = {
     'collected': '已揽收',
     'in_transit': '运输中',
-    'arrived': '已到站',
+    'arrived': '已送达',
     'delivering': '派送中',
     'signed': '已签收'
   }
@@ -590,7 +610,8 @@ const viewLogistics = async (item: LogisticsItem) => {
         status: route.currentStation,
         time: route.createTime?.replace('T', ' ').substring(0, 16) || '',
         description: `从 ${route.currentStation} 发往 ${route.nextStation || '目的地'}`,
-        location: route.currentStation
+        location: route.currentStation,
+        isDelivered: route.isDelivered
       }))
     } else {
       // 没有物流轨迹数据时显示默认信息
@@ -614,6 +635,28 @@ const viewLogistics = async (item: LogisticsItem) => {
   
   showTrackingDetail.value = true
 }
+
+// 判断快递是否已送达（最后一个物流节点的 isDelivered === 1）
+const isParcelDelivered = computed(() => {
+  if (!currentLogistics.value?.trackingHistory || currentLogistics.value.trackingHistory.length === 0) return false
+  // 因为已经按时间倒序排序，第一个就是最新的
+  const latestRoute = currentLogistics.value.trackingHistory[0]
+  return latestRoute?.isDelivered === 1
+})
+
+// 获取最后一个物流节点的站点名称
+const lastRouteStation = computed(() => {
+  if (!currentLogistics.value?.trackingHistory || currentLogistics.value.trackingHistory.length === 0) return ''
+  const latestRoute = currentLogistics.value.trackingHistory[0]
+  return latestRoute?.status || ''
+})
+
+// 获取最后一个物流节点的时间
+const lastRouteTime = computed(() => {
+  if (!currentLogistics.value?.trackingHistory || currentLogistics.value.trackingHistory.length === 0) return ''
+  const latestRoute = currentLogistics.value.trackingHistory[0]
+  return latestRoute?.time || ''
+})
 
 const updateRoute = async (item: LogisticsItem) => {
   // 已生成取件码的快件不能修改
@@ -668,7 +711,6 @@ const updateRoute = async (item: LogisticsItem) => {
     etaNextStation: '',
     // 将显示用的空格替换回 T，以便 datetime-local 组件识别
     etaDelivered: item.etaDelivered ? item.etaDelivered.replace(' ', 'T') : '',
-    isDelivered: false,
     remark: ''
   })
   showUpdateRoute.value = true
@@ -746,8 +788,7 @@ const submitUpdate = async () => {
       nextStation: updateForm.nextStation,
       // datetime-local 返回的格式已经是 "2026-01-30T17:20"，直接添加秒即可
       etaNextStation: updateForm.etaNextStation ? updateForm.etaNextStation + ':00' : '',
-      etaDelivered: updateForm.etaDelivered ? updateForm.etaDelivered + ':00' : '',
-      isDelivered: updateForm.isDelivered ? 1 : 0
+      etaDelivered: updateForm.etaDelivered ? updateForm.etaDelivered + ':00' : ''
     }
     
     await parcelRouteApi.create(data)
@@ -786,10 +827,11 @@ const loadStations = async () => {
   try {
     const res = await getAllStations()
     
-    // 去重：当 station 编号相同时，只保留 id 最大的记录（最新的）
+    // 去重：使用 province + city + station 的组合作为唯一键，保留 id 最大的记录
     const stationMap = new Map<string, AdminStation>()
     res.forEach(station => {
-      const key = station.station
+      // 使用省市站点的组合作为唯一键，避免只用站点名导致不同城市的同名站点被去重
+      const key = `${station.province || ''}-${station.city || ''}-${station.station || ''}`
       const existing = stationMap.get(key)
       if (!existing || station.id > existing.id) {
         stationMap.set(key, station)
@@ -811,6 +853,9 @@ const loadStations = async () => {
   }
 }
 
+// 使用自动刷新功能
+useAutoRefresh(loadParcelList)
+
 // 页面加载时初始化
 onMounted(async () => {
   try {
@@ -819,7 +864,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('获取管理员信息失败:', error)
   }
-  loadParcelList()
+  // loadParcelList 已由 useAutoRefresh 处理
   loadStations()
 })
 </script>

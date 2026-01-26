@@ -232,6 +232,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { 
   getMessageList, 
   replyMessage as apiReplyMessage, 
@@ -334,8 +335,11 @@ const updateStats = async () => {
   }
 }
 
+// 使用自动刷新功能
+useAutoRefresh(loadMessages)
+
 onMounted(() => {
-  loadMessages()
+  // 初始加载已由useAutoRefresh处理
 })
 
 const filteredMessages = computed(() => {

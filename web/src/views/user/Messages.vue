@@ -159,6 +159,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
 import { useToast } from '@/composables/useToast'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { 
   getMyMessages, 
   createMessage,
@@ -226,8 +227,11 @@ const loadMessages = async () => {
   }
 }
 
+// 使用自动刷新功能
+useAutoRefresh(loadMessages)
+
 onMounted(() => {
-  loadMessages()
+  // 初始加载已由useAutoRefresh处理
 })
 
 const filteredMessages = computed(() => {

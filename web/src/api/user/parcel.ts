@@ -125,6 +125,7 @@ export interface ParcelRoute {
   nextStation?: string
   etaNextStation?: string
   etaDelivered?: string
+  isDelivered?: number // 是否已送达（0:否, 1:是）
   createTime: string
   updateTime: string
 }

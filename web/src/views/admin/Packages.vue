@@ -107,7 +107,7 @@
             </td>
             <td>
               <span :class="['status-badge', pkg.status]">
-                {{ getStatusLabel(pkg.status) }}
+                {{ getStatusLabel(pkg.status, pkg.hasStorageInfo) }}
               </span>
             </td>
             <td>{{ pkg.isSigned === 1 ? '已签收' : '未签收' }}</td>
@@ -584,11 +584,13 @@ const canStore = (pkg: Package) => {
   return true
 }
 
-const getStatusLabel = (status?: string) => {
+const getStatusLabel = (status?: string, hasStorageInfo?: boolean) => {
+  if (status === 'STORED') {
+    return hasStorageInfo ? '已入库' : '已送达'
+  }
   const labels: Record<string, string> = {
     'PENDING_SHIP': '待发货',
     'SHIPPED': '运输中',
-    'STORED': '已入库',
     'RETURNED': '退回/异常'
   }
   return labels[status || ''] || '未知'
@@ -959,10 +961,11 @@ watch(currentPage, () => {
   loadPackages()
 })
 
-// 组件挂载时加载数据
-onMounted(() => {
-  loadPackages()
-})
+// 使用自动刷新功能
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
+useAutoRefresh(loadPackages)
+
+// 组件挂载时加载数据已由useAutoRefresh处理
 </script>
 
 <style scoped>

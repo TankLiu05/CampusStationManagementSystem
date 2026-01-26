@@ -221,6 +221,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { 
   getReturnRequestList, 
   updateReturnRequestStatus,
@@ -423,10 +424,10 @@ const confirmProcess = async () => {
   }
 }
 
-// 页面加载时获取数据
-onMounted(() => {
-  loadReturnRequests()
-})
+// 使用自动刷新功能
+useAutoRefresh(loadReturnRequests)
+
+// 页面加载时获取数据已由useAutoRefresh处理
 </script>
 
 <style scoped>

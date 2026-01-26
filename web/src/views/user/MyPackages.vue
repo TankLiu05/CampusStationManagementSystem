@@ -170,11 +170,27 @@
                 <p>暂无物流轨迹信息</p>
               </div>
               <div v-else class="routes-timeline">
+                <!-- 已送达节点：当最后一个物流节点标记为已送达时显示 -->
+                <div 
+                  v-if="isParcelDelivered"
+                  class="timeline-item active"
+                >
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-header">
+                      <span class="timeline-station">{{ lastRouteStation }}</span>
+                      <span class="timeline-time">{{ formatTime(lastRouteTime) }}</span>
+                    </div>
+                    <p class="timeline-desc">已送达</p>
+                  </div>
+                </div>
+                
+                <!-- 常规物流节点 -->
                 <div 
                   v-for="(route, index) in parcelRoutes" 
                   :key="route.id"
                   class="timeline-item"
-                  :class="{ active: index === 0 }"
+                  :class="{ active: index === 0 && !isParcelDelivered }"
                 >
                   <div class="timeline-dot"></div>
                   <div class="timeline-content">
@@ -298,6 +314,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import UserLayout from '@/layouts/UserLayout.vue'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { 
   listMyParcels, 
   searchMyParcelByTrackingNumber, 
@@ -366,11 +383,7 @@ const returnRejectedTrackingNumbers = ref<Set<string>>(new Set())
 const tabCounts = ref({
   all: 0,
   pending: 0,
-  picked: 0,
-  returnRequested: 0,
-  returnRejected: 0,
-  returned: 0,
-  overdue: 0
+  picked: 0
 })
 
 // 监听activeTab变化，自动加载对应数据
@@ -386,11 +399,7 @@ const tabs = computed<Tab[]>(() => {
   return [
     { label: '全部', value: 'all', count: tabCounts.value.all },
     { label: '待取件', value: 'pending', count: tabCounts.value.pending },
-    { label: '已取件', value: 'picked', count: tabCounts.value.picked },
-    { label: '申请退货', value: 'returnRequested', count: tabCounts.value.returnRequested },
-    { label: '拒绝退货', value: 'returnRejected', count: tabCounts.value.returnRejected },
-    { label: '已退货', value: 'returned', count: tabCounts.value.returned },
-    { label: '已超期', value: 'overdue', count: tabCounts.value.overdue }
+    { label: '已取件', value: 'picked', count: tabCounts.value.picked }
   ]
 })
 
@@ -467,121 +476,13 @@ async function loadParcels() {
     // 根据当前激活标签调用不同的API
     switch (activeTab.value) {
       case 'pending':
-        // 待取件：未签收且未退货的包裹
-        const unsignedResponse = await listUnsignedParcels(currentPage.value, pageSize.value)
-        // 过滤掉已退货和有退货申请的包裹
-        const allReturnRequests = await getMyReturnRequests(0, 9999)
-        const returnRelatedTrackingNumbers = new Set(
-          allReturnRequests.content.map(req => req.trackingNumber)
-        )
-        response = {
-          ...unsignedResponse,
-          content: unsignedResponse.content.filter(p => 
-            p.isReturned !== 1 && !returnRelatedTrackingNumbers.has(p.trackingNumber)
-          )
-        }
-        response.totalElements = response.content.length
+        // 待取件：未签收的包裹
+        response = await listUnsignedParcels(currentPage.value, pageSize.value)
         break
       case 'picked':
-        // 已取件：已签收且未退货的包裹
-        const signedResponse = await listSignedParcels(currentPage.value, pageSize.value)
-        response = {
-          ...signedResponse,
-          content: signedResponse.content.filter(p => p.isReturned !== 1)
-        }
-        response.totalElements = response.content.length
+        // 已取件：已签收的包裹
+        response = await listSignedParcels(currentPage.value, pageSize.value)
         break
-      case 'returnRequested':
-        // 查询已提交退货申请的包裹（待审核）
-        const returnRequests = await getMyReturnRequests(currentPage.value, pageSize.value)
-        // 根据退货申请中的快递单号查询对应的包裹
-        const trackingNumbers = returnRequests.content
-          .filter(req => req.status === 0) // 只显示待审核的
-          .map(req => req.trackingNumber)
-        
-        if (trackingNumbers.length === 0) {
-          allParcels.value = []
-          totalElements.value = 0
-          return
-        }
-        
-        // 获取所有包裹然后过滤
-        const allParcelsResponse = await listMyParcels(0, 9999)
-        response = {
-          content: allParcelsResponse.content.filter(p => 
-            trackingNumbers.includes(p.trackingNumber)
-          ),
-          totalElements: 0,
-          totalPages: 0,
-          size: pageSize.value,
-          number: currentPage.value,
-          first: true,
-          last: true,
-          empty: false
-        }
-        response.totalElements = response.content.length
-        response.totalPages = Math.ceil(response.totalElements / pageSize.value)
-        break
-      case 'returnRejected':
-        // 查询被拒绝的退货申请
-        const rejectedRequests = await getMyReturnRequests(currentPage.value, pageSize.value)
-        // 根据退货申请中的快递单号查询对应的包裹
-        const rejectedTrackingNumbers = rejectedRequests.content
-          .filter(req => req.status === 2) // 只显示已拒绝的
-          .map(req => req.trackingNumber)
-        
-        if (rejectedTrackingNumbers.length === 0) {
-          allParcels.value = []
-          totalElements.value = 0
-          return
-        }
-        
-        // 获取所有包裹然后过滤
-        const rejectedParcelsResponse = await listMyParcels(0, 9999)
-        response = {
-          content: rejectedParcelsResponse.content.filter(p => 
-            rejectedTrackingNumbers.includes(p.trackingNumber)
-          ),
-          totalElements: 0,
-          totalPages: 0,
-          size: pageSize.value,
-          number: currentPage.value,
-          first: true,
-          last: true,
-          empty: false
-        }
-        response.totalElements = response.content.length
-        response.totalPages = Math.ceil(response.totalElements / pageSize.value)
-        break
-      case 'returned':
-        // 筛选已退货的包裹（已同意退货且未被拒绝）
-        const returnedAllParcels = await listMyParcels(0, 9999)
-        const returnedAllRequests = await getMyReturnRequests(0, 9999)
-        const rejectedTrackingNumbersForReturned = new Set(
-          returnedAllRequests.content
-            .filter(req => req.status === 2) // 已拒绝的
-            .map(req => req.trackingNumber)
-        )
-        response = {
-          content: returnedAllParcels.content.filter(p => 
-            p.isReturned === 1 && !rejectedTrackingNumbersForReturned.has(p.trackingNumber)
-          ),
-          totalElements: 0,
-          totalPages: 0,
-          size: pageSize.value,
-          number: currentPage.value,
-          first: true,
-          last: true,
-          empty: false
-        }
-        response.totalElements = response.content.length
-        response.totalPages = Math.ceil(response.totalElements / pageSize.value)
-        break
-      case 'overdue':
-        // TODO: 如果后端有超期快递接口，在此调用
-        allParcels.value = []
-        totalElements.value = 0
-        return
       case 'all':
       default:
         response = await listMyParcels(currentPage.value, pageSize.value)
@@ -683,6 +584,28 @@ function formatTime(time: string): string {
   })
 }
 
+// 判断快递是否已送达（最后一个物流节点的 isDelivered === 1）
+const isParcelDelivered = computed(() => {
+  if (parcelRoutes.value.length === 0) return false
+  // 因为已经按时间倒序排序，第一个就是最新的
+  const latestRoute = parcelRoutes.value[0]
+  return latestRoute?.isDelivered === 1
+})
+
+// 获取最后一个物流节点的站点名称
+const lastRouteStation = computed(() => {
+  if (parcelRoutes.value.length === 0) return ''
+  const latestRoute = parcelRoutes.value[0]
+  return latestRoute?.currentStation || ''
+})
+
+// 获取最后一个物流节点的时间
+const lastRouteTime = computed(() => {
+  if (parcelRoutes.value.length === 0) return ''
+  const latestRoute = parcelRoutes.value[0]
+  return latestRoute?.createTime || ''
+})
+
 // 显示退货申请对话框
 function showReturnRequestDialog() {
   if (!selectedPackage.value) return
@@ -758,29 +681,19 @@ async function handleSignFromDialog() {
 // 加载所有标签的计数
 async function loadAllTabCounts() {
   try {
-    // 并行请求所有标签的第一页数据以获取计数
-    const [allResponse, pendingResponse, pickedResponse] = await Promise.all([
+    // 并行请求所有标签的数据以获取计数
+    const [allResponse, unsignedResponse, signedResponse] = await Promise.all([
       listMyParcels(0, 1),
       listUnsignedParcels(0, 1),
       listSignedParcels(0, 1)
     ])
     
     tabCounts.value.all = allResponse.totalElements
-    tabCounts.value.pending = pendingResponse.totalElements
-    tabCounts.value.picked = pickedResponse.totalElements
+    tabCounts.value.pending = unsignedResponse.totalElements
+    tabCounts.value.picked = signedResponse.totalElements
     
-    // 统计退货相关数量
-    const allParcels = await listMyParcels(0, 9999)
+    // 获取退货申请数据以更新快递单号集合
     const returnRequests = await getMyReturnRequests(0, 9999)
-    
-    // 申请退货：待审核的退货申请
-    tabCounts.value.returnRequested = returnRequests.content.filter(req => req.status === 0).length
-    
-    // 拒绝退货：已拒绝的退货申请
-    tabCounts.value.returnRejected = returnRequests.content.filter(req => req.status === 2).length
-    
-    // 已退货：已标记为退货的包裹
-    tabCounts.value.returned = allParcels.content.filter(p => p.isReturned === 1).length
     
     // 更新已申请退货的快递单号集合
     returnRequestedTrackingNumbers.value = new Set(
@@ -795,18 +708,18 @@ async function loadAllTabCounts() {
         .filter(req => req.status === 2) // 已拒绝
         .map(req => req.trackingNumber)
     )
-    
-    tabCounts.value.overdue = 0
   } catch (error) {
     console.error('加载标签计数失败:', error)
   }
 }
 
-// 组件挂载时加载数据
-onMounted(async () => {
+// 使用自动刷新功能
+useAutoRefresh(async () => {
   await loadAllTabCounts()
   await loadParcels()
 })
+
+// 组件挂载时加载数据已由useAutoRefresh处理
 </script>
 
 <style scoped>

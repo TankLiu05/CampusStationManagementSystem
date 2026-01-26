@@ -108,30 +108,16 @@
             </div>
           </div>
 
-          <div class="capacity-card">
-            <div class="capacity-header">
-              <span class="capacity-title">今日入库量</span>
-              <span class="capacity-badge today">{{ capacityStats.todayIn }} 件</span>
-            </div>
-            <div class="capacity-trend">
-              <span :class="['trend', capacityStats.todayInTrend > 0 ? 'up' : 'down']">
-                {{ capacityStats.todayInTrend > 0 ? '↑' : '↓' }} {{ Math.abs(capacityStats.todayInTrend) }}%
-              </span>
-              <span class="trend-label">较昨日</span>
-            </div>
+          <div class="capacity-card today-card">
+            <div class="capacity-title">今日入库量</div>
+            <div class="capacity-number today-in">{{ capacityStats.todayIn }}</div>
+            <div class="capacity-unit">件</div>
           </div>
 
-          <div class="capacity-card">
-            <div class="capacity-header">
-              <span class="capacity-title">今日出库量</span>
-              <span class="capacity-badge today">{{ capacityStats.todayOut }} 件</span>
-            </div>
-            <div class="capacity-trend">
-              <span :class="['trend', capacityStats.todayOutTrend > 0 ? 'up' : 'down']">
-                {{ capacityStats.todayOutTrend > 0 ? '↑' : '↓' }} {{ Math.abs(capacityStats.todayOutTrend) }}%
-              </span>
-              <span class="trend-label">较昨日</span>
-            </div>
+          <div class="capacity-card today-card">
+            <div class="capacity-title">今日出库量</div>
+            <div class="capacity-number today-out">{{ capacityStats.todayOut }}</div>
+            <div class="capacity-unit">件</div>
           </div>
 
           <div class="capacity-card">
@@ -266,8 +252,6 @@ const capacityStats = computed(() => {
     usageRate,
     todayIn,
     todayOut,
-    todayInTrend: 0, // 需要历史数据才能计算
-    todayOutTrend: 0, // 需要历史数据才能计算
     overdueParcels
   }
 })
@@ -560,6 +544,14 @@ h2 {
   padding: 20px;
 }
 
+.capacity-card.today-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
 .capacity-header {
   display: flex;
   justify-content: space-between;
@@ -570,6 +562,30 @@ h2 {
 .capacity-title {
   font-size: 14px;
   color: #666;
+}
+
+.today-card .capacity-title {
+  margin-bottom: 12px;
+}
+
+.capacity-number {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.capacity-number.today-in {
+  color: #52c41a;
+}
+
+.capacity-number.today-out {
+  color: #1890ff;
+}
+
+.capacity-unit {
+  font-size: 14px;
+  color: #999;
 }
 
 .capacity-badge {
@@ -612,30 +628,6 @@ h2 {
 .capacity-detail {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  color: #999;
-}
-
-.capacity-trend {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.trend {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.trend.up {
-  color: #52c41a;
-}
-
-.trend.down {
-  color: #f5222d;
-}
-
-.trend-label {
   font-size: 12px;
   color: #999;
 }

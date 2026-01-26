@@ -104,9 +104,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { searchStorage, type StationStorage } from '@/api/admin/stationStorage'
 
 const { error } = useToast()
@@ -114,7 +115,6 @@ const { error } = useToast()
 const storageList = ref<StationStorage[]>([])
 const storageLoading = ref(false)
 const currentZone = ref('')
-let refreshTimer: number | null = null
 
 const AREAS = ['A', 'B', 'C', 'D']
 
@@ -131,20 +131,8 @@ const loadData = async () => {
   }
 }
 
-onMounted(() => {
-  loadData()
-  // 每30秒自动刷新一次数据
-  refreshTimer = window.setInterval(() => {
-    loadData()
-  }, 30000)
-})
-
-onUnmounted(() => {
-  // 清除定时器
-  if (refreshTimer) {
-    clearInterval(refreshTimer)
-  }
-})
+// 使用自动刷新功能
+useAutoRefresh(loadData)
 
 // 区域列表
 const zones = computed(() => {
