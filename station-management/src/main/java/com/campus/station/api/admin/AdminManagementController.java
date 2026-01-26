@@ -224,7 +224,7 @@ public class AdminManagementController {
     @Operation(summary = "获取所有站点信息")
     public ResponseEntity<List<AdminStation>> getAllStations() {
         requireCurrentAdmin();
-        return ResponseEntity.ok(adminStationRepository.findAll());
+        return ResponseEntity.ok(adminStationRepository.findActiveStations(AdminRole.STREET_ADMIN));
     }
 
     @GetMapping
