@@ -552,11 +552,11 @@ const loadPackages = async () => {
   }
 }
 
-// 更新统计数据（物流场景）
+// 更新统计数据(物流场景)
 const updateStats = (parcels: Parcel[]) => {
   stats.pendingShip = parcels.filter(p => p.status === 0).length // 待发货
   stats.shipping = parcels.filter(p => p.status === 1).length // 运输中
-  stats.stored = parcels.filter(p => p.status === 2 && p.isSigned === 0).length // 已入库未签收
+  stats.stored = parcels.filter(p => p.status === 2 && p.isSigned === 0 && p.location && p.pickupCode).length // 已入库(已生成取件码)未签收
   stats.abnormal = parcels.filter(p => p.status === 3).length // 异常包裹
 }
 

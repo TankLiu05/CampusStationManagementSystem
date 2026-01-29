@@ -3,9 +3,9 @@ import { onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 /**
  * 页面自动刷新功能
  * @param loadDataFn 数据加载函数
- * @param interval 刷新间隔(毫秒),默认30秒
+ * @param interval 刷新间隔(毫秒),默认5秒
  */
-export function useAutoRefresh(loadDataFn: () => void | Promise<void>, interval: number = 30000) {
+export function useAutoRefresh(loadDataFn: () => void | Promise<void>, interval: number = 5000) {
   let refreshTimer: number | null = null
 
   const startRefresh = () => {
